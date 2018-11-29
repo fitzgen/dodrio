@@ -13,16 +13,21 @@ function with_dir {
 }
 
 cargo fmt --all
-cargo check
-wasm-pack build ./example/rust
+cargo check --all --target wasm32-unknown-unknown
 
 if test "$INSTALL" != ""; then
     with_dir ./js npm link
-    with_dir ./example/rust/pkg npm link
-    with_dir ./example/rust/pkg npm link dodrio
-    with_dir ./example/js npm install
-    with_dir ./example/js npm link dodrio
-    with_dir ./example/js npm link dodrio-example
 fi
 
-with_dir ./example/js/ npm run build
+for x in ./examples/*; do
+    wasm-pack build "$x/crate"
+
+    if test "$INSTALL" != ""; then
+        with_dir "$x/crate/pkg" npm link
+        with_dir "$x/crate/pkg" npm link dodrio
+        with_dir "$x/js" npm install
+        with_dir "$x/js" npm link dodrio
+    fi
+
+    with_dir "$x/js/" npm run build
+done

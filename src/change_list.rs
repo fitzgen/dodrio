@@ -159,20 +159,24 @@ impl BumpAllocSafe for ChangeDiscriminant {}
 
 impl ChangeList {
     pub(crate) fn emit_set_text(&self, text: &str) {
+        debug!("emit_set_text({:?})", text);
         self.bump
             .alloc((ChangeDiscriminant::SetText, text.as_ptr(), text.len()));
     }
 
     pub(crate) fn emit_remove_self_and_next_siblings(&self) {
+        debug!("emit_remove_self_and_next_siblings()");
         self.bump
             .alloc(ChangeDiscriminant::RemoveSelfAndNextSiblings);
     }
 
     pub(crate) fn emit_replace_with(&self) {
+        debug!("emit_replace_with()");
         self.bump.alloc(ChangeDiscriminant::ReplaceWith);
     }
 
     pub(crate) fn emit_set_attribute(&self, name: &str, value: &str) {
+        debug!("emit_set_attribute({:?}, {:?})", name, value);
         self.bump.alloc((
             ChangeDiscriminant::SetAttribute,
             name.as_ptr(),
@@ -183,6 +187,7 @@ impl ChangeList {
     }
 
     pub(crate) fn emit_remove_attribute(&self, name: &str) {
+        debug!("emit_remove_attribute({:?})", name);
         self.bump.alloc((
             ChangeDiscriminant::RemoveAttribute,
             name.as_ptr(),
@@ -191,22 +196,27 @@ impl ChangeList {
     }
 
     pub(crate) fn emit_push_first_child(&self) {
+        debug!("emit_push_first_child()");
         self.bump.alloc(ChangeDiscriminant::PushFirstChild);
     }
 
     pub(crate) fn emit_pop_push_next_sibling(&self) {
+        debug!("emit_pop_push_next_sibling()");
         self.bump.alloc(ChangeDiscriminant::PopPushNextSibling);
     }
 
     pub(crate) fn emit_pop(&self) {
+        debug!("emit_pop()");
         self.bump.alloc(ChangeDiscriminant::Pop);
     }
 
     pub(crate) fn emit_append_child(&self) {
+        debug!("emit_append_child()");
         self.bump.alloc(ChangeDiscriminant::AppendChild);
     }
 
     pub(crate) fn emit_create_text_node(&self, text: &str) {
+        debug!("emit_create_text_node({:?})", text);
         self.bump.alloc((
             ChangeDiscriminant::CreateTextNode,
             text.as_ptr(),
@@ -215,6 +225,7 @@ impl ChangeList {
     }
 
     pub(crate) fn emit_create_element(&self, tag_name: &str) {
+        debug!("emit_create_element({:?})", tag_name);
         self.bump.alloc((
             ChangeDiscriminant::CreateElement,
             tag_name.as_ptr(),

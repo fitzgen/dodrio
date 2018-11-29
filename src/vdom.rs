@@ -2,11 +2,13 @@ use super::change_list::ChangeList;
 use super::node::{Node, NodeData, NodeRef};
 use super::Render;
 use bumpalo::Bump;
+use std::cmp;
 use std::mem;
 
 pub struct Vdom {
     dom_buffers: [Bump; 2],
     change_list: ChangeList,
+    container: web_sys::Element,
 
     // Actually a reference into `self.dom_buffers[0]`.
     current_root: Option<NodeRef<'static>>,
@@ -17,12 +19,15 @@ unsafe fn extend_node_lifetime<'a>(node: NodeRef<'a>) -> NodeRef<'static> {
 }
 
 impl Vdom {
-    pub fn new<R>(container: &web_sys::Node, contents: R) -> Vdom
+    pub fn new<R>(container: &web_sys::Element, contents: &R) -> Vdom
     where
         R: Render,
     {
         let dom_buffers = [Bump::new(), Bump::new()];
         let change_list = ChangeList::new(container);
+
+        // Ensure that the container is empty.
+        container.set_inner_html("");
 
         // Create a dummy `<div/>` in our container.
         let current_root: NodeRef = dom_buffers[0].alloc(Node::element("div", [], [])).into();
@@ -40,17 +45,23 @@ impl Vdom {
             )
             .expect("should append child OK");
 
-        // Diff and apply the `contents` against this dummy node.
+        // Diff and apply the `contents` against our dummy `<div/>`.
+        let container = container.clone();
         let mut vdom = Vdom {
             dom_buffers,
             change_list,
+            container,
             current_root,
         };
         vdom.render(contents);
         vdom
     }
 
-    pub fn render<R>(&mut self, contents: R)
+    pub fn container(&self) -> &web_sys::Element {
+        &self.container
+    }
+
+    pub fn render<R>(&mut self, contents: &R)
     where
         R: Render,
     {
@@ -80,17 +91,25 @@ impl Vdom {
     }
 
     fn diff(&self, old: NodeRef, new: NodeRef) {
+        debug!("---------------------------------------------------------");
+        debug!("dodrio::Vdom::diff");
+        debug!("  old = {:#?}", old);
+        debug!("  new = {:#?}", new);
         match (new.data, old.data) {
             (NodeData::Text { text: new_text }, NodeData::Text { text: old_text }) => {
+                debug!("  both are text nodes");
                 if new_text != old_text {
+                    debug!("  text needs updating");
                     self.change_list.emit_set_text(new_text);
                 }
             }
             (NodeData::Text { .. }, NodeData::Element { .. }) => {
+                debug!("  replacing a text node with an element");
                 self.create(new);
                 self.change_list.emit_replace_with();
             }
             (NodeData::Element { .. }, NodeData::Text { .. }) => {
+                debug!("  replacing an element with a text node");
                 self.create(new);
                 self.change_list.emit_replace_with();
             }
@@ -102,11 +121,16 @@ impl Vdom {
                     tag_name: old_tag_name,
                 },
             ) => {
+                debug!("  updating an element");
+
                 if new_tag_name != old_tag_name {
+                    debug!("  different tag names; creating new element and replacing old element");
                     self.create(new);
                     self.change_list.emit_replace_with();
                     return;
                 }
+
+                debug!("  same tag names; updating attributes");
 
                 // Do O(n^2) passes to add/update and remove attributes, since
                 // there are almost always very few attributes.
@@ -132,12 +156,18 @@ impl Vdom {
                     self.change_list.emit_remove_attribute(old_attr.name);
                 }
 
+                debug!("  updating children shared by old and new");
+
+                let num_children_to_diff = cmp::min(new.children.len(), old.children.len());
                 let mut new_children = new.children.iter();
                 let mut old_children = old.children.iter();
                 let mut pushed_first_child = false;
 
-                for (i, (new_child, old_child)) in
-                    new_children.by_ref().zip(old_children.by_ref()).enumerate()
+                for (i, (new_child, old_child)) in new_children
+                    .by_ref()
+                    .zip(old_children.by_ref())
+                    .take(num_children_to_diff)
+                    .enumerate()
                 {
                     if i == 0 {
                         self.change_list.emit_push_first_child();
@@ -149,12 +179,16 @@ impl Vdom {
                     self.diff(old_child.clone(), new_child.clone());
                 }
 
+                debug!("  removing extra old children");
+
                 if old_children.next().is_some() {
                     if !pushed_first_child {
                         self.change_list.emit_push_first_child();
                     }
                     self.change_list.emit_remove_self_and_next_siblings();
                 }
+
+                debug!("  creating new children");
 
                 for (i, new_child) in new_children.enumerate() {
                     if i == 0 && pushed_first_child {
@@ -164,12 +198,14 @@ impl Vdom {
                     self.change_list.emit_append_child();
                 }
 
+                debug!("  done updating children");
                 self.change_list.emit_pop();
             }
         }
     }
 
     fn create(&self, node: NodeRef) {
+        debug!("dodrio::Vdom::create({:#?})", node);
         match node.data {
             NodeData::Text { text } => {
                 self.change_list.emit_create_text_node(text);

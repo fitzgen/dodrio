@@ -1,5 +1,5 @@
 [package]
-name = "dodrio-example"
+name = "dodrio-hello-world"
 version = "0.1.0"
 authors = ["Nick Fitzgerald <fitzgen@gmail.com>"]
 edition = "2018"
@@ -10,8 +10,8 @@ crate-type = ["cdylib", "rlib"]
 [features]
 
 [dependencies]
-bumpalo = { path = "../../../bumpalo" }
-dodrio = { path = "../.." }
+bumpalo = "1.0.2"
+dodrio = { path = "../../.." }
 wasm-bindgen = "0.2"
 console_error_panic_hook = "0.1.1"
 
