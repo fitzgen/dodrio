@@ -97,6 +97,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "dodrio-input-form"
+version = "0.1.0"
+dependencies = [
+ "bumpalo 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "console_error_panic_hook 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "dodrio 0.1.0",
+ "wasm-bindgen 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+ "wasm-bindgen-test 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+ "web-sys 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "env_logger"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

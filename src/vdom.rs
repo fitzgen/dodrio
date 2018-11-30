@@ -1,5 +1,5 @@
 use super::change_list::ChangeList;
-use super::node::{Node, NodeData, NodeRef};
+use super::node::{Attribute, Node, NodeData, NodeRef};
 use super::Render;
 use bumpalo::Bump;
 use std::cmp;
@@ -130,77 +130,90 @@ impl Vdom {
                     return;
                 }
 
-                debug!("  same tag names; updating attributes");
-
-                // Do O(n^2) passes to add/update and remove attributes, since
-                // there are almost always very few attributes.
-                'outer: for new_attr in new.attributes {
-                    for old_attr in old.attributes {
-                        if old_attr.name == new_attr.name {
-                            if old_attr.value != new_attr.value {
-                                self.change_list
-                                    .emit_set_attribute(new_attr.name, new_attr.value);
-                            }
-                            continue 'outer;
-                        }
-                    }
-                    self.change_list
-                        .emit_set_attribute(new_attr.name, new_attr.value);
-                }
-                'outer2: for old_attr in old.attributes {
-                    for new_attr in new.attributes {
-                        if old_attr.name == new_attr.name {
-                            continue 'outer2;
-                        }
-                    }
-                    self.change_list.emit_remove_attribute(old_attr.name);
-                }
-
-                debug!("  updating children shared by old and new");
-
-                let num_children_to_diff = cmp::min(new.children.len(), old.children.len());
-                let mut new_children = new.children.iter();
-                let mut old_children = old.children.iter();
-                let mut pushed_first_child = false;
-
-                for (i, (new_child, old_child)) in new_children
-                    .by_ref()
-                    .zip(old_children.by_ref())
-                    .take(num_children_to_diff)
-                    .enumerate()
-                {
-                    if i == 0 {
-                        self.change_list.emit_push_first_child();
-                        pushed_first_child = true;
-                    } else {
-                        self.change_list.emit_pop_push_next_sibling();
-                    }
-
-                    self.diff(old_child.clone(), new_child.clone());
-                }
-
-                debug!("  removing extra old children");
-
-                if old_children.next().is_some() {
-                    if !pushed_first_child {
-                        self.change_list.emit_push_first_child();
-                    }
-                    self.change_list.emit_remove_self_and_next_siblings();
-                }
-
-                debug!("  creating new children");
-
-                for (i, new_child) in new_children.enumerate() {
-                    if i == 0 && pushed_first_child {
-                        self.change_list.emit_pop();
-                    }
-                    self.create(new_child.clone());
-                    self.change_list.emit_append_child();
-                }
-
-                debug!("  done updating children");
-                self.change_list.emit_pop();
+                self.diff_attributes(old.attributes, new.attributes);
+                self.diff_children(old.children, new.children);
             }
+        }
+    }
+
+    fn diff_attributes(&self, old: &[Attribute], new: &[Attribute]) {
+        debug!("  updating attributes");
+
+        // Do O(n^2) passes to add/update and remove attributes, since
+        // there are almost always very few attributes.
+        'outer: for new_attr in new {
+            for old_attr in old {
+                if old_attr.name == new_attr.name {
+                    if old_attr.value != new_attr.value {
+                        self.change_list
+                            .emit_set_attribute(new_attr.name, new_attr.value);
+                    }
+                    continue 'outer;
+                }
+            }
+            self.change_list
+                .emit_set_attribute(new_attr.name, new_attr.value);
+        }
+
+        'outer2: for old_attr in old {
+            for new_attr in new {
+                if old_attr.name == new_attr.name {
+                    continue 'outer2;
+                }
+            }
+            self.change_list.emit_remove_attribute(old_attr.name);
+        }
+    }
+
+    fn diff_children(&self, old: &[NodeRef], new: &[NodeRef]) {
+        debug!("  updating children shared by old and new");
+
+        let num_children_to_diff = cmp::min(new.len(), old.len());
+        let mut new_children = new.iter();
+        let mut old_children = old.iter();
+        let mut pushed = false;
+
+        for (i, (new_child, old_child)) in new_children
+            .by_ref()
+            .zip(old_children.by_ref())
+            .take(num_children_to_diff)
+            .enumerate()
+        {
+            if i == 0 {
+                self.change_list.emit_push_first_child();
+                pushed = true;
+            } else {
+                self.change_list.emit_pop_push_next_sibling();
+            }
+
+            self.diff(old_child.clone(), new_child.clone());
+        }
+
+        debug!("  removing extra old children");
+
+        if old_children.next().is_some() {
+            if !pushed {
+                self.change_list.emit_push_first_child();
+                pushed = true;
+            }
+            self.change_list.emit_remove_self_and_next_siblings();
+        }
+
+        debug!("  creating new children");
+
+        for (i, new_child) in new_children.enumerate() {
+            if i == 0 && pushed {
+                self.change_list.emit_pop();
+                pushed = false;
+            }
+            self.create(new_child.clone());
+            self.change_list.emit_append_child();
+        }
+
+        // TODO FITZGEN: only if we pushed?
+        debug!("  done updating children");
+        if pushed {
+            self.change_list.emit_pop();
         }
     }
 
