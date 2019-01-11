@@ -25,6 +25,7 @@ for x in ./examples/*; do
     if test "$INSTALL" != ""; then
         with_dir "$x/crate/pkg" npm link
         with_dir "$x/crate/pkg" npm link dodrio
+        with_dir "$x/js" npm audit fix
         with_dir "$x/js" npm install
         with_dir "$x/js" npm link dodrio
     fi
