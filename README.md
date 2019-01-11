@@ -1,54 +1,71 @@
-<meta charset="utf-8"/>
+# `dodrio`
 
-# 🦀🕸️ `wasm-pack-template`
+`dodrio` is an **experimental** virtual DOM library for Rust and WebAssembly. It
+is a proving ground for a bump allocation-based virtual DOM architecture, that I
+believe is the best way to take advantage of WebAssembly's advantages in the
+context of a virtual DOM library.
 
-A template for kick starting a Rust and WebAssembly project using
-[`wasm-pack`](https://github.com/rustwasm/wasm-pack).
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-This template is designed for compiling Rust libraries into WebAssembly and
-publishing the resulting package to NPM.
 
-* Want to use the published NPM package in a Website? [Check out
-  `create-wasm-app`.](https://github.com/rustwasm/create-wasm-app)
-* Want to make a monorepo-style Website without publishing to NPM? Check out
-  [`rust-webpack-template`](https://github.com/rustwasm/rust-webpack-template)
-  and/or
-  [`rust-parcel-template`](https://github.com/rustwasm/rust-parcel-template).
+- [Warning](#warning)
+- [Design](#design)
+  - [Bump Allocation](#bump-allocation)
+  - [Change List as Stack Machine](#change-list-as-stack-machine)
+  - [Library — Not Framework](#library--not-framework)
 
-## 🔋 Batteries Included
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-* [`wasm-bindgen`](https://github.com/rustwasm/wasm-bindgen) for communicating
-  between WebAssembly and JavaScript.
-* [`console_error_panic_hook`](https://github.com/rustwasm/console_error_panic_hook)
-  for logging panic messages to the developer console.
-* [`wee_alloc`](https://github.com/rustwasm/wee_alloc), an allocator optimized
-  for small code size.
+## Warning
 
-## 🚴 Usage
+I reiterate that `dodrio` is in a very **experimental** state. It has not
+actually been profiled or tuned for performance yet, so while I think the design
+should yield a very fast virtual DOM library, `dodrio` is almost certainly not
+fast right now. Additionally, it is probably riddled with bugs, and is assuredly
+missing features that are critical for actually building Web applications.
 
-### 🐑 Use `cargo generate` to Clone this Template
+## Design
 
-[Learn more about `cargo generate` here.](https://github.com/ashleygwilliams/cargo-generate)
+### Bump Allocation
 
-```
-cargo generate --git https://github.com/rustwasm/wasm-pack-template.git --name my-project
-cd my-project
-```
+Bump allocation is essentially the fastest method of allocating objects. It has
+constraints, but works particularly well when allocation lifetimes match program
+phases. And virtual DOMs are very phase oriented.
 
-### 🛠️ Build with `wasm-pack build`
+`dodrio` maintains three bump allocation arenas:
 
-```
-wasm-pack build
-```
+1. The newest, most up-to-date virtual DOM. The virtual DOM nodes themselves and
+   any temporary containers needed while creating them are allocated into this
+   arena.
+2. The previous virtual DOM. This reflects the current state of the physical
+   DOM.
+3. The difference between (1) and (2). This is a sequence of DOM mutation
+   operations — colloquially known as a "change list" — which if applied to
+   the physical DOM, will make the physical DOM match (1).
 
-### 🔬 Test in Headless Browsers with `wasm-pack test`
+Rendering happens as follows:
 
-```
-wasm-pack test --headless --firefox
-```
+* The application state is rendered into bump allocation arena (1).
+* (1) diffed with (2) to produce (3).
+* JavaScript code applies (3) to the physical DOM.
+* (1) and (2) are swapped, double-buffering style, and the new (1) has its bump
+  allocation pointer reset.
+* Rinse and repeat.
 
-### 🎁 Publish to NPM with `wasm-pack publish`
+### Change List as Stack Machine
 
-```
-wasm-pack publish
-```
+The change list that represents the difference between how the physical DOM
+currently looks, and our ideal virtual DOM state is encoded in a tiny stack
+machine language. A stack machine works particularly well for applying DOM
+diffs, a task that is essentially a tree traversal.
+
+### Library — Not Framework
+
+`dodrio` is just a library. (And did I mention it is experimental?!) It is not a
+full-fledged, complete, batteries-included solution for all frontend Web
+development. And it never intends to become that either. Its highest ambition is
+to prove that its bump allocation-based design is a good one, and maaaayyyyyybe
+become a production-grade virtual DOM library that you could plug into a larger
+application or toolkit eventually. But it will never be a complete,
+batteries-included framework.
