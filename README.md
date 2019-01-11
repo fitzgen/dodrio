@@ -2,7 +2,7 @@
 
 `dodrio` is an **experimental** virtual DOM library for Rust and WebAssembly. It
 is a proving ground for a bump allocation-based virtual DOM architecture, that I
-believe is the best way to take advantage of WebAssembly's advantages in the
+believe is the best way to take advantage of WebAssembly's strengths in the
 context of a virtual DOM library.
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
