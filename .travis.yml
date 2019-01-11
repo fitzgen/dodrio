@@ -9,7 +9,8 @@ INSTALL_NODE_VIA_NVM: &INSTALL_NODE_VIA_NVM
     nvm install v10.5
 
 INSTALL_WASM_PPACK: &INSTALL_WASM_PACK
-  - curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh -s -- -f
+  |
+    curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh -s -- -f
 
 install:
   - *INSTALL_NODE_VIA_NVM
