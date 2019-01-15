@@ -1,23 +1,29 @@
-use bumpalo::BumpAllocSafe;
+use bumpalo::{Bump, BumpAllocSafe};
 
-#[derive(Clone, Debug)]
-pub struct Node<'a, Attributes, Children> {
-    data: NodeData<'a>,
-    attributes: Attributes,
-    children: Children,
+/// A node is either a text node or an element.
+#[derive(Debug, Clone)]
+pub enum Node<'a> {
+    /// A text node.
+    Text(TextNode<'a>),
+
+    /// An element potentially with attributes and children.
+    Element(ElementNode<'a>),
 }
 
-#[derive(Clone, Copy, Debug)]
-pub enum NodeData<'a> {
-    Element { tag_name: &'a str },
-    Text { text: &'a str },
+/// Text nodes are just a string of text. They cannot have attributes or
+/// children.
+#[derive(Debug, Clone)]
+pub struct TextNode<'a> {
+    pub(crate) text: &'a str,
 }
 
-#[derive(Clone, Debug)]
-pub struct NodeRef<'a> {
-    pub(crate) data: NodeData<'a>,
+/// Elements have a tag name, zero or more attributes, and zero or more
+/// children.
+#[derive(Debug, Clone)]
+pub struct ElementNode<'a> {
+    pub(crate) tag_name: &'a str,
     pub(crate) attributes: &'a [Attribute<'a>],
-    pub(crate) children: &'a [NodeRef<'a>],
+    pub(crate) children: &'a [Node<'a>],
 }
 
 #[derive(Clone, Debug)]
@@ -26,69 +32,56 @@ pub struct Attribute<'a> {
     pub value: &'a str,
 }
 
-impl<'a, Attributes, Children> BumpAllocSafe for Node<'a, Attributes, Children>
-where
-    Attributes: BumpAllocSafe,
-    Children: BumpAllocSafe,
-{
-}
+impl<'a> Node<'a> {
+    /// Is this node a text node?
+    pub fn is_text(&self) -> bool {
+        match self {
+            Node::Text(_) => true,
+            _ => false,
+        }
+    }
 
-impl<'a, Attributes, Children> From<&'a Node<'a, Attributes, Children>> for NodeRef<'a>
-where
-    Attributes: AsRef<[Attribute<'a>]>,
-    Children: AsRef<[NodeRef<'a>]>,
-{
-    fn from(node: &'a Node<'a, Attributes, Children>) -> NodeRef<'a> {
-        NodeRef {
-            data: node.data,
-            attributes: node.attributes.as_ref(),
-            children: node.children.as_ref(),
+    /// Is this node an element?
+    pub fn is_element(&self) -> bool {
+        match self {
+            Node::Element { .. } => true,
+            _ => false,
         }
     }
 }
 
-impl<'a, Attributes, Children> From<&'a mut Node<'a, Attributes, Children>> for NodeRef<'a>
-where
-    Attributes: AsRef<[Attribute<'a>]>,
-    Children: AsRef<[NodeRef<'a>]>,
-{
-    fn from(node: &'a mut Node<'a, Attributes, Children>) -> NodeRef<'a> {
-        NodeRef {
-            data: node.data,
-            attributes: node.attributes.as_ref(),
-            children: node.children.as_ref(),
-        }
-    }
-}
+impl<'a> BumpAllocSafe for Node<'a> {}
+impl<'a> BumpAllocSafe for Attribute<'a> {}
 
-impl<'a, Attributes, Children> Node<'a, Attributes, Children>
-where
-    Attributes: AsRef<[Attribute<'a>]>,
-    Children: AsRef<[NodeRef<'a>]>,
-{
-    pub fn element(
+impl<'a> Node<'a> {
+    /// Construct a new text node with the given text.
+    #[inline]
+    pub fn text(text: &'a str) -> Node<'a> {
+        Node::Text(TextNode { text })
+    }
+
+    /// Construct a new element node with the given tag name and children.
+    #[inline]
+    pub fn element<Attributes, Children>(
+        bump: &'a Bump,
         tag_name: &'a str,
         attributes: Attributes,
         children: Children,
-    ) -> Node<'a, Attributes, Children> {
-        let data = NodeData::Element { tag_name };
-        Node {
-            data,
-            attributes,
-            children,
-        }
-    }
-}
+    ) -> Node<'a>
+    where
+        Attributes: 'a + BumpAllocSafe + AsRef<[Attribute<'a>]>,
+        Children: 'a + BumpAllocSafe + AsRef<[Node<'a>]>,
+    {
+        let children: &'a Children = bump.alloc(children);
+        let children: &'a [Node<'a>] = children.as_ref();
 
-impl<'a> Node<'a, [Attribute<'a>; 0], [NodeRef<'a>; 0]> {
-    pub fn text(text: &'a str) -> Node<'a, [Attribute<'a>; 0], [NodeRef<'a>; 0]> {
-        let data = NodeData::Text { text };
-        let attributes = [];
-        let children = [];
-        Node {
-            data,
+        let attributes: &'a Attributes = bump.alloc(attributes);
+        let attributes: &'a [Attribute<'a>] = attributes.as_ref();
+
+        Node::Element(ElementNode {
+            tag_name,
             attributes,
             children,
-        }
+        })
     }
 }

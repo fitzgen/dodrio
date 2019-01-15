@@ -1,4 +1,5 @@
 use bumpalo::{Bump, BumpAllocSafe};
+use log::*;
 use std::sync::Once;
 use wasm_bindgen::prelude::*;
 
