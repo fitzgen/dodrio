@@ -135,7 +135,8 @@ const OP_TABLE = [
   }
 ];
 
-export class ChangeList {
+// export
+class ChangeList {
   constructor(container) {
     this.container = container;
     this.ranges = [];
@@ -178,3 +179,4 @@ export class ChangeList {
     }
   }
 }
+window.ChangeList = ChangeList;
