@@ -50,6 +50,30 @@ impl<'a> Node<'a> {
     }
 }
 
+impl<'a> TextNode<'a> {
+    /// Get this text node's text content.
+    pub fn text(&self) -> &'a str {
+        self.text
+    }
+}
+
+impl<'a> ElementNode<'a> {
+    /// Get this element's tag name.
+    pub fn tag_name(&self) -> &'a str {
+        self.tag_name
+    }
+
+    /// Get this element's attributes.
+    pub fn attributes(&self) -> &'a [Attribute<'a>] {
+        self.attributes
+    }
+
+    /// Get this element's attributes.
+    pub fn children(&self) -> &'a [Node<'a>] {
+        self.children
+    }
+}
+
 impl<'a> BumpAllocSafe for Node<'a> {}
 impl<'a> BumpAllocSafe for Attribute<'a> {}
 

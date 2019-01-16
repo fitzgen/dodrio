@@ -27,6 +27,14 @@ features = [
 wasm-bindgen-test = "0.2"
 console_log = "0.1.2"
 
+[dev-dependencies.web-sys]
+version = "0.3.8"
+features = [
+  "Attr",
+  "NamedNodeMap",
+  "NodeList",
+]
+
 [profile.release]
 # Tell `rustc` to optimize for small code size.
 opt-level = "s"
@@ -37,3 +45,11 @@ members = [
   "./examples/hello-world/crate",
   "./examples/input-form/crate",
 ]
+
+[patch.crates-io]
+bumpalo = { path = "../bumpalo" }
+console_error_panic_hook = { path = "../console_error_panic_hook" }
+wasm-bindgen = { path = "../wasm-bindgen" }
+wasm-bindgen-test = { path = "../wasm-bindgen/crates/test" }
+js-sys = { path = "../wasm-bindgen/crates/js-sys" }
+web-sys = { path = "../wasm-bindgen/crates/web-sys" }
