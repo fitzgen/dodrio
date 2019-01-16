@@ -1,10 +1,12 @@
 use bumpalo::{Bump, BumpAllocSafe};
+use log::*;
+use std::sync::Once;
 use wasm_bindgen::prelude::*;
 
 pub mod js {
     use wasm_bindgen::prelude::*;
 
-    #[wasm_bindgen(module = "dodrio/change-list")]
+    #[wasm_bindgen]
     extern "C" {
         #[derive(Clone, Debug)]
         pub type ChangeList;
@@ -12,10 +14,10 @@ pub mod js {
         #[wasm_bindgen(constructor)]
         pub fn new(container: &web_sys::Node) -> ChangeList;
 
-        #[wasm_bindgen(method, js_name = addChangeListRange)]
+        #[wasm_bindgen(structural, method, js_name = addChangeListRange)]
         pub fn add_change_list_range(this: &ChangeList, start: usize, len: usize);
 
-        #[wasm_bindgen(method, js_name = applyChanges)]
+        #[wasm_bindgen(structural, method, js_name = applyChanges)]
         pub fn apply_changes(this: &ChangeList, memory: JsValue);
     }
 }
@@ -27,6 +29,17 @@ pub(crate) struct ChangeList {
 
 impl ChangeList {
     pub(crate) fn new(container: &web_sys::Node) -> ChangeList {
+        // XXX: Because wasm-bindgen-test doesn't support third party JS
+        // dependencies, we can't use `wasm_bindgen(module = "...")` for our
+        // `ChangeList` JS import. Instead, this *should* be a local JS snippet,
+        // but that isn't implemented yet:
+        // https://github.com/rustwasm/rfcs/pull/6
+        static EVAL: Once = Once::new();
+        EVAL.call_once(|| {
+            js_sys::eval(include_str!("../js/change-list.js"))
+                .expect("should eval change-list.js OK");
+        });
+
         let bump = Bump::new();
         let js = js::ChangeList::new(container);
         ChangeList { bump, js }

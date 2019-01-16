@@ -1,7 +1,8 @@
 use super::change_list::ChangeList;
-use super::node::{Attribute, Node, NodeData, NodeRef};
+use super::node::{Attribute, ElementNode, Node, TextNode};
 use super::Render;
 use bumpalo::Bump;
+use log::*;
 use std::cmp;
 use std::mem;
 
@@ -11,10 +12,10 @@ pub struct Vdom {
     container: web_sys::Element,
 
     // Actually a reference into `self.dom_buffers[0]`.
-    current_root: Option<NodeRef<'static>>,
+    current_root: Option<Node<'static>>,
 }
 
-unsafe fn extend_node_lifetime<'a>(node: NodeRef<'a>) -> NodeRef<'static> {
+unsafe fn extend_node_lifetime<'a>(node: Node<'a>) -> Node<'static> {
     mem::transmute(node)
 }
 
@@ -30,7 +31,7 @@ impl Vdom {
         container.set_inner_html("");
 
         // Create a dummy `<div/>` in our container.
-        let current_root: NodeRef = dom_buffers[0].alloc(Node::element("div", [], [])).into();
+        let current_root = Node::element(&dom_buffers[0], "div", [], []);
         let current_root = Some(unsafe { extend_node_lifetime(current_root) });
         let window = web_sys::window().expect("should have acess to the Window");
         let document = window
@@ -85,53 +86,55 @@ impl Vdom {
         mem::swap(&mut first[0], &mut second[0]);
     }
 
-    unsafe fn set_current_root(&mut self, current: NodeRef<'static>) {
+    unsafe fn set_current_root(&mut self, current: Node<'static>) {
         debug_assert!(self.current_root.is_none());
         self.current_root = Some(current);
     }
 
-    fn diff(&self, old: NodeRef, new: NodeRef) {
-        debug!("---------------------------------------------------------");
-        debug!("dodrio::Vdom::diff");
-        debug!("  old = {:#?}", old);
-        debug!("  new = {:#?}", new);
-        match (new.data, old.data) {
-            (NodeData::Text { text: new_text }, NodeData::Text { text: old_text }) => {
+    fn diff(&self, old: Node, new: Node) {
+        // debug!("---------------------------------------------------------");
+        // debug!("dodrio::Vdom::diff");
+        // debug!("  old = {:#?}", old);
+        // debug!("  new = {:#?}", new);
+        match (&new, old) {
+            (&Node::Text(TextNode { text: new_text }), Node::Text(TextNode { text: old_text })) => {
                 debug!("  both are text nodes");
                 if new_text != old_text {
                     debug!("  text needs updating");
                     self.change_list.emit_set_text(new_text);
                 }
             }
-            (NodeData::Text { .. }, NodeData::Element { .. }) => {
+            (&Node::Text(TextNode { .. }), Node::Element(ElementNode { .. })) => {
                 debug!("  replacing a text node with an element");
                 self.create(new);
                 self.change_list.emit_replace_with();
             }
-            (NodeData::Element { .. }, NodeData::Text { .. }) => {
+            (&Node::Element(ElementNode { .. }), Node::Text(TextNode { .. })) => {
                 debug!("  replacing an element with a text node");
                 self.create(new);
                 self.change_list.emit_replace_with();
             }
             (
-                NodeData::Element {
+                &Node::Element(ElementNode {
                     tag_name: new_tag_name,
-                },
-                NodeData::Element {
+                    attributes: new_attributes,
+                    children: new_children,
+                }),
+                Node::Element(ElementNode {
                     tag_name: old_tag_name,
-                },
+                    attributes: old_attributes,
+                    children: old_children,
+                }),
             ) => {
                 debug!("  updating an element");
-
                 if new_tag_name != old_tag_name {
                     debug!("  different tag names; creating new element and replacing old element");
                     self.create(new);
                     self.change_list.emit_replace_with();
                     return;
                 }
-
-                self.diff_attributes(old.attributes, new.attributes);
-                self.diff_children(old.children, new.children);
+                self.diff_attributes(old_attributes, new_attributes);
+                self.diff_children(old_children, new_children);
             }
         }
     }
@@ -165,7 +168,7 @@ impl Vdom {
         }
     }
 
-    fn diff_children(&self, old: &[NodeRef], new: &[NodeRef]) {
+    fn diff_children(&self, old: &[Node], new: &[Node]) {
         debug!("  updating children shared by old and new");
 
         let num_children_to_diff = cmp::min(new.len(), old.len());
@@ -217,18 +220,22 @@ impl Vdom {
         }
     }
 
-    fn create(&self, node: NodeRef) {
-        debug!("dodrio::Vdom::create({:#?})", node);
-        match node.data {
-            NodeData::Text { text } => {
+    fn create(&self, node: Node) {
+        // debug!("dodrio::Vdom::create({:#?})", node);
+        match node {
+            Node::Text(TextNode { text }) => {
                 self.change_list.emit_create_text_node(text);
             }
-            NodeData::Element { tag_name } => {
+            Node::Element(ElementNode {
+                tag_name,
+                attributes,
+                children,
+            }) => {
                 self.change_list.emit_create_element(tag_name);
-                for attr in node.attributes {
+                for attr in attributes {
                     self.change_list.emit_set_attribute(&attr.name, &attr.value);
                 }
-                for child in node.children {
+                for child in children {
                     self.create(child.clone());
                     self.change_list.emit_append_child();
                 }

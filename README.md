@@ -47,10 +47,10 @@ phases. And virtual DOMs are very phase oriented.
 Rendering happens as follows:
 
 * The application state is rendered into bump allocation arena (1).
-* (1) diffed with (2) to produce (3).
-* JavaScript code applies (3) to the physical DOM.
+* (1) diffed with (2) and the changes are emitted into (3).
+* JavaScript code applies the change list in (3) to the physical DOM.
 * (1) and (2) are swapped, double-buffering style, and the new (1) has its bump
-  allocation pointer reset.
+  allocation pointer reset, as does (3).
 * Rinse and repeat.
 
 ### Change List as Stack Machine
