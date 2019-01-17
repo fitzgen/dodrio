@@ -22,40 +22,38 @@ impl Counter {
 }
 
 impl Render for Counter {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> dodrio::node::NodeRef<'bump>
+    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> dodrio::node::Node<'bump>
     where
         'a: 'bump,
     {
         let val = bumpalo::format!(in bump, "{}", self.val);
 
-        let increment = bump.alloc(Node::element(
+        let increment = Node::element(
+            bump,
             "button",
             [Attribute {
                 name: "data-action",
                 value: "increment",
             }],
-            [bump.alloc(Node::text("+")).into()],
-        ));
+            [Node::text("+")],
+        );
 
-        let decrement = bump.alloc(Node::element(
+        let decrement = Node::element(
+            bump,
             "button",
             [Attribute {
                 name: "data-action",
                 value: "decrement",
             }],
-            [bump.alloc(Node::text("-")).into()],
-        ));
+            [Node::text("-")],
+        );
 
-        bump.alloc(Node::element(
+        Node::element(
+            bump,
             "div",
             [],
-            [
-                increment.into(),
-                bump.alloc(Node::text(val.into_bump_str())).into(),
-                decrement.into(),
-            ],
-        ))
-        .into()
+            [increment, Node::text(val.into_bump_str()), decrement],
+        )
     }
 }
 

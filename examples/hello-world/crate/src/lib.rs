@@ -11,20 +11,16 @@ impl<'who> HelloWorld<'who> {
 }
 
 impl<'who> Render for HelloWorld<'who> {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> dodrio::node::NodeRef<'bump>
+    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> dodrio::node::Node<'bump>
     where
         'a: 'bump,
     {
-        bump.alloc(Node::element(
+        Node::element(
+            bump,
             "p",
             [],
-            [
-                bump.alloc(Node::text("Hello, ")).into(),
-                bump.alloc(Node::text(self.0)).into(),
-                bump.alloc(Node::text("!")).into(),
-            ],
-        ))
-        .into()
+            [Node::text("Hello, "), Node::text(self.0), Node::text("!")],
+        )
     }
 }
 

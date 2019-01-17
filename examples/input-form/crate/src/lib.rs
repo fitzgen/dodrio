@@ -19,11 +19,12 @@ impl SayHelloTo {
 }
 
 impl Render for SayHelloTo {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> dodrio::node::NodeRef<'bump>
+    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> dodrio::node::Node<'bump>
     where
         'a: 'bump,
     {
-        let input = bump.alloc(Node::element(
+        let input = Node::element(
+            bump,
             "input",
             [
                 Attribute {
@@ -36,13 +37,12 @@ impl Render for SayHelloTo {
                 },
             ],
             [],
-        ));
+        );
 
         let hello = bumpalo::format!(in bump, "Hello, {}!", self.who);
-        let hello = bump.alloc(Node::text(hello.into_bump_str()));
+        let hello = Node::text(hello.into_bump_str());
 
-        bump.alloc(Node::element("div", [], [input.into(), hello.into()]))
-            .into()
+        Node::element(bump, "div", [], [input, hello])
     }
 }
 
