@@ -14,7 +14,7 @@ js-sys = "0.3.9"
 log = "0.4.6"
 
 [dependencies.web-sys]
-version = "0.3.9"
+version = "0.3.10"
 features = [
   "console",
   "Document",
@@ -28,7 +28,7 @@ wasm-bindgen-test = "0.2"
 console_log = "0.1.2"
 
 [dev-dependencies.web-sys]
-version = "0.3.9"
+version = "0.3.10"
 features = [
   "Attr",
   "NamedNodeMap",
