@@ -3,11 +3,7 @@
 #![cfg(target_arch = "wasm32")]
 
 use bumpalo::Bump;
-use dodrio::{
-    node::{Attribute, Node},
-    vdom::Vdom,
-    Render,
-};
+use dodrio::{Attribute, Node, Render, Vdom};
 use log::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_test::*;
