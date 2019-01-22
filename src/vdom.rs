@@ -186,34 +186,35 @@ impl Vdom {
                 self.change_list.emit_push_first_child();
                 pushed = true;
             } else {
+                debug_assert!(pushed);
                 self.change_list.emit_pop_push_next_sibling();
             }
 
             self.diff(old_child.clone(), new_child.clone());
         }
 
-        debug!("  removing extra old children");
-
         if old_children.next().is_some() {
+            debug!("  removing extra old children");
+            debug_assert!(new_children.next().is_none());
             if !pushed {
                 self.change_list.emit_push_first_child();
-                pushed = true;
+            } else {
+                self.change_list.emit_pop_push_next_sibling();
             }
             self.change_list.emit_remove_self_and_next_siblings();
-        }
-
-        debug!("  creating new children");
-
-        for (i, new_child) in new_children.enumerate() {
-            if i == 0 && pushed {
-                self.change_list.emit_pop();
-                pushed = false;
+            pushed = false;
+        } else {
+            debug!("  creating new children");
+            for (i, new_child) in new_children.enumerate() {
+                if i == 0 && pushed {
+                    self.change_list.emit_pop();
+                    pushed = false;
+                }
+                self.create(new_child.clone());
+                self.change_list.emit_append_child();
             }
-            self.create(new_child.clone());
-            self.change_list.emit_append_child();
         }
 
-        // TODO FITZGEN: only if we pushed?
         debug!("  done updating children");
         if pushed {
             self.change_list.emit_pop();
@@ -221,7 +222,6 @@ impl Vdom {
     }
 
     fn create(&self, node: Node) {
-        // debug!("dodrio::Vdom::create({:#?})", node);
         match node {
             Node::Text(TextNode { text }) => {
                 self.change_list.emit_create_text_node(text);
