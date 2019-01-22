@@ -18,14 +18,24 @@ install:
   - rustup target add wasm32-unknown-unknown
   - rustup component add rustfmt
 
-script:
-  - INSTALL=1 ./build.sh
-
 matrix:
   include:
     - name: "build (stable)"
       rust: stable
+      script: INSTALL=1 ./build.sh
     - name: "build (beta)"
       rust: beta
+      script: INSTALL=1 ./build.sh
     - name: "build (nightly)"
       rust: nightly
+      script: INSTALL=1 ./build.sh
+    - name: "test (firefox)"
+      rust: stable
+      addons:
+        firefox: latest
+      script: wasm-pack test --firefox --headless
+    - name: "test (chrome)"
+      rust: stable
+      addons:
+        chrome: stable
+      script: wasm-pack test --chrome --headless
