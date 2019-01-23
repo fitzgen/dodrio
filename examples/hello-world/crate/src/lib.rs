@@ -11,7 +11,7 @@ impl<'who> HelloWorld<'who> {
 }
 
 impl<'who> Render for HelloWorld<'who> {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> dodrio::node::Node<'bump>
+    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
     where
         'a: 'bump,
     {

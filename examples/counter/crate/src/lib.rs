@@ -22,7 +22,7 @@ impl Counter {
 }
 
 impl Render for Counter {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> dodrio::node::Node<'bump>
+    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> dodrio::Node<'bump>
     where
         'a: 'bump,
     {

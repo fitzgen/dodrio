@@ -19,7 +19,7 @@ impl SayHelloTo {
 }
 
 impl Render for SayHelloTo {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> dodrio::node::Node<'bump>
+    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> dodrio::Node<'bump>
     where
         'a: 'bump,
     {
