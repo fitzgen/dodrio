@@ -4,10 +4,12 @@ use bumpalo::Bump;
 #[doc(hidden)]
 pub mod change_list;
 
+mod cached;
 mod node;
 mod vdom;
 
 // Re-export items at the top level.
+pub use self::cached::Cached;
 pub use self::node::{Attribute, ElementNode, Node, TextNode};
 pub use self::vdom::Vdom;
 
