@@ -28,6 +28,7 @@ impl<R> Cached<R> {
     /// # Example
     ///
     /// ```
+    /// use bumpalo::Bump;
     /// use dodrio::{Cached, Node, Render};
     ///
     /// pub struct Counter {
@@ -74,6 +75,7 @@ impl<R> Cached<R> {
     /// displaying greetings to old `who`s.
     ///
     /// ```
+    /// use bumpalo::Bump;
     /// use dodrio::{Cached, Node, Render};
     ///
     /// /// A component that renders to "<p>Hello, {who}!</p>"

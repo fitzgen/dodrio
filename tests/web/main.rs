@@ -150,12 +150,12 @@ where
     let container = create_element("div");
 
     debug!("====== Rendering the *before* DOM into the physical DOM ======");
-    let mut vdom = Vdom::new(&container, &before);
+    let vdom = Vdom::new(&container, &before);
     debug!("====== Checking the *before* DOM against the physical DOM ======");
     assert_rendered(&container, &before);
 
     debug!("====== Rendering the *after* DOM into the physical DOM ======");
-    vdom.render(&after);
+    vdom.render_component(&after);
     debug!("====== Checking the *after* DOM against the physical DOM ======");
     assert_rendered(&container, &after);
 }

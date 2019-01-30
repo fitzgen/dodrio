@@ -54,8 +54,8 @@ pub fn run() {
     let document = window.document().unwrap();
     let body = document.body().unwrap();
 
-    let mut say_hello = SayHelloTo::new("World");
-    let mut vdom = dodrio::Vdom::new(&body, &say_hello);
+    let say_hello = SayHelloTo::new("World");
+    let mut vdom = dodrio::Vdom::new(&body, say_hello);
 
     let on_input = Closure::wrap(Box::new(move |event: web_sys::MouseEvent| {
         let input = match event
@@ -66,8 +66,8 @@ pub fn run() {
             None => return,
         };
 
-        say_hello.set_who(input.value());
-        vdom.render(&say_hello);
+        vdom.component_mut().set_who(input.value());
+        vdom.render();
     }) as Box<FnMut(_)>);
 
     let _ = body.add_event_listener_with_callback("input", on_input.as_ref().unchecked_ref());

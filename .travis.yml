@@ -29,13 +29,17 @@ matrix:
     - name: "build (nightly)"
       rust: nightly
       script: INSTALL=1 ./build.sh
-    - name: "test (firefox)"
+    - name: "headless browser tests (firefox)"
       rust: stable
       addons:
         firefox: latest
       script: wasm-pack test --firefox --headless
-    - name: "test (chrome)"
+    - name: "headless browser tests (chrome)"
       rust: stable
       addons:
         chrome: stable
       script: wasm-pack test --chrome --headless
+    - name: "native tests"
+      rust: stable
+      install: echo "no install"
+      script: cargo test --all
