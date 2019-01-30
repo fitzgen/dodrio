@@ -8,4 +8,4 @@ publish = false
 dodrio = { path = ".." }
 
 [dev-dependencies]
-compiletest_rs = "0.3.18"
+compiletest_rs = { version = "0.3.18", features = ["norustc", "stable"] }
