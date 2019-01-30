@@ -170,79 +170,105 @@ pub enum ChangeDiscriminant {
 
 impl BumpAllocSafe for ChangeDiscriminant {}
 
+// Allocation utilities to ensure that we only allocation sequences of `u32`s
+// into the change list's bump arena without any padding. This helps maintain
+// the invariants required for `Bump::each_allocated_chunk`'s safety.
+impl ChangeList {
+    // Allocate an opcode with zero immediates.
+    fn op0(&self, discriminant: ChangeDiscriminant) {
+        self.bump.alloc(discriminant as u32);
+    }
+
+    // Note: no 1-immediate opcodes at this time.
+
+    // Allocate an opcode with two immediates.
+    fn op2(&self, discriminant: ChangeDiscriminant, a: u32, b: u32) {
+        self.bump.alloc([discriminant as u32, a, b]);
+    }
+
+    // Note: no 3-immediates opcodes at this time.
+
+    // Allocate an opcode with four immediates.
+    fn op4(&self, discriminant: ChangeDiscriminant, a: u32, b: u32, c: u32, d: u32) {
+        self.bump.alloc([discriminant as u32, a, b, c, d]);
+    }
+}
+
 impl ChangeList {
     pub(crate) fn emit_set_text(&self, text: &str) {
         debug!("emit_set_text({:?})", text);
-        self.bump
-            .alloc((ChangeDiscriminant::SetText, text.as_ptr(), text.len()));
+        self.op2(
+            ChangeDiscriminant::SetText,
+            text.as_ptr() as u32,
+            text.len() as u32,
+        );
     }
 
     pub(crate) fn emit_remove_self_and_next_siblings(&self) {
         debug!("emit_remove_self_and_next_siblings()");
-        self.bump
-            .alloc(ChangeDiscriminant::RemoveSelfAndNextSiblings);
+        self.op0(ChangeDiscriminant::RemoveSelfAndNextSiblings);
     }
 
     pub(crate) fn emit_replace_with(&self) {
         debug!("emit_replace_with()");
-        self.bump.alloc(ChangeDiscriminant::ReplaceWith);
+        self.op0(ChangeDiscriminant::ReplaceWith);
     }
 
     pub(crate) fn emit_set_attribute(&self, name: &str, value: &str) {
         debug!("emit_set_attribute({:?}, {:?})", name, value);
-        self.bump.alloc((
+        self.op4(
             ChangeDiscriminant::SetAttribute,
-            name.as_ptr(),
-            name.len(),
-            value.as_ptr(),
-            value.len(),
-        ));
+            name.as_ptr() as u32,
+            name.len() as u32,
+            value.as_ptr() as u32,
+            value.len() as u32,
+        );
     }
 
     pub(crate) fn emit_remove_attribute(&self, name: &str) {
         debug!("emit_remove_attribute({:?})", name);
-        self.bump.alloc((
+        self.op2(
             ChangeDiscriminant::RemoveAttribute,
-            name.as_ptr(),
-            name.len(),
-        ));
+            name.as_ptr() as u32,
+            name.len() as u32,
+        );
     }
 
     pub(crate) fn emit_push_first_child(&self) {
         debug!("emit_push_first_child()");
-        self.bump.alloc(ChangeDiscriminant::PushFirstChild);
+        self.op0(ChangeDiscriminant::PushFirstChild);
     }
 
     pub(crate) fn emit_pop_push_next_sibling(&self) {
         debug!("emit_pop_push_next_sibling()");
-        self.bump.alloc(ChangeDiscriminant::PopPushNextSibling);
+        self.op0(ChangeDiscriminant::PopPushNextSibling);
     }
 
     pub(crate) fn emit_pop(&self) {
         debug!("emit_pop()");
-        self.bump.alloc(ChangeDiscriminant::Pop);
+        self.op0(ChangeDiscriminant::Pop);
     }
 
     pub(crate) fn emit_append_child(&self) {
         debug!("emit_append_child()");
-        self.bump.alloc(ChangeDiscriminant::AppendChild);
+        self.op0(ChangeDiscriminant::AppendChild);
     }
 
     pub(crate) fn emit_create_text_node(&self, text: &str) {
         debug!("emit_create_text_node({:?})", text);
-        self.bump.alloc((
+        self.op2(
             ChangeDiscriminant::CreateTextNode,
-            text.as_ptr(),
-            text.len(),
-        ));
+            text.as_ptr() as u32,
+            text.len() as u32,
+        );
     }
 
     pub(crate) fn emit_create_element(&self, tag_name: &str) {
         debug!("emit_create_element({:?})", tag_name);
-        self.bump.alloc((
+        self.op2(
             ChangeDiscriminant::CreateElement,
-            tag_name.as_ptr(),
-            tag_name.len(),
-        ));
+            tag_name.as_ptr() as u32,
+            tag_name.len() as u32,
+        );
     }
 }
