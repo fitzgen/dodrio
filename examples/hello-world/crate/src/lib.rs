@@ -34,8 +34,8 @@ pub fn run() {
 
     // Create a new dodrio vdom contained in the body, with an initial virtual
     // dom.
-    let mut vdom = dodrio::Vdom::new(body.as_ref(), &HelloWorld::new("World"));
+    let vdom = dodrio::Vdom::new(body.as_ref(), HelloWorld::new("World"));
 
     // Render a new node tree into the virtual dom.
-    vdom.render(&HelloWorld::new("Dodrio"));
+    vdom.render_component(HelloWorld::new("Dodrio"));
 }

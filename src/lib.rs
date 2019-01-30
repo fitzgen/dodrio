@@ -18,3 +18,15 @@ pub trait Render {
     where
         'a: 'bump;
 }
+
+impl<'r, R> Render for &'r R
+where
+    R: Render,
+{
+    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
+    where
+        'a: 'bump,
+    {
+        (**self).render(bump)
+    }
+}

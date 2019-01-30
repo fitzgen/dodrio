@@ -6,12 +6,14 @@ use log::*;
 use std::cmp;
 use std::mem;
 
-pub struct Vdom {
+pub struct Vdom<R> {
+    component: R,
     dom_buffers: [Bump; 2],
     change_list: ChangeList,
     container: web_sys::Element,
 
-    // Actually a reference into `self.dom_buffers[0]`.
+    // Actually a reference into `self.dom_buffers[0]` or if `self.component` is
+    // caching renders, into `self.component`'s bump.
     current_root: Option<Node<'static>>,
 }
 
@@ -19,11 +21,11 @@ unsafe fn extend_node_lifetime<'a>(node: Node<'a>) -> Node<'static> {
     mem::transmute(node)
 }
 
-impl Vdom {
-    pub fn new<R>(container: &web_sys::Element, contents: &R) -> Vdom
-    where
-        R: Render,
-    {
+impl<R> Vdom<R>
+where
+    R: Render,
+{
+    pub fn new(container: &web_sys::Element, component: R) -> Vdom<R> {
         let dom_buffers = [Bump::new(), Bump::new()];
         let change_list = ChangeList::new(container);
 
@@ -49,26 +51,45 @@ impl Vdom {
         // Diff and apply the `contents` against our dummy `<div/>`.
         let container = container.clone();
         let mut vdom = Vdom {
+            component,
             dom_buffers,
             change_list,
             container,
             current_root,
         };
-        vdom.render(contents);
+        vdom.render();
         vdom
     }
 
+    /// Get a shared reference to the underlying render component.
+    #[inline]
+    pub fn component(&self) -> &R {
+        &self.component
+    }
+
+    /// Get an exclusive reference to the underlying render component.
+    #[inline]
+    pub fn component_mut(&mut self) -> &mut R {
+        &mut self.component
+    }
+
+    /// Take the render component out of this virtual DOM.
+    #[inline]
+    pub fn into_component(self) -> R {
+        self.component
+    }
+
+    /// Get a reference to the physical DOM node that reflects this virtual DOM
+    /// tree.
     pub fn container(&self) -> &web_sys::Element {
         &self.container
     }
 
-    pub fn render<R>(&mut self, contents: &R)
-    where
-        R: Render,
-    {
+    /// Re-render this virtual dom's current component.
+    pub fn render(&mut self) {
         unsafe {
             self.dom_buffers[1].reset();
-            let new_contents = contents.render(&self.dom_buffers[1]);
+            let new_contents = self.component.render(&self.dom_buffers[1]);
             let new_contents = extend_node_lifetime(new_contents);
 
             let old_contents = self.current_root.take().unwrap();
@@ -79,6 +100,22 @@ impl Vdom {
 
             self.change_list.apply_changes();
         }
+    }
+
+    /// Render a new component.
+    pub fn render_component<S>(self, component: S) -> Vdom<S>
+    where
+        S: Render,
+    {
+        let mut vdom = Vdom {
+            component,
+            dom_buffers: self.dom_buffers,
+            change_list: self.change_list,
+            container: self.container,
+            current_root: self.current_root,
+        };
+        vdom.render();
+        vdom
     }
 
     fn swap_buffers(&mut self) {

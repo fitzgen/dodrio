@@ -32,20 +32,20 @@ impl Render for CountRenders {
 #[wasm_bindgen_test]
 fn uses_cached_render() {
     let container = create_element("div");
-    let mut cached = Cached::new(CountRenders::new());
-    let mut vdom = Vdom::new(&container, &cached);
+    let cached = Cached::new(CountRenders::new());
+    let mut vdom = Vdom::new(&container, cached);
 
     for _ in 0..10 {
-        vdom.render(&cached);
-        assert_eq!(cached.render_count.get(), 1);
+        vdom.render();
+        assert_eq!(vdom.component().render_count.get(), 1);
         assert_rendered(&container, &RenderFn(|_| Node::text("1")))
     }
 
-    Cached::invalidate(&mut cached);
+    Cached::invalidate(vdom.component_mut());
 
     for _ in 0..10 {
-        vdom.render(&cached);
-        assert_eq!(cached.render_count.get(), 2);
+        vdom.render();
+        assert_eq!(vdom.component().render_count.get(), 2);
         assert_rendered(&container, &RenderFn(|_| Node::text("2")))
     }
 }

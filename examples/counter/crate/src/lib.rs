@@ -65,8 +65,8 @@ pub fn run() {
     let document = window.document().unwrap();
     let body = document.body().unwrap();
 
-    let mut counter = Counter::new();
-    let mut vdom = dodrio::Vdom::new(&body, &counter);
+    let counter = Counter::new();
+    let mut vdom = dodrio::Vdom::new(&body, counter);
 
     let on_click = Closure::wrap(Box::new(move |event: web_sys::MouseEvent| {
         match event
@@ -74,11 +74,11 @@ pub fn run() {
             .and_then(|t| t.dyn_into::<web_sys::Element>().ok())
             .and_then(|e| e.get_attribute("data-action"))
         {
-            Some(ref s) if s == "increment" => counter.increment(),
-            Some(ref s) if s == "decrement" => counter.decrement(),
+            Some(ref s) if s == "increment" => vdom.component_mut().increment(),
+            Some(ref s) if s == "decrement" => vdom.component_mut().decrement(),
             _ => {}
         }
-        vdom.render(&counter);
+        vdom.render();
     }) as Box<FnMut(_)>);
 
     let _ = body.add_event_listener_with_callback("click", on_click.as_ref().unchecked_ref());
