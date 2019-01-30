@@ -11,7 +11,7 @@ function string(mem, pointer, length) {
 
 const OP_TABLE = [
   // 0
-  function setText(stack, mem8, mem32, i) {
+  function setText(stack, eventsTrampoline, listeners, mem8, mem32, i) {
     // console.log("setText");
     const pointer = mem32[i++];
     const length = mem32[i++];
@@ -23,7 +23,7 @@ const OP_TABLE = [
   },
 
   // 1
-  function removeSelfAndNextSiblings(stack, mem8, mem32, i) {
+  function removeSelfAndNextSiblings(stack, eventsTrampoline, listeners, mem8, mem32, i) {
     // console.log("removeSelfAndNextSiblings");
     const node = stack.pop();
     // console.log("  top(stack) =", node);
@@ -38,7 +38,7 @@ const OP_TABLE = [
   },
 
   // 2
-  function replaceWith(stack, mem8, mem32, i) {
+  function replaceWith(stack, eventsTrampoline, listeners, mem8, mem32, i) {
     // console.log("replaceWith");
     const newNode = stack.pop();
     // console.log("  newNode =", newNode);
@@ -50,7 +50,7 @@ const OP_TABLE = [
   },
 
   // 3
-  function setAttribute(stack, mem8, mem32, i) {
+  function setAttribute(stack, eventsTrampoline, listeners, mem8, mem32, i) {
     // console.log("setAttribute");
     const pointer1 = mem32[i++];
     const length1 = mem32[i++];
@@ -66,7 +66,7 @@ const OP_TABLE = [
   },
 
   // 4
-  function removeAttribute(stack, mem8, mem32, i) {
+  function removeAttribute(stack, eventsTrampoline, listeners, mem8, mem32, i) {
     // console.log("removeAttribute");
     const pointer = mem32[i++];
     const length = mem32[i++];
@@ -77,7 +77,7 @@ const OP_TABLE = [
   },
 
   // 5
-  function pushFirstChild(stack, mem8, mem32, i) {
+  function pushFirstChild(stack, eventsTrampoline, listeners, mem8, mem32, i) {
     // console.log("pushFirstChild");
     // console.log("  top(stack) =", top(stack));
     stack.push(top(stack).firstChild);
@@ -85,7 +85,7 @@ const OP_TABLE = [
   },
 
   // 6
-  function popPushNextSibling(stack, mem8, mem32, i) {
+  function popPushNextSibling(stack, eventsTrampoline, listeners, mem8, mem32, i) {
     // console.log("popPushNextSibling");
     // console.log("  top(stack) =", top(stack));
     const node = stack.pop();
@@ -94,7 +94,7 @@ const OP_TABLE = [
   },
 
   // 7
-  function pop(stack, mem8, mem32, i) {
+  function pop(stack, eventsTrampoline, listeners, mem8, mem32, i) {
     // console.log("pop");
     // console.log("  top(stack) =", top(stack));
     stack.pop();
@@ -102,7 +102,7 @@ const OP_TABLE = [
   },
 
   // 8
-  function appendChild(stack, mem8, mem32, i) {
+  function appendChild(stack, eventsTrampoline, listeners, mem8, mem32, i) {
     // console.log("appendChild");
     // console.log("  top(stack) =", top(stack));
     const child = stack.pop();
@@ -111,7 +111,7 @@ const OP_TABLE = [
   },
 
   // 9
-  function createTextNode(stack, mem8, mem32, i) {
+  function createTextNode(stack, eventsTrampoline, listeners, mem8, mem32, i) {
     // console.log("appendChild");
     const pointer = mem32[i++];
     const length = mem32[i++];
@@ -123,7 +123,7 @@ const OP_TABLE = [
   },
 
   // 10
-  function createElement(stack, mem8, mem32, i) {
+  function createElement(stack, eventsTrampoline, listeners, mem8, mem32, i) {
     // console.log("createElement");
     const pointer = mem32[i++];
     const length = mem32[i++];
@@ -132,15 +132,90 @@ const OP_TABLE = [
     // console.log("  top(stack) =", top(stack));
     stack.push(document.createElement(tagName));
     return i;
+  },
+
+  // 11
+  function newEventListener(stack, eventsTrampoline, listeners, mem8, mem32, i) {
+    const pointer = mem32[i++];
+    const length = mem32[i++];
+    const eventType = string(mem8, pointer, length);
+    const a = mem32[i++];
+    const b = mem32[i++];
+    const el = top(stack);
+    const listener = new Listener(a, b, eventType, eventsTrampoline, el);
+    listeners.add(listener);
+    el.addEventListener(eventType, listener.callback);
+    el[`dodrio-${eventType}`] = listener;
+    return i;
+  },
+
+  // 12
+  function updateEventListener(stack, eventsTrampoline, listeners, mem8, mem32, i) {
+    const pointer = mem32[i++];
+    const length = mem32[i++];
+    const eventType = string(mem8, pointer, length);
+    const el = top(stack);
+    const listener = el[`dodrio-${eventType}`];
+    listener.a = mem32[i++];
+    listener.b = mem32[i++];
+    return i;
+  },
+
+  // 13
+  function removeEventListener(stack, eventsTrampoline, listeners, mem8, mem32, i) {
+    const pointer = mem32[i++];
+    const length = mem32[i++];
+    const eventType = string(mem8, pointer, length);
+    const el = top(stack);
+    const listener = el[`dodrio-${eventType}`];
+    el.removeEventListener(eventType, listener.callback);
+    listeners.delete(listener);
+    return i;
   }
 ];
+
+class Listener {
+  constructor(a, b, eventType, trampoline, el) {
+    this.a = a;
+    this.b = b;
+    this.eventType = eventType;
+    this.trampoline = trampoline;
+    this.el = el;
+    this.callback = this.callback.bind(this);
+  }
+
+  callback(event) {
+    this.trampoline(event, this.a, this.b);
+  }
+}
 
 // export
 class ChangeList {
   constructor(container) {
+    this.listeners = new Set();
+    this.trampoline = null;
     this.container = container;
     this.ranges = [];
     this.stack = [];
+  }
+
+  unmount() {
+    for (const listener of this.listeners) {
+      listener.el.removeEventListener(listener.eventType, listener.callback);
+      listener.trampoline = () => {
+        throw new Error("invocation of listener after it has been removed");
+      };
+      listener.a = 0;
+      listener.b = 0;
+    }
+
+    // Null out all of our properties just to ensure that if we mistakenly ever
+    // call a method on this instance again, it will throw.
+    this.listeners = null;
+    this.trampoline = null;
+    this.container = null;
+    this.ranges = null;
+    this.stack = null;
   }
 
   addChangeListRange(start, len) {
@@ -175,8 +250,14 @@ class ChangeList {
       // console.log();
       // console.log(OP_TABLE[op].name);
       // console.log(this.stack);
-      i = OP_TABLE[op](this.stack, mem8, mem32, i);
+      i = OP_TABLE[op](this.stack, this.eventsTrampoline, this.listeners, mem8, mem32, i);
     }
+  }
+
+  initEventsTrampoline(trampoline) {
+    this.eventsTrampoline = (...args) => {
+      trampoline(...args);
+    };
   }
 }
 window.ChangeList = ChangeList;

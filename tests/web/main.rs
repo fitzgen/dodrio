@@ -4,13 +4,17 @@
 
 use bumpalo::Bump;
 use dodrio::{Attribute, Node, Render, Vdom};
+use futures::prelude::*;
 use log::*;
+use std::rc::Rc;
+use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_test::*;
 
 wasm_bindgen_test_configure!(run_in_browser);
 
 pub mod cached;
+pub mod events;
 pub mod render;
 
 pub fn window() -> web_sys::Window {
@@ -24,6 +28,7 @@ pub fn document() -> web_sys::Document {
 }
 
 pub fn create_element(tag: &str) -> web_sys::Element {
+    init_logging();
     document()
         .create_element(tag)
         .expect("should create element OK")
@@ -142,22 +147,32 @@ where
 /// Assert that if we start by rendering the `before` virtual DOM tree into a
 /// physical DOM tree, and then diff it with the `after` virtual DOM tree, then
 /// the physical DOM tree correctly matches `after`.
-pub fn assert_before_after<R, S>(before: R, after: S)
+pub fn assert_before_after<R, S>(before: R, after: S) -> impl Future<Item = (), Error = JsValue>
 where
-    R: Render,
-    S: Render,
+    R: 'static + Render,
+    S: 'static + Render,
 {
     let container = create_element("div");
 
+    let before = Rc::new(before);
+    let after = Rc::new(after);
+
     debug!("====== Rendering the *before* DOM into the physical DOM ======");
-    let vdom = Vdom::new(&container, &before);
+    let vdom1 = Rc::new(Vdom::new(&container, before.clone()));
+    let vdom2 = vdom1.clone();
+
     debug!("====== Checking the *before* DOM against the physical DOM ======");
     assert_rendered(&container, &before);
 
     debug!("====== Rendering the *after* DOM into the physical DOM ======");
-    vdom.render_component(&after);
-    debug!("====== Checking the *after* DOM against the physical DOM ======");
-    assert_rendered(&container, &after);
+    let weak = vdom1.weak();
+    weak.set_component(Box::new(after.clone()))
+        .map(move |_| {
+            debug!("====== Checking the *after* DOM against the physical DOM ======");
+            assert_rendered(&container, &after);
+            drop(vdom2);
+        })
+        .map_err(|e| JsValue::from(e.to_string()))
 }
 
 /// A helper macro for decalaring a bunch of `assert_before_after` tests.
@@ -174,13 +189,13 @@ macro_rules! before_after {
         }
     )* ) => {
         $(
-            #[wasm_bindgen_test]
-            fn $name() {
+            #[wasm_bindgen_test(async)]
+            fn $name() -> impl Future<Item = (), Error = wasm_bindgen::JsValue> {
                 use crate::{assert_before_after, RenderFn};
                 assert_before_after(
                     RenderFn(|$before_bump| { $( $before )* }),
                     RenderFn(|$after_bump| { $( $after )* })
-                );
+                )
             }
         )*
     }

@@ -1,5 +1,7 @@
+use crate::Listener;
 use bumpalo::{Bump, BumpAllocSafe};
 use log::*;
+use std::fmt;
 use std::sync::Once;
 use wasm_bindgen::prelude::*;
 
@@ -14,17 +16,44 @@ pub mod js {
         #[wasm_bindgen(constructor)]
         pub fn new(container: &web_sys::Node) -> ChangeList;
 
+        #[wasm_bindgen(structural, method)]
+        pub fn unmount(this: &ChangeList);
+
         #[wasm_bindgen(structural, method, js_name = addChangeListRange)]
         pub fn add_change_list_range(this: &ChangeList, start: usize, len: usize);
 
         #[wasm_bindgen(structural, method, js_name = applyChanges)]
         pub fn apply_changes(this: &ChangeList, memory: JsValue);
+
+        #[wasm_bindgen(structural, method, js_name = initEventsTrampoline)]
+        pub fn init_events_trampoline(
+            this: &ChangeList,
+            trampoline: &Closure<Fn(web_sys::Event, u32, u32)>,
+        );
     }
 }
 
 pub(crate) struct ChangeList {
     bump: Bump,
     js: js::ChangeList,
+    events_trampoline: Option<Closure<Fn(web_sys::Event, u32, u32)>>,
+}
+
+impl Drop for ChangeList {
+    fn drop(&mut self) {
+        debug!("Dropping ChangeList");
+        self.js.unmount();
+    }
+}
+
+impl fmt::Debug for ChangeList {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("ChangeList")
+            .field("bump", &self.bump)
+            .field("js", &self.js)
+            .field("events_trampoline", &"..")
+            .finish()
+    }
 }
 
 impl ChangeList {
@@ -42,7 +71,11 @@ impl ChangeList {
 
         let bump = Bump::new();
         let js = js::ChangeList::new(container);
-        ChangeList { bump, js }
+        ChangeList {
+            bump,
+            js,
+            events_trampoline: None,
+        }
     }
 
     pub(crate) fn apply_changes(&mut self) {
@@ -54,6 +87,15 @@ impl ChangeList {
         }
         js.apply_changes(wasm_bindgen::memory());
         self.bump.reset();
+    }
+
+    pub(crate) fn init_events_trampoline(
+        &mut self,
+        trampoline: Closure<Fn(web_sys::Event, u32, u32)>,
+    ) {
+        debug_assert!(self.events_trampoline.is_none());
+        self.js.init_events_trampoline(&trampoline);
+        self.events_trampoline = Some(trampoline);
     }
 }
 
@@ -166,6 +208,37 @@ pub enum ChangeDiscriminant {
     /// stack.push(createElement(String(pointer, length))
     /// ```
     CreateElement = 10,
+
+    /// Immediate: `(pointer, length, A, B)`
+    ///
+    /// Stack: `[... Node] -> [... Node]`
+    ///
+    /// ```text
+    /// event = String(pointer, length)
+    /// callback = ProxyToRustCallback(A, B);
+    /// stack.top().addEventListener(event, callback);
+    /// ```
+    NewEventListener = 11,
+
+    /// Immediate: `(pointer, length, A, B)`
+    ///
+    /// Stack: `[... Node] -> [... Node]`
+    ///
+    /// ```text
+    /// event = String(pointer, length)
+    /// new_callback = ProxyToRustCallback(A, B);
+    /// stack.top().updateEventlistener(new_callback)
+    /// ```
+    UpdateEventListener = 12,
+
+    /// Immediates: `(pointer, length)`
+    ///
+    /// Stack: `[... Node] -> [... Node]`
+    ///
+    /// ```text
+    /// stack.top().removeEventListener(String(pointer, length));
+    /// ```
+    RemoveEventListener = 13,
 }
 
 impl BumpAllocSafe for ChangeDiscriminant {}
@@ -186,7 +259,7 @@ impl ChangeList {
         self.bump.alloc([discriminant as u32, a, b]);
     }
 
-    // Note: no 3-immediates opcodes at this time.
+    // Note: no 3-immediate opcodes at this time.
 
     // Allocate an opcode with four immediates.
     fn op4(&self, discriminant: ChangeDiscriminant, a: u32, b: u32, c: u32, d: u32) {
@@ -269,6 +342,41 @@ impl ChangeList {
             ChangeDiscriminant::CreateElement,
             tag_name.as_ptr() as u32,
             tag_name.len() as u32,
+        );
+    }
+
+    pub(crate) fn emit_new_event_listener(&self, listener: &Listener) {
+        debug!("emit_new_event_listener({:?})", listener);
+        let (a, b) = listener.get_callback_parts();
+        debug_assert!(a != 0);
+        self.op4(
+            ChangeDiscriminant::NewEventListener,
+            listener.event.as_ptr() as u32,
+            listener.event.len() as u32,
+            a,
+            b,
+        );
+    }
+
+    pub(crate) fn emit_update_event_listener(&self, listener: &Listener) {
+        debug!("emit_update_event_listener({:?})", listener);
+        let (a, b) = listener.get_callback_parts();
+        debug_assert!(a != 0);
+        self.op4(
+            ChangeDiscriminant::UpdateEventListener,
+            listener.event.as_ptr() as u32,
+            listener.event.len() as u32,
+            a,
+            b,
+        );
+    }
+
+    pub(crate) fn emit_remove_event_listener(&self, event: &str) {
+        debug!("emit_remove_event_listener({:?})", event);
+        self.op2(
+            ChangeDiscriminant::RemoveEventListener,
+            event.as_ptr() as u32,
+            event.len() as u32,
         );
     }
 }

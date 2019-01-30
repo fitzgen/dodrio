@@ -1,5 +1,5 @@
 use dodrio::bumpalo::{self, Bump};
-use dodrio::{Attribute, Node, Render};
+use dodrio::{on, Attribute, Node, Render};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
@@ -26,6 +26,18 @@ impl Render for SayHelloTo {
         let input = Node::element(
             bump,
             "input",
+            [on(bump, "input", |root, vdom, event| {
+                let input = match event
+                    .target()
+                    .and_then(|t| t.dyn_into::<web_sys::HtmlInputElement>().ok())
+                {
+                    Some(input) => input,
+                    None => return,
+                };
+
+                root.unwrap_mut::<SayHelloTo>().set_who(input.value());
+                vdom.schedule_render();
+            })],
             [
                 Attribute {
                     name: "type",
@@ -42,7 +54,7 @@ impl Render for SayHelloTo {
         let hello = bumpalo::format!(in bump, "Hello, {}!", self.who);
         let hello = Node::text(hello.into_bump_str());
 
-        Node::element(bump, "div", [], [input, hello])
+        Node::element(bump, "div", [], [], [input, hello])
     }
 }
 
@@ -55,21 +67,10 @@ pub fn run() {
     let body = document.body().unwrap();
 
     let say_hello = SayHelloTo::new("World");
-    let mut vdom = dodrio::Vdom::new(&body, say_hello);
 
-    let on_input = Closure::wrap(Box::new(move |event: web_sys::MouseEvent| {
-        let input = match event
-            .target()
-            .and_then(|t| t.dyn_into::<web_sys::HtmlInputElement>().ok())
-        {
-            Some(input) => input,
-            None => return,
-        };
+    // Mount the component to the `<body>`.
+    let vdom = dodrio::Vdom::new(&body, say_hello);
 
-        vdom.component_mut().set_who(input.value());
-        vdom.render();
-    }) as Box<FnMut(_)>);
-
-    let _ = body.add_event_listener_with_callback("input", on_input.as_ref().unchecked_ref());
-    on_input.forget();
+    // Run the component forever.
+    vdom.forget();
 }

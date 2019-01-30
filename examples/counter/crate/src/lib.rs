@@ -1,7 +1,7 @@
 use dodrio::bumpalo::{self, Bump};
-use dodrio::{Attribute, Node, Render};
+use dodrio::{on, Node, Render};
+use log::*;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
 
 struct Counter {
     val: isize,
@@ -28,31 +28,34 @@ impl Render for Counter {
     {
         let val = bumpalo::format!(in bump, "{}", self.val);
 
-        let increment = Node::element(
-            bump,
-            "button",
-            [Attribute {
-                name: "data-action",
-                value: "increment",
-            }],
-            [Node::text("+")],
-        );
-
-        let decrement = Node::element(
-            bump,
-            "button",
-            [Attribute {
-                name: "data-action",
-                value: "decrement",
-            }],
-            [Node::text("-")],
-        );
-
         Node::element(
             bump,
             "div",
             [],
-            [increment, Node::text(val.into_bump_str()), decrement],
+            [],
+            [
+                Node::element(
+                    bump,
+                    "button",
+                    [on(bump, "click", |root, vdom, _event| {
+                        root.unwrap_mut::<Counter>().increment();
+                        vdom.schedule_render();
+                    })],
+                    [],
+                    [Node::text("+")],
+                ),
+                Node::text(val.into_bump_str()),
+                Node::element(
+                    bump,
+                    "button",
+                    [on(bump, "click", |root, vdom, _event| {
+                        root.unwrap_mut::<Counter>().decrement();
+                        vdom.schedule_render();
+                    })],
+                    [],
+                    [Node::text("-")],
+                ),
+            ],
         )
     }
 }
@@ -60,27 +63,18 @@ impl Render for Counter {
 #[wasm_bindgen]
 pub fn run() {
     console_error_panic_hook::set_once();
+    console_log::init_with_level(Level::Trace).expect("should initialize logging OK");
 
     let window = web_sys::window().unwrap();
     let document = window.document().unwrap();
     let body = document.body().unwrap();
 
+    // Construct a new counter component.
     let counter = Counter::new();
-    let mut vdom = dodrio::Vdom::new(&body, counter);
 
-    let on_click = Closure::wrap(Box::new(move |event: web_sys::MouseEvent| {
-        match event
-            .target()
-            .and_then(|t| t.dyn_into::<web_sys::Element>().ok())
-            .and_then(|e| e.get_attribute("data-action"))
-        {
-            Some(ref s) if s == "increment" => vdom.component_mut().increment(),
-            Some(ref s) if s == "decrement" => vdom.component_mut().decrement(),
-            _ => {}
-        }
-        vdom.render();
-    }) as Box<FnMut(_)>);
+    // Mount our counter component to the `<body>`.
+    let vdom = dodrio::Vdom::new(&body, counter);
 
-    let _ = body.add_event_listener_with_callback("click", on_click.as_ref().unchecked_ref());
-    on_click.forget();
+    // Run the virtual DOM and its listeners forever.
+    vdom.forget();
 }

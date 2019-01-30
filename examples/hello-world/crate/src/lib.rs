@@ -1,16 +1,18 @@
 use dodrio::bumpalo::Bump;
-use dodrio::{Node, Render};
+use dodrio::{Node, Render, Vdom};
 use wasm_bindgen::prelude::*;
 
-struct HelloWorld<'a>(&'a str);
+struct Hello<'who> {
+    who: &'who str,
+}
 
-impl<'who> HelloWorld<'who> {
-    fn new(who: &str) -> HelloWorld {
-        HelloWorld(who)
+impl<'who> Hello<'who> {
+    fn new(who: &str) -> Hello {
+        Hello { who }
     }
 }
 
-impl<'who> Render for HelloWorld<'who> {
+impl<'who> Render for Hello<'who> {
     fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
     where
         'a: 'bump,
@@ -19,7 +21,8 @@ impl<'who> Render for HelloWorld<'who> {
             bump,
             "p",
             [],
-            [Node::text("Hello, "), Node::text(self.0), Node::text("!")],
+            [],
+            [Node::text("Hello, "), Node::text(self.who), Node::text("!")],
         )
     }
 }
@@ -28,14 +31,17 @@ impl<'who> Render for HelloWorld<'who> {
 pub fn run() {
     console_error_panic_hook::set_once();
 
-    let window = web_sys::window().unwrap();
-    let document = window.document().unwrap();
-    let body = document.body().unwrap();
+    let window = web_sys::window().unwrap_throw();
+    let document = window.document().unwrap_throw();
+    let body = document.body().unwrap_throw();
 
-    // Create a new dodrio vdom contained in the body, with an initial virtual
-    // dom.
-    let vdom = dodrio::Vdom::new(body.as_ref(), HelloWorld::new("World"));
+    // Create a new `Hello` render component.
+    let component = Hello::new("World");
 
-    // Render a new node tree into the virtual dom.
-    vdom.render_component(HelloWorld::new("Dodrio"));
+    // Create a virtual DOM and mount it and the `Hello` render component to the
+    // `<body>`.
+    let vdom = Vdom::new(body.as_ref(), component);
+
+    // Run the virtual DOM forever and don't unmount it.
+    vdom.forget();
 }
