@@ -1,3 +1,8 @@
+//! TODO
+
+// Re-export the `bumpalo` crate.
+pub use bumpalo;
+
 use bumpalo::Bump;
 
 // Only `pub` so that the wasm-bindgen bindings work.

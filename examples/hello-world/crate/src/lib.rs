@@ -1,4 +1,4 @@
-use bumpalo::Bump;
+use dodrio::bumpalo::Bump;
 use dodrio::{Node, Render};
 use wasm_bindgen::prelude::*;
 
