@@ -1,13 +1,19 @@
 use bumpalo::{Bump, BumpAllocSafe};
 
 /// A node is either a text node or an element.
-#[derive(Debug, Clone)]
-pub enum Node<'a> {
+#[derive(Debug)]
+pub enum Node<'a, Root: 'static> {
     /// A text node.
     Text(TextNode<'a>),
 
     /// An element potentially with attributes and children.
-    Element(ElementNode<'a>),
+    Element(ElementNode<'a, Root>),
+}
+
+impl<'a, Root: 'static> Clone for Node<'a, Root> {
+    fn clone(&self) -> Self {
+        unimplemented!()
+    }
 }
 
 /// Text nodes are just a string of text. They cannot have attributes or
@@ -20,10 +26,11 @@ pub struct TextNode<'a> {
 /// Elements have a tag name, zero or more attributes, and zero or more
 /// children.
 #[derive(Debug, Clone)]
-pub struct ElementNode<'a> {
+pub struct ElementNode<'a, Root: 'static> {
     pub(crate) tag_name: &'a str,
     pub(crate) attributes: &'a [Attribute<'a>],
-    pub(crate) children: &'a [Node<'a>],
+    pub(crate) children: &'a [Node<'a, Root>],
+    pub(crate) _phantom: ::std::marker::PhantomData<fn(&mut crate::Vdom<Root>)>,
 }
 
 #[derive(Clone, Debug)]
@@ -32,7 +39,7 @@ pub struct Attribute<'a> {
     pub value: &'a str,
 }
 
-impl<'a> Node<'a> {
+impl<'a, Root> Node<'a, Root> {
     /// Is this node a text node?
     pub fn is_text(&self) -> bool {
         match self {
@@ -57,7 +64,7 @@ impl<'a> TextNode<'a> {
     }
 }
 
-impl<'a> ElementNode<'a> {
+impl<'a, Root> ElementNode<'a, Root> {
     /// Get this element's tag name.
     pub fn tag_name(&self) -> &'a str {
         self.tag_name
@@ -69,18 +76,18 @@ impl<'a> ElementNode<'a> {
     }
 
     /// Get this element's attributes.
-    pub fn children(&self) -> &'a [Node<'a>] {
+    pub fn children(&self) -> &'a [Node<'a, Root>] {
         self.children
     }
 }
 
-impl<'a> BumpAllocSafe for Node<'a> {}
+impl<'a, Root> BumpAllocSafe for Node<'a, Root> {}
 impl<'a> BumpAllocSafe for Attribute<'a> {}
 
-impl<'a> Node<'a> {
+impl<'a, Root> Node<'a, Root> {
     /// Construct a new text node with the given text.
     #[inline]
-    pub fn text(text: &'a str) -> Node<'a> {
+    pub fn text(text: &'a str) -> Node<'a, Root> {
         Node::Text(TextNode { text })
     }
 
@@ -91,13 +98,13 @@ impl<'a> Node<'a> {
         tag_name: &'a str,
         attributes: Attributes,
         children: Children,
-    ) -> Node<'a>
+    ) -> Node<'a, Root>
     where
         Attributes: 'a + BumpAllocSafe + AsRef<[Attribute<'a>]>,
-        Children: 'a + BumpAllocSafe + AsRef<[Node<'a>]>,
+        Children: 'a + BumpAllocSafe + AsRef<[Node<'a, Root>]>,
     {
         let children: &'a Children = bump.alloc(children);
-        let children: &'a [Node<'a>] = children.as_ref();
+        let children: &'a [Node<'a, Root>] = children.as_ref();
 
         let attributes: &'a Attributes = bump.alloc(attributes);
         let attributes: &'a [Attribute<'a>] = attributes.as_ref();
@@ -106,6 +113,7 @@ impl<'a> Node<'a> {
             tag_name,
             attributes,
             children,
+            _phantom: ::std::marker::PhantomData,
         })
     }
 }

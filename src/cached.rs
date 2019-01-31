@@ -13,16 +13,16 @@ use std::ops::{Deref, DerefMut};
 
 /// A renderable that supports caching for when rendering is expensive but can
 /// generate the same DOM tree.
-pub struct Cached<R> {
+pub struct Cached<R, Root: 'static> {
     inner: R,
     bump: bumpalo::Bump,
     // Actually a self-reference into `self.bump`. Safe because we ensure that
     // whenever we hand out a cached node, we use a lifetime that cannot outlive
     // its owning `Cached<R>`.
-    cached: RefCell<Option<Node<'static>>>,
+    cached: RefCell<Option<Node<'static, Root>>>,
 }
 
-impl<R> Cached<R> {
+impl<R, Root> Cached<R, Root> {
     /// Construct a new `Cached<R>` of an inner `R`.
     ///
     /// # Example
@@ -52,7 +52,7 @@ impl<R> Cached<R> {
     /// let cached_counter = Cached::new(counter);
     /// ```
     #[inline]
-    pub fn new(inner: R) -> Cached<R> {
+    pub fn new(inner: R) -> Cached<R, Root> {
         let bump = Bump::new();
         let cached = RefCell::new(None);
         Cached {
@@ -110,12 +110,12 @@ impl<R> Cached<R> {
 
     /// Convert a `Cached<R>` back into a plain `R`.
     #[inline]
-    pub fn into_inner(cached: Cached<R>) -> R {
+    pub fn into_inner(cached: Cached<R, Root>) -> R {
         cached.inner
     }
 }
 
-impl<R> Deref for Cached<R> {
+impl<R, Root> Deref for Cached<R, Root> {
     type Target = R;
 
     fn deref(&self) -> &R {
@@ -123,18 +123,22 @@ impl<R> Deref for Cached<R> {
     }
 }
 
-impl<R> DerefMut for Cached<R> {
+impl<R, Root> DerefMut for Cached<R, Root> {
     fn deref_mut(&mut self) -> &mut R {
         &mut self.inner
     }
 }
 
-unsafe fn extend_node_lifetime<'a>(node: Node<'a>) -> Node<'static> {
+unsafe fn extend_node_lifetime<'a, Root>(node: Node<'a, Root>) -> Node<'static, Root> {
     mem::transmute(node)
 }
 
-impl<R: Render> Render for Cached<R> {
-    fn render<'a, 'bump>(&'a self, _: &'bump Bump) -> Node<'bump>
+impl<R, Root> Render<Root> for Cached<R, Root>
+where
+    R: Render<Root>,
+    Root: Render<Root>,
+{
+    fn render<'a, 'bump>(&'a self, _: &'bump Bump) -> Node<'bump, Root>
     where
         'a: 'bump,
     {
@@ -143,11 +147,11 @@ impl<R: Render> Render for Cached<R> {
         if let Some(cached) = cached.as_ref() {
             // The cached node is actually a self-reference, so it has the `'a`
             // lifetime.
-            let cached: Node<'a> = cached.clone();
+            let cached: Node<'a, Root> = cached.clone();
 
             // But the `'a` lifetime outlives `'bump`, so we can safely convert
             // it to the narrower `'bump` lifetime.
-            let cached: Node<'bump> = cached;
+            let cached: Node<'bump, Root> = cached;
 
             // Return the cached rendering!
             return cached;
@@ -155,9 +159,9 @@ impl<R: Render> Render for Cached<R> {
 
         // We don't have a cached node. Render into our own `Bump`, cache it for
         // future renders, and return it. Same lifetimes as above.
-        let node: Node<'a> = self.inner.render(&self.bump);
+        let node: Node<'a, Root> = self.inner.render(&self.bump);
         *cached = Some(unsafe { extend_node_lifetime(node.clone()) });
-        let node: Node<'bump> = node;
+        let node: Node<'bump, Root> = node;
         node
     }
 }

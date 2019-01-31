@@ -6,7 +6,7 @@ use log::*;
 use std::cmp;
 use std::mem;
 
-pub struct Vdom<R> {
+pub struct Vdom<R: 'static> {
     component: R,
     dom_buffers: [Bump; 2],
     change_list: ChangeList,
@@ -14,16 +14,16 @@ pub struct Vdom<R> {
 
     // Actually a reference into `self.dom_buffers[0]` or if `self.component` is
     // caching renders, into `self.component`'s bump.
-    current_root: Option<Node<'static>>,
+    current_root: Option<Node<'static, R>>,
 }
 
-unsafe fn extend_node_lifetime<'a>(node: Node<'a>) -> Node<'static> {
+unsafe fn extend_node_lifetime<'a, R>(node: Node<'a, R>) -> Node<'static, R> {
     mem::transmute(node)
 }
 
 impl<R> Vdom<R>
 where
-    R: Render,
+    R: Render<R>,
 {
     pub fn new(container: &web_sys::Element, component: R) -> Vdom<R> {
         let dom_buffers = [Bump::new(), Bump::new()];
@@ -102,33 +102,33 @@ where
         }
     }
 
-    /// Render a new component.
-    pub fn render_component<S>(self, component: S) -> Vdom<S>
-    where
-        S: Render,
-    {
-        let mut vdom = Vdom {
-            component,
-            dom_buffers: self.dom_buffers,
-            change_list: self.change_list,
-            container: self.container,
-            current_root: self.current_root,
-        };
-        vdom.render();
-        vdom
-    }
+    // /// Render a new component.
+    // pub fn render_component<S>(self, component: S) -> Vdom<S>
+    // where
+    //     S: Render<S>,
+    // {
+    //     let mut vdom = Vdom {
+    //         component,
+    //         dom_buffers: self.dom_buffers,
+    //         change_list: self.change_list,
+    //         container: self.container,
+    //         current_root: self.current_root,
+    //     };
+    //     vdom.render();
+    //     vdom
+    // }
 
     fn swap_buffers(&mut self) {
         let (first, second) = self.dom_buffers.as_mut().split_at_mut(1);
         mem::swap(&mut first[0], &mut second[0]);
     }
 
-    unsafe fn set_current_root(&mut self, current: Node<'static>) {
+    unsafe fn set_current_root(&mut self, current: Node<'static, R>) {
         debug_assert!(self.current_root.is_none());
         self.current_root = Some(current);
     }
 
-    fn diff(&self, old: Node, new: Node) {
+    fn diff<T, U>(&self, old: Node<T>, new: Node<U>) {
         // debug!("---------------------------------------------------------");
         // debug!("dodrio::Vdom::diff");
         // debug!("  old = {:#?}", old);
@@ -156,11 +156,13 @@ where
                     tag_name: new_tag_name,
                     attributes: new_attributes,
                     children: new_children,
+                    _phantom: _,
                 }),
                 Node::Element(ElementNode {
                     tag_name: old_tag_name,
                     attributes: old_attributes,
                     children: old_children,
+                    _phantom: _,
                 }),
             ) => {
                 debug!("  updating an element");
@@ -205,7 +207,7 @@ where
         }
     }
 
-    fn diff_children(&self, old: &[Node], new: &[Node]) {
+    fn diff_children<T, U>(&self, old: &[Node<T>], new: &[Node<U>]) {
         debug!("  updating children shared by old and new");
 
         let num_children_to_diff = cmp::min(new.len(), old.len());
@@ -258,7 +260,7 @@ where
         }
     }
 
-    fn create(&self, node: Node) {
+    fn create<T>(&self, node: Node<T>) {
         match node {
             Node::Text(TextNode { text }) => {
                 self.change_list.emit_create_text_node(text);
@@ -267,6 +269,7 @@ where
                 tag_name,
                 attributes,
                 children,
+                _phantom: _,
             }) => {
                 self.change_list.emit_create_element(tag_name);
                 for attr in attributes {
