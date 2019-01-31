@@ -126,7 +126,6 @@ dependencies = [
 name = "dodrio-counter"
 version = "0.1.0"
 dependencies = [
- "bumpalo 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "console_error_panic_hook 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "dodrio 0.1.0",
  "wasm-bindgen 0.2.33 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -138,7 +137,6 @@ dependencies = [
 name = "dodrio-hello-world"
 version = "0.1.0"
 dependencies = [
- "bumpalo 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "console_error_panic_hook 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "dodrio 0.1.0",
  "wasm-bindgen 0.2.33 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -150,7 +148,6 @@ dependencies = [
 name = "dodrio-input-form"
 version = "0.1.0"
 dependencies = [
- "bumpalo 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "console_error_panic_hook 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "dodrio 0.1.0",
  "wasm-bindgen 0.2.33 (registry+https://github.com/rust-lang/crates.io-index)",

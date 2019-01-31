@@ -1,4 +1,4 @@
-use bumpalo::Bump;
+use dodrio::bumpalo::{self, Bump};
 use dodrio::{Attribute, Node, Render};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;

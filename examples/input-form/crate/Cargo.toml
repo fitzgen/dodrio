@@ -10,7 +10,6 @@ crate-type = ["cdylib", "rlib"]
 [features]
 
 [dependencies]
-bumpalo = "1.0.2"
 dodrio = { path = "../../.." }
 wasm-bindgen = "0.2"
 console_error_panic_hook = "0.1.1"
