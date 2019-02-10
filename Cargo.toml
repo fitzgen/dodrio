@@ -47,7 +47,7 @@ opt-level = "s"
 [workspace]
 members = [
   "./compile-tests",
-  "./examples/counter/crate",
+  "./examples/counter",
   "./examples/hello-world",
   "./examples/input-form/crate",
 ]

@@ -60,7 +60,7 @@ impl Render for Counter {
     }
 }
 
-#[wasm_bindgen]
+#[wasm_bindgen(start)]
 pub fn run() {
     console_error_panic_hook::set_once();
     console_log::init_with_level(Level::Trace).expect("should initialize logging OK");
