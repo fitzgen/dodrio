@@ -48,7 +48,7 @@ opt-level = "s"
 members = [
   "./compile-tests",
   "./examples/counter/crate",
-  "./examples/hello-world/crate",
+  "./examples/hello-world",
   "./examples/input-form/crate",
 ]
 
