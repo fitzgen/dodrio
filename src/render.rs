@@ -4,7 +4,45 @@ use std::any::Any;
 use std::rc::Rc;
 use wasm_bindgen::UnwrapThrowExt;
 
+/// A trait for any component that can be rendered to HTML.
+///
+/// Takes a shared reference to `self` and generates the virtual DOM that
+/// represents its rendered HTML.
+///
+/// ## `Bump` Allocation
+///
+/// `Render` implementations can use the provided `Bump` for very fast
+/// allocation for anything that needs to be allocated during rendering.
+///
+/// ## The `'a: 'bump` Lifetime Bound
+///
+/// The `'a: 'bump` bounds enforce that `self` outlives the given bump
+/// allocator. This means that if `self` contains a string, the string does not
+/// need to be copied into the output `Node` and can be used by reference
+/// instead (i.e. it prevents accidentally using the string after its been
+/// freed). The `'a: 'bump` bound also enables abstractions like
+/// `dodrio::Cached` that can re-use cached `Node`s across `render`s without
+/// copying them.
+///
+/// ## Example
+///
+/// ```no_run
+/// use dodrio::{Bump, Node, Render};
+///
+/// pub struct MyComponent;
+///
+/// impl Render for MyComponent {
+///     fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
+///     where
+///         'a: 'bump
+///     {
+///         Node::text("This is my component rendered!")
+///     }
+/// }
+/// ```
 pub trait Render {
+    /// Render `self` as a virtual DOM. Use the given `Bump` for temporary
+    /// allocations.
     fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
     where
         'a: 'bump;

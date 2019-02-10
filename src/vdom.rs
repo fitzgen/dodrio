@@ -22,6 +22,7 @@ use wasm_bindgen_futures::JsFuture;
 /// removed. To keep it mounted forever, use the `Vdom::forget` method.
 #[must_use = "A `Vdom` will only keep rendering and listening to events while it has not been \
               dropped. If you want a `Vdom` to run forever, call `Vdom::forget`."]
+#[derive(Debug)]
 pub struct Vdom {
     inner: Rc<VdomInner>,
 }

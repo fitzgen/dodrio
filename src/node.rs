@@ -48,9 +48,13 @@ pub struct Listener<'a> {
     pub callback: ListenerCallback<'a>,
 }
 
+/// An attribute on a DOM node, such as `id="my-thing"` or
+/// `href="https://example.com"`.
 #[derive(Clone, Debug)]
 pub struct Attribute<'a> {
+    /// The attribute name, such as `id`.
     pub name: &'a str,
+    /// The attribute value, such as `"my-thing"`.
     pub value: &'a str,
 }
 

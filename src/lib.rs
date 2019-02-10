@@ -54,6 +54,7 @@
 //!     }
 //! }
 //! ```
+#![deny(missing_docs, missing_debug_implementations)]
 
 // Re-export the `bumpalo` crate.
 pub use bumpalo;

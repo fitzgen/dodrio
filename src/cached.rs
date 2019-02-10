@@ -13,6 +13,7 @@ use std::ops::{Deref, DerefMut};
 
 /// A renderable that supports caching for when rendering is expensive but can
 /// generate the same DOM tree.
+#[derive(Debug)]
 pub struct Cached<R> {
     inner: R,
     bump: bumpalo::Bump,
