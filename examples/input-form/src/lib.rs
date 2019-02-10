@@ -58,7 +58,7 @@ impl Render for SayHelloTo {
     }
 }
 
-#[wasm_bindgen]
+#[wasm_bindgen(start)]
 pub fn run() {
     console_error_panic_hook::set_once();
 

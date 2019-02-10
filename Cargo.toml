@@ -49,7 +49,7 @@ members = [
   "./compile-tests",
   "./examples/counter",
   "./examples/hello-world",
-  "./examples/input-form/crate",
+  "./examples/input-form",
 ]
 
 [patch.crates-io]
