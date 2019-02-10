@@ -2,16 +2,14 @@ use dodrio::bumpalo::Bump;
 use dodrio::{Node, Render, Vdom};
 use wasm_bindgen::prelude::*;
 
+/// A rendering component that displays a greeting.
 struct Hello<'who> {
+    /// Who to greet.
     who: &'who str,
 }
 
-impl<'who> Hello<'who> {
-    fn new(who: &str) -> Hello {
-        Hello { who }
-    }
-}
-
+// The `Render` implementation describes how to render a `Hello` component into
+// HTML.
 impl<'who> Render for Hello<'who> {
     fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
     where
@@ -19,9 +17,13 @@ impl<'who> Render for Hello<'who> {
     {
         Node::element(
             bump,
+            // The element's tag name. In this case a `<p>` element.
             "p",
+            // Event listeners. Empty in this case.
             [],
+            // Attributes. Again, empty in this case.
             [],
+            // Child nodes.
             [Node::text("Hello, "), Node::text(self.who), Node::text("!")],
         )
     }
@@ -29,14 +31,16 @@ impl<'who> Render for Hello<'who> {
 
 #[wasm_bindgen(start)]
 pub fn run() {
+    // Set up the panic hook for debugging when things go wrong.
     console_error_panic_hook::set_once();
 
+    // Grab the document's `<body>`.
     let window = web_sys::window().unwrap_throw();
     let document = window.document().unwrap_throw();
     let body = document.body().unwrap_throw();
 
     // Create a new `Hello` render component.
-    let component = Hello::new("World");
+    let component = Hello { who: "World" };
 
     // Create a virtual DOM and mount it and the `Hello` render component to the
     // `<body>`.
