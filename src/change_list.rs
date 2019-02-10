@@ -99,7 +99,6 @@ impl ChangeList {
     }
 }
 
-#[wasm_bindgen]
 #[repr(u32)]
 pub enum ChangeDiscriminant {
     /// Immediates: `(pointer, length)`
