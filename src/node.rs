@@ -1,5 +1,5 @@
 use crate::{RootRender, VdomWeak};
-use bumpalo::{Bump, BumpAllocSafe};
+use bumpalo::Bump;
 use std::fmt;
 use std::mem;
 
@@ -54,10 +54,6 @@ pub struct Attribute<'a> {
     pub value: &'a str,
 }
 
-impl<'a> BumpAllocSafe for Node<'a> {}
-impl<'a> BumpAllocSafe for Listener<'a> {}
-impl<'a> BumpAllocSafe for Attribute<'a> {}
-
 impl fmt::Debug for Listener<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (a, b) = self.get_callback_parts();
@@ -81,9 +77,9 @@ impl<'a> Node<'a> {
         children: Children,
     ) -> Node<'a>
     where
-        Listeners: 'a + BumpAllocSafe + AsRef<[Listener<'a>]>,
-        Attributes: 'a + BumpAllocSafe + AsRef<[Attribute<'a>]>,
-        Children: 'a + BumpAllocSafe + AsRef<[Node<'a>]>,
+        Listeners: 'a + AsRef<[Listener<'a>]>,
+        Attributes: 'a + AsRef<[Attribute<'a>]>,
+        Children: 'a + AsRef<[Node<'a>]>,
     {
         let children: &'a Children = bump.alloc(children);
         let children: &'a [Node<'a>] = children.as_ref();

@@ -1,5 +1,5 @@
 use crate::Listener;
-use bumpalo::{Bump, BumpAllocSafe};
+use bumpalo::Bump;
 use log::*;
 use std::fmt;
 use std::sync::Once;
@@ -239,8 +239,6 @@ pub enum ChangeDiscriminant {
     /// ```
     RemoveEventListener = 13,
 }
-
-impl BumpAllocSafe for ChangeDiscriminant {}
 
 // Allocation utilities to ensure that we only allocation sequences of `u32`s
 // into the change list's bump arena without any padding. This helps maintain
