@@ -10,7 +10,7 @@ default = []
 [dependencies]
 bumpalo = "2.0.0"
 futures = "0.1"
-wasm-bindgen = "0.2.33"
+wasm-bindgen = "0.2.34"
 wasm-bindgen-futures = "0.3.10"
 js-sys = "0.3.10"
 log = "0.4.6"
@@ -51,12 +51,3 @@ members = [
   "./examples/hello-world",
   "./examples/input-form",
 ]
-
-[patch.crates-io]
-wasm-bindgen = { path = "../wasm-bindgen" }
-web-sys = { path = "../wasm-bindgen/crates/web-sys" }
-js-sys = { path = "../wasm-bindgen/crates/js-sys" }
-wasm-bindgen-futures = { path = "../wasm-bindgen/crates/futures" }
-wasm-bindgen-test = { path = "../wasm-bindgen/crates/test" }
-bumpalo = { path = "../bumpalo" }
-console_error_panic_hook = { path = "../console_error_panic_hook" }
