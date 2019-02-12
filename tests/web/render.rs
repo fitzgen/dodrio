@@ -1,36 +1,47 @@
 use super::{assert_rendered, before_after, create_element, RenderFn};
 use dodrio::{Attribute, Node, Vdom};
+use futures::prelude::*;
+use std::rc::Rc;
 use wasm_bindgen_test::*;
 
 #[wasm_bindgen_test]
 fn render_initial_text() {
-    let hello = RenderFn(|_bump| Node::text("hello"));
+    let hello = Rc::new(RenderFn(|_bump| Node::text("hello")));
 
     let container = create_element("div");
-    Vdom::new(&container, &hello);
+    let _vdom = Vdom::new(&container, hello.clone());
     assert_rendered(&container, &hello);
 }
 
 #[wasm_bindgen_test]
 fn render_initial_node() {
-    let hello = RenderFn(|bump| {
+    let hello = Rc::new(RenderFn(|bump| {
         Node::element(
             bump,
             "div",
+            [],
             [Attribute {
                 name: "id",
                 value: "hello-world",
             }],
             [
                 Node::text("Hello "),
-                Node::element(bump, "span", [], [Node::text("World!")]),
+                Node::element(bump, "span", [], [], [Node::text("World!")]),
             ],
         )
-    });
+    }));
 
     let container = create_element("div");
-    Vdom::new(&container, &hello);
+    let _vdom = Vdom::new(&container, hello.clone());
     assert_rendered(&container, &hello);
+}
+
+#[wasm_bindgen_test]
+fn container_is_emptied_upon_drop() {
+    let container = create_element("div");
+    let vdom = Vdom::new(&container, RenderFn(|_bump| Node::text("blah")));
+    drop(vdom);
+    assert!(container.first_child().is_none());
 }
 
 before_after! {
@@ -57,13 +68,13 @@ before_after! {
             Node::text("before")
         }
         after(bump) {
-            Node::element(bump, "div", [], [])
+            Node::element(bump, "div", [], [], [])
         }
     }
 
     replace_elem_with_text {
         before(bump) {
-            Node::element(bump, "div", [], [])
+            Node::element(bump, "div", [], [], [])
         }
         after(_bump) {
             Node::text("before")
@@ -72,52 +83,52 @@ before_after! {
 
     same_elem {
         before(bump) {
-            Node::element(bump, "div", [], [])
+            Node::element(bump, "div", [], [], [])
         }
         after(bump) {
-            Node::element(bump, "div", [], [])
+            Node::element(bump, "div", [], [], [])
         }
     }
 
     elems_with_different_tag_names {
         before(bump) {
-            Node::element(bump, "span", [], [])
+            Node::element(bump, "span", [], [], [])
         }
         after(bump) {
-            Node::element(bump, "div", [], [])
+            Node::element(bump, "div", [], [], [])
         }
     }
 
     same_tag_name_update_attribute {
         before(bump) {
-            Node::element(bump, "div", [Attribute { name: "value", value: "1" }], [])
+            Node::element(bump, "div", [], [Attribute { name: "value", value: "1" }], [])
         }
         after(bump) {
-            Node::element(bump, "div", [Attribute { name: "value", value: "2" }], [])
+            Node::element(bump, "div", [], [Attribute { name: "value", value: "2" }], [])
         }
     }
 
     same_tag_name_remove_attribute {
         before(bump) {
-            Node::element(bump, "div", [Attribute { name: "value", value: "1" }], [])
+            Node::element(bump, "div", [], [Attribute { name: "value", value: "1" }], [])
         }
         after(bump) {
-            Node::element(bump, "div", [], [])
+            Node::element(bump, "div", [], [], [])
         }
     }
 
     same_tag_name_add_attribute {
         before(bump) {
-            Node::element(bump, "div", [], [])
+            Node::element(bump, "div", [], [], [])
         }
         after(bump) {
-            Node::element(bump, "div", [Attribute { name: "value", value: "2" }], [])
+            Node::element(bump, "div", [], [Attribute { name: "value", value: "2" }], [])
         }
     }
 
     same_tag_name_many_attributes {
         before(bump) {
-            Node::element(bump, "div", [
+            Node::element(bump, "div", [], [
                 Attribute { name: "before-1", value: "1" },
                 Attribute { name: "shared-1", value: "1" },
                 Attribute { name: "modified-1", value: "1" },
@@ -130,7 +141,7 @@ before_after! {
             ], [])
         }
         after(bump) {
-            Node::element(bump, "div", [
+            Node::element(bump, "div", [], [
                 Attribute { name: "after-1", value: "1" },
                 Attribute { name: "shared-1", value: "1" },
                 Attribute { name: "modified-1", value: "100" },
@@ -146,12 +157,12 @@ before_after! {
 
     same_tag_same_children {
         before(bump) {
-            Node::element(bump, "div", [], [
+            Node::element(bump, "div", [], [], [
                 Node::text("child")
             ])
         }
         after(bump) {
-            Node::element(bump, "div", [], [
+            Node::element(bump, "div", [], [], [
                 Node::text("child")
             ])
         }
@@ -159,12 +170,12 @@ before_after! {
 
     same_tag_update_child {
         before(bump) {
-            Node::element(bump, "div", [], [
+            Node::element(bump, "div", [], [], [
                 Node::text("before")
             ])
         }
         after(bump) {
-            Node::element(bump, "div", [], [
+            Node::element(bump, "div", [], [], [
                 Node::text("after")
             ])
         }
@@ -172,10 +183,10 @@ before_after! {
 
     same_tag_add_child {
         before(bump) {
-            Node::element(bump, "div", [], [])
+            Node::element(bump, "div", [], [], [])
         }
         after(bump) {
-            Node::element(bump, "div", [], [
+            Node::element(bump, "div", [], [], [
                 Node::text("child")
             ])
         }
@@ -183,58 +194,58 @@ before_after! {
 
     same_tag_remove_child {
         before(bump) {
-            Node::element(bump, "div", [], [
+            Node::element(bump, "div", [], [], [
                 Node::text("child")
             ])
         }
         after(bump) {
-            Node::element(bump, "div", [], [])
+            Node::element(bump, "div", [], [], [])
         }
     }
 
     same_tag_update_many_children {
         before(bump) {
-            Node::element(bump, "div", [], [
-                Node::element(bump, "div", [], []),
-                Node::element(bump, "span", [], []),
-                Node::element(bump, "p", [], []),
+            Node::element(bump, "div", [], [], [
+                Node::element(bump, "div", [], [], []),
+                Node::element(bump, "span", [], [], []),
+                Node::element(bump, "p", [], [], []),
             ])
         }
         after(bump) {
-            Node::element(bump, "div", [], [
-                Node::element(bump, "span", [], []),
-                Node::element(bump, "p", [], []),
-                Node::element(bump, "div", [], []),
+            Node::element(bump, "div", [], [], [
+                Node::element(bump, "span", [], [], []),
+                Node::element(bump, "p", [], [], []),
+                Node::element(bump, "div", [], [], []),
             ])
         }
     }
 
     same_tag_remove_many_children {
         before(bump) {
-            Node::element(bump, "div", [], [
-                Node::element(bump, "div", [], []),
-                Node::element(bump, "span", [], []),
-                Node::element(bump, "p", [], []),
+            Node::element(bump, "div", [], [], [
+                Node::element(bump, "div", [], [], []),
+                Node::element(bump, "span", [], [], []),
+                Node::element(bump, "p", [], [], []),
             ])
         }
         after(bump) {
-            Node::element(bump, "div", [], [
-                Node::element(bump, "div", [], []),
+            Node::element(bump, "div", [], [], [
+                Node::element(bump, "div", [], [], []),
             ])
         }
     }
 
     same_tag_add_many_children {
         before(bump) {
-            Node::element(bump, "div", [], [
-                Node::element(bump, "div", [], []),
+            Node::element(bump, "div", [], [], [
+                Node::element(bump, "div", [], [], []),
             ])
         }
         after(bump) {
-            Node::element(bump, "div", [], [
-                Node::element(bump, "div", [], []),
-                Node::element(bump, "span", [], []),
-                Node::element(bump, "p", [], []),
+            Node::element(bump, "div", [], [], [
+                Node::element(bump, "div", [], [], []),
+                Node::element(bump, "span", [], [], []),
+                Node::element(bump, "p", [], [], []),
             ])
         }
     }

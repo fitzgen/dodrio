@@ -8,17 +8,20 @@ edition = "2018"
 default = []
 
 [dependencies]
-bumpalo = "1.0.2"
-wasm-bindgen = "0.2.32"
-js-sys = "0.3.9"
+bumpalo = "2.0.0"
+futures = "0.1"
+wasm-bindgen = "0.2.34"
+wasm-bindgen-futures = "0.3.10"
+js-sys = "0.3.10"
 log = "0.4.6"
 
 [dependencies.web-sys]
-version = "0.3.9"
+version = "0.3.10"
 features = [
   "console",
   "Document",
   "Element",
+  "Event",
   "Node",
   "Window",
 ]
@@ -28,9 +31,11 @@ wasm-bindgen-test = "0.2"
 console_log = "0.1.2"
 
 [dev-dependencies.web-sys]
-version = "0.3.9"
+version = "0.3.10"
 features = [
   "Attr",
+  "EventTarget",
+  "HtmlElement",
   "NamedNodeMap",
   "NodeList",
 ]
@@ -41,8 +46,7 @@ opt-level = "s"
 
 [workspace]
 members = [
-  "./compile-tests",
-  "./examples/counter/crate",
-  "./examples/hello-world/crate",
-  "./examples/input-form/crate",
+  "./examples/counter",
+  "./examples/hello-world",
+  "./examples/input-form",
 ]

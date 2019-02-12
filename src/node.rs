@@ -1,4 +1,7 @@
-use bumpalo::{Bump, BumpAllocSafe};
+use crate::{RootRender, VdomWeak};
+use bumpalo::Bump;
+use std::fmt;
+use std::mem;
 
 /// A node is either a text node or an element.
 #[derive(Debug, Clone)]
@@ -22,8 +25,27 @@ pub struct TextNode<'a> {
 #[derive(Debug, Clone)]
 pub struct ElementNode<'a> {
     pub(crate) tag_name: &'a str,
+    pub(crate) listeners: &'a [Listener<'a>],
     pub(crate) attributes: &'a [Attribute<'a>],
     pub(crate) children: &'a [Node<'a>],
+}
+
+/// An event listener callback function.
+///
+/// It takes three parameters:
+///
+/// 1. The virtual DOM's root rendering component.
+/// 2. A capability to scheduler virtual DOM re-rendering.
+/// 3. The event that ocurred.
+pub type ListenerCallback<'a> =
+    &'a (dyn Fn(&mut dyn RootRender, VdomWeak, web_sys::Event) + 'static);
+
+/// An event listener.
+pub struct Listener<'a> {
+    /// The type of event to listen for.
+    pub event: &'a str,
+    /// The callback to invoke when the event happens.
+    pub callback: ListenerCallback<'a>,
 }
 
 #[derive(Clone, Debug)]
@@ -32,7 +54,50 @@ pub struct Attribute<'a> {
     pub value: &'a str,
 }
 
+impl fmt::Debug for Listener<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let (a, b) = self.get_callback_parts();
+        let a = a as *mut u32;
+        let b = b as *mut u32;
+        f.debug_struct("Listener")
+            .field("event", &self.event)
+            .field("callback", &(a, b))
+            .finish()
+    }
+}
+
 impl<'a> Node<'a> {
+    /// Construct a new element node with the given tag name and children.
+    #[inline]
+    pub fn element<Listeners, Attributes, Children>(
+        bump: &'a Bump,
+        tag_name: &'a str,
+        listeners: Listeners,
+        attributes: Attributes,
+        children: Children,
+    ) -> Node<'a>
+    where
+        Listeners: 'a + AsRef<[Listener<'a>]>,
+        Attributes: 'a + AsRef<[Attribute<'a>]>,
+        Children: 'a + AsRef<[Node<'a>]>,
+    {
+        let children: &'a Children = bump.alloc(children);
+        let children: &'a [Node<'a>] = children.as_ref();
+
+        let listeners: &'a Listeners = bump.alloc(listeners);
+        let listeners: &'a [Listener<'a>] = listeners.as_ref();
+
+        let attributes: &'a Attributes = bump.alloc(attributes);
+        let attributes: &'a [Attribute<'a>] = attributes.as_ref();
+
+        Node::Element(ElementNode {
+            tag_name,
+            listeners,
+            attributes,
+            children,
+        })
+    }
+
     /// Is this node a text node?
     pub fn is_text(&self) -> bool {
         match self {
@@ -47,6 +112,12 @@ impl<'a> Node<'a> {
             Node::Element { .. } => true,
             _ => false,
         }
+    }
+
+    /// Construct a new text node with the given text.
+    #[inline]
+    pub fn text(text: &'a str) -> Node<'a> {
+        Node::Text(TextNode { text })
     }
 }
 
@@ -74,38 +145,42 @@ impl<'a> ElementNode<'a> {
     }
 }
 
-impl<'a> BumpAllocSafe for Node<'a> {}
-impl<'a> BumpAllocSafe for Attribute<'a> {}
+union CallbackFatPtr<'a> {
+    callback: ListenerCallback<'a>,
+    parts: (u32, u32),
+}
 
-impl<'a> Node<'a> {
-    /// Construct a new text node with the given text.
+impl Listener<'_> {
     #[inline]
-    pub fn text(text: &'a str) -> Node<'a> {
-        Node::Text(TextNode { text })
+    pub(crate) fn get_callback_parts(&self) -> (u32, u32) {
+        assert_eq!(
+            mem::size_of::<ListenerCallback>(),
+            mem::size_of::<CallbackFatPtr>()
+        );
+
+        unsafe {
+            let fat = CallbackFatPtr {
+                callback: self.callback,
+            };
+            let (a, b) = fat.parts;
+            debug_assert!(a != 0);
+            (a, b)
+        }
     }
+}
 
-    /// Construct a new element node with the given tag name and children.
-    #[inline]
-    pub fn element<Attributes, Children>(
-        bump: &'a Bump,
-        tag_name: &'a str,
-        attributes: Attributes,
-        children: Children,
-    ) -> Node<'a>
-    where
-        Attributes: 'a + BumpAllocSafe + AsRef<[Attribute<'a>]>,
-        Children: 'a + BumpAllocSafe + AsRef<[Node<'a>]>,
-    {
-        let children: &'a Children = bump.alloc(children);
-        let children: &'a [Node<'a>] = children.as_ref();
-
-        let attributes: &'a Attributes = bump.alloc(attributes);
-        let attributes: &'a [Attribute<'a>] = attributes.as_ref();
-
-        Node::Element(ElementNode {
-            tag_name,
-            attributes,
-            children,
-        })
+/// Utility function for creating event listeners and downcasting the component
+/// to its `RootRender` concrete type.
+pub fn on<'a, F>(bump: &'a Bump, event: &'a str, callback: F) -> Listener<'a>
+where
+    F: Fn(&mut dyn RootRender, VdomWeak, web_sys::Event) + 'static,
+{
+    Listener {
+        event,
+        callback: bump.alloc(
+            move |component: &mut dyn RootRender, vdom: VdomWeak, event: web_sys::Event| {
+                callback(component, vdom, event);
+            },
+        ),
     }
 }

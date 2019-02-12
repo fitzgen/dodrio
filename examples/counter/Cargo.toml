@@ -1,5 +1,5 @@
 [package]
-name = "dodrio-hello-world"
+name = "dodrio-counter"
 version = "0.1.0"
 authors = ["Nick Fitzgerald <fitzgen@gmail.com>"]
 edition = "2018"
@@ -10,15 +10,21 @@ crate-type = ["cdylib", "rlib"]
 [features]
 
 [dependencies]
-dodrio = { path = "../../.." }
-wasm-bindgen = "0.2"
 console_error_panic_hook = "0.1.1"
+console_log = "0.1.2"
+dodrio = { path = "../.." }
+log = "0.4.6"
+wasm-bindgen = "0.2"
 
 [dependencies.web-sys]
 version = "0.3.8"
 features = [
+  "console",
   "Document",
+  "Event",
+  "EventTarget",
   "HtmlElement",
+  "MouseEvent",
   "Node",
   "Window",
 ]
