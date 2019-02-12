@@ -27,7 +27,7 @@ use wasm_bindgen::UnwrapThrowExt;
 /// ## Example
 ///
 /// ```no_run
-/// use dodrio::{Bump, Node, Render};
+/// use dodrio::{bumpalo::Bump, Node, Render};
 ///
 /// pub struct MyComponent;
 ///
