@@ -332,6 +332,10 @@ impl VdomInnerExclusive {
 
         'outer1: for new_l in new {
             unsafe {
+                // Safety relies on removing `new_l` from the registry manually
+                // at the end of its lifetime. This happens when we invoke
+                // `clear_active_listeners` at the start of a new rendering
+                // phase.
                 registry.add(new_l);
             }
             for old_l in old {
