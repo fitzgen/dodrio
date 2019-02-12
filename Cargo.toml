@@ -49,4 +49,5 @@ members = [
   "./examples/counter",
   "./examples/hello-world",
   "./examples/input-form",
+  "./examples/todomvc",
 ]
