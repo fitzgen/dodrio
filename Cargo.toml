@@ -41,7 +41,8 @@ features = [
 ]
 
 [profile.release]
-# Tell `rustc` to optimize for small code size.
+incremental = false
+lto = true
 opt-level = "s"
 
 [workspace]
