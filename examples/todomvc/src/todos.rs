@@ -1,5 +1,5 @@
 //! Type definitions and `dodrio::Render` implementation for a collection of
-//! TODO items.
+//! todo items.
 
 use crate::controller::Controller;
 use crate::todo::{Todo, TodoActions};
@@ -15,7 +15,7 @@ use std::mem;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
-/// A collection of TODOs.
+/// A collection of todos.
 #[derive(Default, Serialize, Deserialize)]
 #[serde(rename = "todos-dodrio", bound = "")]
 pub struct Todos<C = Controller> {
@@ -33,25 +33,25 @@ pub struct Todos<C = Controller> {
 
 /// Actions for `Todos` that can be triggered by UI interactions.
 pub trait TodosActions: TodoActions {
-    /// Toggle the completion state of all TODO items.
+    /// Toggle the completion state of all todo items.
     fn toggle_all(root: &mut dyn RootRender, vdom: VdomWeak);
 
-    /// Update the draft TODO item's text.
+    /// Update the draft todo item's text.
     fn update_draft(root: &mut dyn RootRender, vdom: VdomWeak, draft: String);
 
-    /// Finish the current draft TODO item and add it to the collection of
-    /// TODOs.
+    /// Finish the current draft todo item and add it to the collection of
+    /// todos.
     fn finish_draft(root: &mut dyn RootRender, vdom: VdomWeak);
 
-    /// Change the TODO item visibility filtering to the given `Visibility`.
+    /// Change the todo item visibility filtering to the given `Visibility`.
     fn change_visibility(root: &mut dyn RootRender, vdom: VdomWeak, vis: Visibility);
 
-    /// Delete all completed TODO items.
+    /// Delete all completed todo items.
     fn delete_completed(root: &mut dyn RootRender, vdom: VdomWeak);
 }
 
 impl<C> Todos<C> {
-    /// Construct a new TODOs set.
+    /// Construct a new todos set.
     ///
     /// If an existing set is available in local storage, then us that,
     /// otherwise create a new set.
@@ -62,7 +62,7 @@ impl<C> Todos<C> {
         Self::from_local_storage().unwrap_or_default()
     }
 
-    /// Deserialize a set of TODOs from local storage.
+    /// Deserialize a set of todos from local storage.
     pub fn from_local_storage() -> Option<Self> {
         utils::local_storage()
             .get("todomvc-dodrio")
@@ -71,7 +71,7 @@ impl<C> Todos<C> {
             .and_then(|json| serde_json::from_str(&json).ok())
     }
 
-    /// Serialize this set of TODOs to local storage.
+    /// Serialize this set of todos to local storage.
     pub fn save_to_local_storage(&self) {
         let serialized = serde_json::to_string(self).unwrap_throw();
         utils::local_storage()
@@ -79,41 +79,41 @@ impl<C> Todos<C> {
             .unwrap_throw();
     }
 
-    /// Add a new TODO item to this collection.
+    /// Add a new todo item to this collection.
     pub fn add_todo(&mut self, todo: Todo<C>) {
         self.todos.push(todo);
     }
 
-    /// Delete the TODO with the given id.
+    /// Delete the todo with the given id.
     pub fn delete_todo(&mut self, id: usize) {
         self.todos.remove(id);
         self.fix_ids();
     }
 
-    /// Delete all completed TODO items.
+    /// Delete all completed todo items.
     pub fn delete_completed(&mut self) {
         self.todos.retain(|t| !t.is_complete());
         self.fix_ids();
     }
 
-    // Fix all TODO identifiers so that they match their index once again.
+    // Fix all todo identifiers so that they match their index once again.
     fn fix_ids(&mut self) {
         for (id, todo) in self.todos.iter_mut().enumerate() {
             todo.set_id(id);
         }
     }
 
-    /// Get a shared slice of the underlying set of TODO items.
+    /// Get a shared slice of the underlying set of todo items.
     pub fn todos(&self) -> &[Todo<C>] {
         &self.todos
     }
 
-    /// Get an exclusive slice of the underlying set of TODO items.
+    /// Get an exclusive slice of the underlying set of todo items.
     pub fn todos_mut(&mut self) -> &mut [Todo<C>] {
         &mut self.todos
     }
 
-    /// Set the draft TODO item text.
+    /// Set the draft todo item text.
     pub fn set_draft<S: Into<String>>(&mut self, draft: S) {
         self.draft = draft.into();
     }
@@ -123,12 +123,12 @@ impl<C> Todos<C> {
         mem::replace(&mut self.draft, String::new())
     }
 
-    /// Get the current visibility for these TODOs.
+    /// Get the current visibility for these todos.
     pub fn visibility(&self) -> Visibility {
         self.visibility
     }
 
-    /// Set the visibility for these TODOS.
+    /// Set the visibility for these todoS.
     pub fn set_visibility(&mut self, vis: Visibility) {
         self.visibility = vis;
     }

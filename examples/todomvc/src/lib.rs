@@ -24,7 +24,7 @@ pub fn run() -> Result<(), JsValue> {
     // Set up the logging for debugging if/when things go wrong.
     init_logging();
 
-    // Grab the TODO app container.
+    // Grab the todo app container.
     let document = utils::document();
     let container = document
         .query_selector(".todoapp")?

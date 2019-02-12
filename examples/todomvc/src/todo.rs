@@ -1,4 +1,4 @@
-//! Type definition and `dodrio::Render` implementation for a single TODO item.
+//! Type definition and `dodrio::Render` implementation for a single todo item.
 
 use crate::keys;
 use dodrio::{bumpalo::Bump, on, Attribute, Node, Render, RootRender, VdomWeak};
@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
 use wasm_bindgen::{prelude::*, JsCast};
 
-/// A single TODO item.
+/// A single todo item.
 #[derive(Serialize, Deserialize)]
 pub struct Todo<C> {
     id: usize,
@@ -20,24 +20,24 @@ pub struct Todo<C> {
     _controller: PhantomData<C>,
 }
 
-/// Actions on a single TODO item that can be triggered from the UI.
+/// Actions on a single todo item that can be triggered from the UI.
 pub trait TodoActions {
-    /// Toggle the completion state of the TODO item with the given id.
+    /// Toggle the completion state of the todo item with the given id.
     fn toggle_completed(root: &mut dyn RootRender, vdom: VdomWeak, id: usize);
 
-    /// Delete the TODO item with the given id.
+    /// Delete the todo item with the given id.
     fn delete(root: &mut dyn RootRender, vdom: VdomWeak, id: usize);
 
-    /// Begin editing the TODO item with the given id.
+    /// Begin editing the todo item with the given id.
     fn begin_editing(root: &mut dyn RootRender, vdom: VdomWeak, id: usize);
 
-    /// Update the edits for the TODO with the given id.
+    /// Update the edits for the todo with the given id.
     fn update_edits(root: &mut dyn RootRender, vdom: VdomWeak, id: usize, edits: String);
 
-    /// Finish editing the TODO with the given id.
+    /// Finish editing the todo with the given id.
     fn finish_edits(root: &mut dyn RootRender, vdom: VdomWeak, id: usize);
 
-    /// Cancel editing the TODO with the given id.
+    /// Cancel editing the todo with the given id.
     fn cancel_edits(root: &mut dyn RootRender, vdom: VdomWeak, id: usize);
 }
 
@@ -56,7 +56,7 @@ impl<C> Todo<C> {
         }
     }
 
-    /// Set this TODO item's id.
+    /// Set this todo item's id.
     pub fn set_id(&mut self, id: usize) {
         self.id = id;
     }
@@ -71,22 +71,22 @@ impl<C> Todo<C> {
         self.completed = to;
     }
 
-    /// Get this TODO's title.
+    /// Get this todo's title.
     pub fn title(&self) -> &str {
         &self.title
     }
 
-    /// Set this TODO item's title.
+    /// Set this todo item's title.
     pub fn set_title<S: Into<String>>(&mut self, title: S) {
         self.title = title.into();
     }
 
-    /// Set the edits for this TODO.
+    /// Set the edits for this todo.
     pub fn set_edits<S: Into<String>>(&mut self, edits: Option<S>) {
         self.edits = edits.map(Into::into);
     }
 
-    /// Take this TODO's edits, leaving `None` in their place.
+    /// Take this todo's edits, leaving `None` in their place.
     pub fn take_edits(&mut self) -> Option<String> {
         self.edits.take()
     }

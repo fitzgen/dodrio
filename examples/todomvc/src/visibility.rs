@@ -3,14 +3,14 @@
 use std::fmt;
 use std::str::FromStr;
 
-/// The visibility filtering for TODO items.
+/// The visibility filtering for todo items.
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub enum Visibility {
-    /// Show all TODOs.
+    /// Show all todos.
     All,
-    /// Show only active, incomplete TODOs.
+    /// Show only active, incomplete todos.
     Active,
-    /// Show only inactive, completed TODOs.
+    /// Show only inactive, completed todos.
     Completed,
 }
 

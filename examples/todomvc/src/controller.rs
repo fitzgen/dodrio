@@ -15,7 +15,7 @@ use std::ops::{Deref, DerefMut};
 ///
 /// One could imagine alternative controller implementations with `*Actions`
 /// trait implementations for (e.g.) testing that will assert various expected
-/// action methods are called after rendering TODO items and sending DOM events.
+/// action methods are called after rendering todo items and sending DOM events.
 #[derive(Default, Deserialize, Serialize)]
 pub struct Controller;
 

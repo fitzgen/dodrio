@@ -12,7 +12,7 @@ use wasm_bindgen::JsCast;
 /// Start the router.
 pub fn start(vdom: VdomWeak) {
     // Callback fired whenever the URL's hash fragment changes. Keeps the root
-    // TODOs collection's visibility in sync with the `#` fragment.
+    // todos collection's visibility in sync with the `#` fragment.
     let on_hash_change = move || {
         let new_vis = utils::hash()
             .and_then(|hash| {
