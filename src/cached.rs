@@ -88,7 +88,7 @@ impl<R> Cached<R> {
     ///     where
     ///         'a: 'bump,
     ///     {
-    ///         Node::element(bump, "p", [], [
+    ///         Node::element(bump, "p", [], [], [
     ///             Node::text("Hello, "),
     ///             Node::text(&self.who),
     ///             Node::text("!"),

@@ -3,6 +3,9 @@
 //! ## Example
 //!
 //! ```no_run
+//! use dodrio::{on, bumpalo::Bump, Attribute, Node, Render};
+//! use wasm_bindgen::UnwrapThrowExt;
+//!
 //! /// A component that greets someone.
 //! pub struct Hello<'who> {
 //!     who: &'who str,
@@ -29,10 +32,10 @@
 //!             [on(bump, "click", |root, _vdom, _event| {
 //!                 let hello = root.unwrap_mut::<Hello>();
 //!                 let window = web_sys::window().expect_throw("should have a `Window` on the Web");
-//!                 window.alert(hello.who);
+//!                 window.alert_with_message(hello.who);
 //!             })],
 //!             // Attributes.
-//!             [Attribute { name: "id", value: &id }],
+//!             [Attribute { name: "id", value: id.into_bump_str() }],
 //!             // Child nodes.
 //!             [
 //!                 Node::text("Hello, "),
