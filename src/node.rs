@@ -48,9 +48,13 @@ pub struct Listener<'a> {
     pub callback: ListenerCallback<'a>,
 }
 
+/// An attribute on a DOM node, such as `id="my-thing"` or
+/// `href="https://example.com"`.
 #[derive(Clone, Debug)]
 pub struct Attribute<'a> {
+    /// The attribute name, such as `id`.
     pub name: &'a str,
+    /// The attribute value, such as `"my-thing"`.
     pub value: &'a str,
 }
 
@@ -63,6 +67,20 @@ impl fmt::Debug for Listener<'_> {
             .field("event", &self.event)
             .field("callback", &(a, b))
             .finish()
+    }
+}
+
+impl<'a> Attribute<'a> {
+    /// Certain attributes are considered "volatile" and can change via user
+    /// input that we can't see when diffing against the old virtual DOM. For
+    /// these attributes, we want to always re-set the attribute on the physical
+    /// DOM node, even if the old and new virtual DOM nodes have the same value.
+    #[inline]
+    pub(crate) fn is_volatile(&self) -> bool {
+        match self.name {
+            "value" | "checked" | "selected" => true,
+            _ => false,
+        }
     }
 }
 

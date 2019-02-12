@@ -100,7 +100,8 @@ impl ChangeList {
 }
 
 #[repr(u32)]
-pub enum ChangeDiscriminant {
+#[derive(Clone, Copy, Debug)]
+enum ChangeDiscriminant {
     /// Immediates: `(pointer, length)`
     ///
     /// Stack: `[... TextNode] -> [... TextNode]`
