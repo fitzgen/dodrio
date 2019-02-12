@@ -70,6 +70,20 @@ impl fmt::Debug for Listener<'_> {
     }
 }
 
+impl<'a> Attribute<'a> {
+    /// Certain attributes are considered "volatile" and can change via user
+    /// input that we can't see when diffing against the old virtual DOM. For
+    /// these attributes, we want to always re-set the attribute on the physical
+    /// DOM node, even if the old and new virtual DOM nodes have the same value.
+    #[inline]
+    pub(crate) fn is_volatile(&self) -> bool {
+        match self.name {
+            "value" | "checked" | "selected" => true,
+            _ => false,
+        }
+    }
+}
+
 impl<'a> Node<'a> {
     /// Construct a new element node with the given tag name and children.
     #[inline]

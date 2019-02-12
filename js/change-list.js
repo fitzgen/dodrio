@@ -49,7 +49,20 @@ const OP_TABLE = [
     const pointer2 = mem32[i++];
     const length2 = mem32[i++];
     const value = string(mem8, pointer2, length2);
-    top(changeList.stack).setAttribute(name, value);
+    const node = top(changeList.stack);
+    node.setAttribute(name, value);
+
+    // Some attributes are "volatile" and don't work through `setAttribute`.
+    if (name === "value") {
+      node.value = value;
+    }
+    if (name === "checked") {
+      node.checked = true;
+    }
+    if (name === "selected") {
+      node.selected = true;
+    }
+
     return i;
   },
 
@@ -58,7 +71,20 @@ const OP_TABLE = [
     const pointer = mem32[i++];
     const length = mem32[i++];
     const name = string(mem8, pointer, length);
-    top(changeList.stack).removeAttribute(name);
+    const node = top(changeList.stack);
+    node.removeAttribute(name);
+
+    // Some attributes are "volatile" and don't work through `removeAttribute`.
+    if (name === "value") {
+      node.value = null;
+    }
+    if (name === "checked") {
+      node.checked = false;
+    }
+    if (name === "selected") {
+      node.selected = false;
+    }
+
     return i;
   },
 

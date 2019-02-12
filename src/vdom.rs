@@ -364,17 +364,22 @@ impl VdomInnerExclusive {
         // Do O(n^2) passes to add/update and remove attributes, since
         // there are almost always very few attributes.
         'outer: for new_attr in new {
-            for old_attr in old {
-                if old_attr.name == new_attr.name {
-                    if old_attr.value != new_attr.value {
-                        self.change_list
-                            .emit_set_attribute(new_attr.name, new_attr.value);
+            if new_attr.is_volatile() {
+                self.change_list
+                    .emit_set_attribute(new_attr.name, new_attr.value);
+            } else {
+                for old_attr in old {
+                    if old_attr.name == new_attr.name {
+                        if old_attr.value != new_attr.value {
+                            self.change_list
+                                .emit_set_attribute(new_attr.name, new_attr.value);
+                        }
+                        continue 'outer;
                     }
-                    continue 'outer;
                 }
+                self.change_list
+                    .emit_set_attribute(new_attr.name, new_attr.value);
             }
-            self.change_list
-                .emit_set_attribute(new_attr.name, new_attr.value);
         }
 
         'outer2: for old_attr in old {
