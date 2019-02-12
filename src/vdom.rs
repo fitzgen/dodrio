@@ -515,7 +515,9 @@ impl VdomWeak {
         }
     }
 
-    /// TODO
+    /// Replace the root rendering component with the new `root`.
+    ///
+    /// Returns a future that resolves to the *old* root component.
     pub fn set_component(
         self,
         root: Box<dyn RootRender>,
