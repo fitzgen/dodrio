@@ -20,16 +20,15 @@ use wasm_bindgen::prelude::*;
 /// Since this is marked `#[wasm_bindgen(start)]` it is automatically invoked
 /// once the wasm module instantiated on the Web page.
 #[wasm_bindgen(start)]
-pub fn run() {
+pub fn run() -> Result<(), JsValue> {
     // Set up the logging for debugging if/when things go wrong.
     init_logging();
 
     // Grab the TODO app container.
     let document = utils::document();
     let container = document
-        .query_selector(".todoapp")
-        .unwrap_throw()
-        .unwrap_throw();
+        .query_selector(".todoapp")?
+        .ok_or_else(|| js_sys::Error::new("could not find `.todoapp` container"))?;
 
     // Create a new `Todos` render component.
     let todos = Todos::<Controller>::new();
@@ -42,14 +41,16 @@ pub fn run() {
 
     // Run the virtual DOM forever and don't unmount it.
     vdom.forget();
+
+    Ok(())
 }
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "logging")] {
         fn init_logging() {
-            use log::*;
             console_error_panic_hook::set_once();
-            console_log::init_with_level(Level::Trace).expect_throw("should initialize logging OK");
+            console_log::init_with_level(log::Level::Trace)
+                .expect_throw("should initialize logging OK");
         }
     } else {
         fn init_logging() {
