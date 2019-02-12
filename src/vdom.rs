@@ -493,18 +493,6 @@ where
     *h.borrow_mut() = Some(f);
 }
 
-trait CellOptionExt<T> {
-    fn take(&self) -> Option<T>;
-}
-
-impl<T> CellOptionExt<T> for Cell<Option<T>> {
-    fn take(&self) -> Option<T> {
-        let temp = Cell::new(None);
-        self.swap(&temp);
-        temp.into_inner()
-    }
-}
-
 /// An operation failed because the virtual DOM was already dropped and
 /// unmounted.
 #[derive(Debug)]
