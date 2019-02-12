@@ -8,7 +8,7 @@ edition = "2018"
 default = []
 
 [dependencies]
-bumpalo = "2.0.0"
+bumpalo = "2.1.0"
 futures = "0.1"
 wasm-bindgen = "0.2.34"
 wasm-bindgen-futures = "0.3.10"
