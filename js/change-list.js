@@ -12,21 +12,16 @@ function string(mem, pointer, length) {
 const OP_TABLE = [
   // 0
   function setText(changeList, mem8, mem32, i) {
-    // console.log("setText");
     const pointer = mem32[i++];
     const length = mem32[i++];
     const str = string(mem8, pointer, length);
-    // console.log("  str =", str);
-    // console.log("  top(changeList.stack) =", top(changeList.stack));
     top(changeList.stack).textContent = str;
     return i;
   },
 
   // 1
   function removeSelfAndNextSiblings(changeList, mem8, mem32, i) {
-    // console.log("removeSelfAndNextSiblings");
     const node = changeList.stack.pop();
-    // console.log("  top(changeList.stack) =", node);
     let sibling = node.nextSibling;
     while (sibling) {
       const temp = sibling.nextSibling;
@@ -39,11 +34,8 @@ const OP_TABLE = [
 
   // 2
   function replaceWith(changeList, mem8, mem32, i) {
-    // console.log("replaceWith");
     const newNode = changeList.stack.pop();
-    // console.log("  newNode =", newNode);
     const oldNode = changeList.stack.pop();
-    // console.log("  oldNode =", oldNode);
     oldNode.replaceWith(newNode);
     changeList.stack.push(newNode);
     return i;
@@ -51,43 +43,33 @@ const OP_TABLE = [
 
   // 3
   function setAttribute(changeList, mem8, mem32, i) {
-    // console.log("setAttribute");
     const pointer1 = mem32[i++];
     const length1 = mem32[i++];
     const name = string(mem8, pointer1, length1);
-    // console.log("  name =", name);
     const pointer2 = mem32[i++];
     const length2 = mem32[i++];
     const value = string(mem8, pointer2, length2);
-    // console.log("  value =", value);
-    // console.log("  top(changeList.stack) =", top(changeList.stack));
     top(changeList.stack).setAttribute(name, value);
     return i;
   },
 
   // 4
   function removeAttribute(changeList, mem8, mem32, i) {
-    // console.log("removeAttribute");
     const pointer = mem32[i++];
     const length = mem32[i++];
     const name = string(mem8, pointer, length);
-    // console.log("  name =", name);
     top(changeList.stack).removeAttribute(name);
     return i;
   },
 
   // 5
   function pushFirstChild(changeList, mem8, mem32, i) {
-    // console.log("pushFirstChild");
-    // console.log("  top(changeList.stack) =", top(changeList.stack));
     changeList.stack.push(top(changeList.stack).firstChild);
     return i;
   },
 
   // 6
   function popPushNextSibling(changeList, mem8, mem32, i) {
-    // console.log("popPushNextSibling");
-    // console.log("  top(changeList.stack) =", top(changeList.stack));
     const node = changeList.stack.pop();
     changeList.stack.push(node.nextSibling);
     return i;
@@ -95,16 +77,12 @@ const OP_TABLE = [
 
   // 7
   function pop(changeList, mem8, mem32, i) {
-    // console.log("pop");
-    // console.log("  top(changeList.stack) =", top(changeList.stack));
     changeList.stack.pop();
     return i;
   },
 
   // 8
   function appendChild(changeList, mem8, mem32, i) {
-    // console.log("appendChild");
-    // console.log("  top(changeList.stack) =", top(changeList.stack));
     const child = changeList.stack.pop();
     top(changeList.stack).appendChild(child);
     return i;
@@ -112,24 +90,18 @@ const OP_TABLE = [
 
   // 9
   function createTextNode(changeList, mem8, mem32, i) {
-    // console.log("appendChild");
     const pointer = mem32[i++];
     const length = mem32[i++];
     const text = string(mem8, pointer, length);
-    // console.log("  text =", text);
-    // console.log("  top(changeList.stack) =", top(changeList.stack));
     changeList.stack.push(document.createTextNode(text));
     return i;
   },
 
   // 10
   function createElement(changeList, mem8, mem32, i) {
-    // console.log("createElement");
     const pointer = mem32[i++];
     const length = mem32[i++];
     const tagName = string(mem8, pointer, length);
-    // console.log("  tagName =", tagName);
-    // console.log("  top(changeList.stack) =", top(changeList.stack));
     changeList.stack.push(document.createElement(tagName));
     return i;
   },
@@ -224,7 +196,6 @@ class ChangeList {
   }
 
   applyChanges(memory) {
-    // console.log("======== ChangeList.prototype.applyChanges ==============================");
     if (this.ranges.length == 0) {
       return;
     }
@@ -247,9 +218,6 @@ class ChangeList {
     const end = (start + len) / 4;
     for (let i = start / 4; i < end; ) {
       const op = mem32[i++];
-      // console.log();
-      // console.log(OP_TABLE[op].name);
-      // console.log(this.stack);
       i = OP_TABLE[op](this, mem8, mem32, i);
     }
   }
