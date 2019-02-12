@@ -21,9 +21,6 @@ most important are:
 ## Build
 
 ```
-# Get the TodoMVC CSS styles.
-npm install
-
 wasm-pack build --target no-modules
 ```
 
