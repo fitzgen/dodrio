@@ -1,12 +1,12 @@
 use super::{assert_rendered, before_after, create_element, RenderFn};
-use dodrio::{Attribute, Node, Vdom};
+use dodrio::{builder::*, Vdom};
 use futures::prelude::*;
 use std::rc::Rc;
 use wasm_bindgen_test::*;
 
 #[wasm_bindgen_test]
 fn render_initial_text() {
-    let hello = Rc::new(RenderFn(|_bump| Node::text("hello")));
+    let hello = Rc::new(RenderFn(|_bump| text("hello")));
 
     let container = create_element("div");
     let _vdom = Vdom::new(&container, hello.clone());
@@ -16,19 +16,10 @@ fn render_initial_text() {
 #[wasm_bindgen_test]
 fn render_initial_node() {
     let hello = Rc::new(RenderFn(|bump| {
-        Node::element(
-            bump,
-            "div",
-            [],
-            [Attribute {
-                name: "id",
-                value: "hello-world",
-            }],
-            [
-                Node::text("Hello "),
-                Node::element(bump, "span", [], [], [Node::text("World!")]),
-            ],
-        )
+        div(bump)
+            .attr("id", "hello-world")
+            .children([text("Hello "), span(bump).child(text("World!")).finish()])
+            .finish()
     }));
 
     let container = create_element("div");
@@ -39,7 +30,7 @@ fn render_initial_node() {
 #[wasm_bindgen_test]
 fn container_is_emptied_upon_drop() {
     let container = create_element("div");
-    let vdom = Vdom::new(&container, RenderFn(|_bump| Node::text("blah")));
+    let vdom = Vdom::new(&container, RenderFn(|_bump| text("blah")));
     drop(vdom);
     assert!(container.first_child().is_none());
 }
@@ -47,206 +38,206 @@ fn container_is_emptied_upon_drop() {
 before_after! {
     same_text {
         before(_bump) {
-            Node::text("hello")
+            text("hello")
         }
         after(_bump) {
-            Node::text("hello")
+            text("hello")
         }
     }
 
     update_text {
         before(_bump) {
-            Node::text("before")
+            text("before")
         }
         after(_bump) {
-            Node::text("after")
+            text("after")
         }
     }
 
     replace_text_with_elem {
         before(_bump) {
-            Node::text("before")
+            text("before")
         }
         after(bump) {
-            Node::element(bump, "div", [], [], [])
+            div(bump).finish()
         }
     }
 
     replace_elem_with_text {
         before(bump) {
-            Node::element(bump, "div", [], [], [])
+            div(bump).finish()
         }
         after(_bump) {
-            Node::text("before")
+            text("before")
         }
     }
 
     same_elem {
         before(bump) {
-            Node::element(bump, "div", [], [], [])
+            div(bump).finish()
         }
         after(bump) {
-            Node::element(bump, "div", [], [], [])
+            div(bump).finish()
         }
     }
 
     elems_with_different_tag_names {
         before(bump) {
-            Node::element(bump, "span", [], [], [])
+            span(bump).finish()
         }
         after(bump) {
-            Node::element(bump, "div", [], [], [])
+            div(bump).finish()
         }
     }
 
     same_tag_name_update_attribute {
         before(bump) {
-            Node::element(bump, "div", [], [Attribute { name: "value", value: "1" }], [])
+            div(bump).attr("value", "1").finish()
         }
         after(bump) {
-            Node::element(bump, "div", [], [Attribute { name: "value", value: "2" }], [])
+            div(bump).attr("value", "2").finish()
         }
     }
 
     same_tag_name_remove_attribute {
         before(bump) {
-            Node::element(bump, "div", [], [Attribute { name: "value", value: "1" }], [])
+            div(bump).attr("value", "1").finish()
         }
         after(bump) {
-            Node::element(bump, "div", [], [], [])
+            div(bump).finish()
         }
     }
 
     same_tag_name_add_attribute {
         before(bump) {
-            Node::element(bump, "div", [], [], [])
+            div(bump).finish()
         }
         after(bump) {
-            Node::element(bump, "div", [], [Attribute { name: "value", value: "2" }], [])
+            div(bump).attr("value", "2").finish()
         }
     }
 
     same_tag_name_many_attributes {
         before(bump) {
-            Node::element(bump, "div", [], [
-                Attribute { name: "before-1", value: "1" },
-                Attribute { name: "shared-1", value: "1" },
-                Attribute { name: "modified-1", value: "1" },
-                Attribute { name: "before-2", value: "2" },
-                Attribute { name: "shared-2", value: "2" },
-                Attribute { name: "modified-2", value: "2" },
-                Attribute { name: "before-3", value: "3" },
-                Attribute { name: "shared-3", value: "3" },
-                Attribute { name: "modified-3", value: "3" },
-            ], [])
+            div(bump)
+                .attr("before-1", "1")
+                .attr("shared-1", "1")
+                .attr("modified-1", "1")
+                .attr("before-2", "2")
+                .attr("shared-2", "2")
+                .attr("modified-2", "2")
+                .attr("before-3", "3")
+                .attr("shared-3", "3")
+                .attr("modified-3", "3")
+                .finish()
         }
         after(bump) {
-            Node::element(bump, "div", [], [
-                Attribute { name: "after-1", value: "1" },
-                Attribute { name: "shared-1", value: "1" },
-                Attribute { name: "modified-1", value: "100" },
-                Attribute { name: "after-2", value: "2" },
-                Attribute { name: "shared-2", value: "2" },
-                Attribute { name: "modified-2", value: "200" },
-                Attribute { name: "after-3", value: "3" },
-                Attribute { name: "shared-3", value: "3" },
-                Attribute { name: "modified-3", value: "300" },
-            ], [])
+            div(bump)
+                .attr("after-1", "1")
+                .attr("shared-1", "1")
+                .attr("modified-1", "100")
+                .attr("after-2", "2")
+                .attr("shared-2", "2")
+                .attr("modified-2", "200")
+                .attr("after-3", "3")
+                .attr("shared-3", "3")
+                .attr("modified-3", "300")
+                .finish()
         }
     }
 
     same_tag_same_children {
         before(bump) {
-            Node::element(bump, "div", [], [], [
-                Node::text("child")
-            ])
+            div(bump).child(text("child")).finish()
         }
         after(bump) {
-            Node::element(bump, "div", [], [], [
-                Node::text("child")
-            ])
+            div(bump).child(text("child")).finish()
         }
     }
 
     same_tag_update_child {
         before(bump) {
-            Node::element(bump, "div", [], [], [
-                Node::text("before")
-            ])
+            div(bump).child(text("before")).finish()
         }
         after(bump) {
-            Node::element(bump, "div", [], [], [
-                Node::text("after")
-            ])
+            div(bump).child(text("after")).finish()
         }
     }
 
     same_tag_add_child {
         before(bump) {
-            Node::element(bump, "div", [], [], [])
+            div(bump).finish()
         }
         after(bump) {
-            Node::element(bump, "div", [], [], [
-                Node::text("child")
-            ])
+            div(bump).child(text("child")).finish()
         }
     }
 
     same_tag_remove_child {
         before(bump) {
-            Node::element(bump, "div", [], [], [
-                Node::text("child")
-            ])
+            div(bump).child(text("child")).finish()
         }
         after(bump) {
-            Node::element(bump, "div", [], [], [])
+            div(bump).finish()
         }
     }
 
     same_tag_update_many_children {
         before(bump) {
-            Node::element(bump, "div", [], [], [
-                Node::element(bump, "div", [], [], []),
-                Node::element(bump, "span", [], [], []),
-                Node::element(bump, "p", [], [], []),
-            ])
+            div(bump)
+                .children([
+                    div(bump).finish(),
+                    span(bump).finish(),
+                    p(bump).finish(),
+                ])
+                .finish()
         }
         after(bump) {
-            Node::element(bump, "div", [], [], [
-                Node::element(bump, "span", [], [], []),
-                Node::element(bump, "p", [], [], []),
-                Node::element(bump, "div", [], [], []),
-            ])
+            div(bump)
+                .children([
+                    span(bump).finish(),
+                    p(bump).finish(),
+                    div(bump).finish(),
+                ])
+                .finish()
         }
     }
 
     same_tag_remove_many_children {
         before(bump) {
-            Node::element(bump, "div", [], [], [
-                Node::element(bump, "div", [], [], []),
-                Node::element(bump, "span", [], [], []),
-                Node::element(bump, "p", [], [], []),
-            ])
+            div(bump)
+                .children([
+                    div(bump).finish(),
+                    span(bump).finish(),
+                    p(bump).finish(),
+                ])
+                .finish()
         }
         after(bump) {
-            Node::element(bump, "div", [], [], [
-                Node::element(bump, "div", [], [], []),
-            ])
+            div(bump)
+                .children([
+                    div(bump).finish(),
+                ])
+                .finish()
         }
     }
 
     same_tag_add_many_children {
         before(bump) {
-            Node::element(bump, "div", [], [], [
-                Node::element(bump, "div", [], [], []),
-            ])
+            div(bump)
+                .children([
+                    div(bump).finish(),
+                ])
+                .finish()
         }
         after(bump) {
-            Node::element(bump, "div", [], [], [
-                Node::element(bump, "div", [], [], []),
-                Node::element(bump, "span", [], [], []),
-                Node::element(bump, "p", [], [], []),
-            ])
+            div(bump)
+                .children([
+                    div(bump).finish(),
+                    span(bump).finish(),
+                    p(bump).finish(),
+                ])
+                .finish()
         }
     }
 }
