@@ -87,14 +87,8 @@ where
     /// // Create a `<div>` with a fixed-size array of two attributes.
     /// let my_div = div(&b)
     ///     .attributes([
-    ///         Attribute {
-    ///             name: "id",
-    ///             value: "my-div",
-    ///         },
-    ///         Attribute {
-    ///             name: "class",
-    ///             value: "notification",
-    ///         },
+    ///         attr("id", "my-div"),
+    ///         attr("class", "notification"),
     ///     ])
     ///     .finish();
     /// ```
@@ -845,4 +839,20 @@ builder_constructors! {
 #[inline]
 pub fn text<'a>(contents: &'a str) -> Node<'a> {
     Node::text(contents)
+}
+
+/// Construct an attribute for an element.
+///
+/// # Example
+///
+/// This example creates the `id="my-id"` for some element like `<div
+/// id="my-id"/>`.
+///
+/// ```no_run
+/// use dodrio::builder::*;
+///
+/// let my_id_attr = attr("id", "my-id");
+/// ```
+pub fn attr<'a>(name: &'a str, value: &'a str) -> Attribute<'a> {
+    Attribute { name, value }
 }

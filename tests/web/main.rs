@@ -103,13 +103,13 @@ pub fn assert_rendered<R: Render>(container: &web_sys::Element, r: &R) {
         );
         for attr in expected {
             let actual_attr = actual
-                .get_named_item(attr.name)
-                .expect(&format!("should have attribute \"{}\"", attr.name));
+                .get_named_item(attr.name())
+                .expect(&format!("should have attribute \"{}\"", attr.name()));
             assert_eq!(
                 actual_attr.value(),
-                attr.value,
+                attr.value(),
                 "actual attr value == expected attr value for attr \"{}\"",
-                attr.name
+                attr.name()
             );
         }
     }

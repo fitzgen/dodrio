@@ -52,10 +52,8 @@ pub struct Listener<'a> {
 /// `href="https://example.com"`.
 #[derive(Clone, Debug)]
 pub struct Attribute<'a> {
-    /// The attribute name, such as `id`.
-    pub name: &'a str,
-    /// The attribute value, such as `"my-thing"`.
-    pub value: &'a str,
+    pub(crate) name: &'a str,
+    pub(crate) value: &'a str,
 }
 
 impl fmt::Debug for Listener<'_> {
@@ -71,6 +69,18 @@ impl fmt::Debug for Listener<'_> {
 }
 
 impl<'a> Attribute<'a> {
+    /// Get this attribute's name, such as `"id"` in `<div id="my-thing" />`.
+    #[inline]
+    pub fn name(&self) -> &'a str {
+        self.name
+    }
+
+    /// The attribute value, such as `"my-thing"` in `<div id="my-thing" />`.
+    #[inline]
+    pub fn value(&self) -> &'a str {
+        self.value
+    }
+
     /// Certain attributes are considered "volatile" and can change via user
     /// input that we can't see when diffing against the old virtual DOM. For
     /// these attributes, we want to always re-set the attribute on the physical
