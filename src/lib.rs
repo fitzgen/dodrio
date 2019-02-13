@@ -69,6 +69,8 @@ mod node;
 mod render;
 mod vdom;
 
+pub mod builder;
+
 // Re-export items at the top level.
 pub use self::cached::Cached;
 pub use self::node::{on, Attribute, ElementNode, Listener, ListenerCallback, Node, TextNode};
