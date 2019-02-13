@@ -10,9 +10,9 @@ pub mod todos;
 pub mod utils;
 pub mod visibility;
 
-use controller::Controller;
+use crate::controller::Controller;
+use crate::todos::Todos;
 use dodrio::Vdom;
-use todos::Todos;
 use wasm_bindgen::prelude::*;
 
 /// Run the TodoMVC app!

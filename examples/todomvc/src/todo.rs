@@ -1,7 +1,7 @@
 //! Type definition and `dodrio::Render` implementation for a single todo item.
 
 use crate::keys;
-use dodrio::{bumpalo::Bump, on, Attribute, Node, Render, RootRender, VdomWeak};
+use dodrio::{bumpalo::Bump, Node, Render, RootRender, VdomWeak};
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
 use wasm_bindgen::{prelude::*, JsCast};
@@ -93,137 +93,83 @@ impl<C> Todo<C> {
 }
 
 impl<C: TodoActions> Render for Todo<C> {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> dodrio::Node<'bump>
+    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
     where
         'a: 'bump,
     {
-        use dodrio::bumpalo::{self, collections::String};
-
-        let mut class = String::new_in(bump);
-        if self.completed {
-            class.push_str("completed ");
-        }
-        if self.edits.is_some() {
-            class.push_str("editing");
-        }
+        use dodrio::{
+            builder::*,
+            bumpalo::{self, collections::String},
+        };
 
         let id = self.id;
         let title = self.edits.as_ref().unwrap_or(&self.title);
-        let elem_id = bumpalo::format!(in bump, "todo-{}", id);
 
-        let mut input_attrs = bumpalo::vec![
-            in bump;
-            Attribute {
-                name: "class",
-                value: "toggle",
-            },
-            Attribute {
-                name: "type",
-                value: "checkbox",
-            }
-        ];
-        if self.completed {
-            input_attrs.push(Attribute {
-                name: "checked",
-                value: "",
-            });
-        }
-        let input_attrs = input_attrs.into_bump_slice();
-
-        Node::element(
-            bump,
-            "li",
-            [],
-            [Attribute {
-                name: "class",
-                value: class.into_bump_str(),
-            }],
-            [
-                Node::element(
-                    bump,
-                    "div",
-                    [],
-                    [Attribute {
-                        name: "class",
-                        value: "view",
-                    }],
-                    [
-                        Node::element(
-                            bump,
-                            "input",
-                            [on(bump, "click", move |root, vdom, _event| {
+        li(bump)
+            .attr("class", {
+                let mut class = String::new_in(bump);
+                if self.completed {
+                    class.push_str("completed ");
+                }
+                if self.edits.is_some() {
+                    class.push_str("editing");
+                }
+                class.into_bump_str()
+            })
+            .children([
+                div(bump)
+                    .attr("class", "view")
+                    .children([
+                        input(bump)
+                            .attr("class", "toggle")
+                            .attr("type", "checkbox")
+                            .bool_attr("checked", self.completed)
+                            .on("click", move |root, vdom, _event| {
                                 C::toggle_completed(root, vdom, id);
-                            })],
-                            input_attrs,
-                            [],
-                        ),
-                        Node::element(
-                            bump,
-                            "label",
-                            [on(bump, "dblclick", move |root, vdom, _event| {
+                            })
+                            .finish(),
+                        label(bump)
+                            .on("dblclick", move |root, vdom, _event| {
                                 C::begin_editing(root, vdom, id);
-                            })],
-                            [],
-                            [Node::text(title)],
-                        ),
-                        Node::element(
-                            bump,
-                            "button",
-                            [on(bump, "click", move |root, vdom, _event| {
+                            })
+                            .children([text(title)])
+                            .finish(),
+                        button(bump)
+                            .attr("class", "destroy")
+                            .on("click", move |root, vdom, _event| {
                                 C::delete(root, vdom, id);
-                            })],
-                            [Attribute {
-                                name: "class",
-                                value: "destroy",
-                            }],
-                            [],
-                        ),
-                    ],
-                ),
-                Node::element(
-                    bump,
-                    "input",
-                    [
-                        on(bump, "input", move |root, vdom, event| {
-                            let input = event
-                                .target()
-                                .unwrap_throw()
-                                .unchecked_into::<web_sys::HtmlInputElement>();
-                            C::update_edits(root, vdom, id, input.value());
-                        }),
-                        on(bump, "blur", move |root, vdom, _event| {
-                            C::finish_edits(root, vdom, id);
-                        }),
-                        on(bump, "keydown", move |root, vdom, event| {
-                            let event = event.unchecked_into::<web_sys::KeyboardEvent>();
-                            match event.key_code() {
-                                keys::ENTER => C::finish_edits(root, vdom, id),
-                                keys::ESCAPE => C::cancel_edits(root, vdom, id),
-                                _ => {}
-                            }
-                        }),
-                    ],
-                    [
-                        Attribute {
-                            name: "class",
-                            value: "edit",
-                        },
-                        Attribute {
-                            name: "value",
-                            value: title,
-                        },
-                        Attribute {
-                            name: "name",
-                            value: "title",
-                        },
-                        Attribute {
-                            name: "id",
-                            value: elem_id.into_bump_str(),
-                        },
-                    ],
-                    [],
-                ),
-            ],
-        )
+                            })
+                            .finish(),
+                    ])
+                    .finish(),
+                input(bump)
+                    .attr("class", "edit")
+                    .attr("value", title)
+                    .attr("name", "title")
+                    .attr(
+                        "id",
+                        bumpalo::format!(in bump, "todo-{}", id).into_bump_str(),
+                    )
+                    .on("input", move |root, vdom, event| {
+                        let input = event
+                            .target()
+                            .unwrap_throw()
+                            .unchecked_into::<web_sys::HtmlInputElement>();
+                        C::update_edits(root, vdom, id, input.value());
+                    })
+                    .on("blur", move |root, vdom, _event| {
+                        C::finish_edits(root, vdom, id);
+                    })
+                    .on("keydown", move |root, vdom, event| {
+                        let event = event.unchecked_into::<web_sys::KeyboardEvent>();
+                        match event.key_code() {
+                            keys::ENTER => C::finish_edits(root, vdom, id),
+                            keys::ESCAPE => C::cancel_edits(root, vdom, id),
+                            _ => {}
+                        }
+                    })
+                    .finish(),
+            ])
+            .finish()
     }
 }
