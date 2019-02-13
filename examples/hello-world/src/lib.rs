@@ -15,17 +15,10 @@ impl<'who> Render for Hello<'who> {
     where
         'a: 'bump,
     {
-        Node::element(
-            bump,
-            // The element's tag name. In this case a `<p>` element.
-            "p",
-            // Event listeners. Empty in this case.
-            [],
-            // Attributes. Again, empty in this case.
-            [],
-            // Child nodes.
-            [Node::text("Hello, "), Node::text(self.who), Node::text("!")],
-        )
+        use dodrio::builder::*;
+        p(bump)
+            .children([text("Hello, "), text(self.who), text("!")])
+            .finish()
     }
 }
 
