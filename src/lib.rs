@@ -23,34 +23,28 @@
 //!     where
 //!         'a: 'bump,
 //!     {
+//!         use dodrio::builder::*;
+//!
 //!         let id = bumpalo::format!(in bump, "hello-{}", self.who);
-//!         Node::element(
-//!             bump,
-//!             // The element's tag name. In this case a `<p>` element.
-//!             "p",
-//!             // Listeners.
-//!             [on(bump, "click", |root, _vdom, _event| {
+//!
+//!         div(bump)
+//!            .attr("id", id.into_bump_str())
+//!            .on("click", |root, _vdom, _event| {
 //!                 let hello = root.unwrap_mut::<Hello>();
-//!                 let window = web_sys::window().expect_throw("should have a `Window` on the Web");
-//!                 window.alert_with_message(hello.who);
-//!             })],
-//!             // Attributes.
-//!             [Attribute { name: "id", value: id.into_bump_str() }],
-//!             // Child nodes.
-//!             [
-//!                 Node::text("Hello, "),
-//!                 Node::element(
-//!                     bump,
-//!                     "strong",
-//!                     [],
-//!                     [],
-//!                     [
-//!                         Node::text(self.who),
-//!                         Node::text("!"),
-//!                     ],
-//!                 ),
-//!             ],
-//!         )
+//!                 web_sys::window()
+//!                     .expect_throw("should have a `Window` on the Web")
+//!                     .alert_with_message(hello.who);
+//!             })
+//!             .children([
+//!                 text("Hello, "),
+//!                 strong(bump)
+//!                     .children([
+//!                         text(self.who),
+//!                         text("!"),
+//!                     ])
+//!                     .finish(),
+//!             ])
+//!             .finish()
 //!     }
 //! }
 //! ```

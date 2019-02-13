@@ -89,11 +89,10 @@ impl<R> Cached<R> {
     ///     where
     ///         'a: 'bump,
     ///     {
-    ///         Node::element(bump, "p", [], [], [
-    ///             Node::text("Hello, "),
-    ///             Node::text(&self.who),
-    ///             Node::text("!"),
-    ///         ])
+    ///         use dodrio::builder::*;
+    ///         p(bump)
+    ///             .children([text("Hello, "), text(&self.who), text("!")])
+    ///             .finish()
     ///     }
     /// }
     ///

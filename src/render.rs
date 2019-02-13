@@ -36,7 +36,15 @@ use wasm_bindgen::UnwrapThrowExt;
 ///     where
 ///         'a: 'bump
 ///     {
-///         Node::text("This is my component rendered!")
+///         use dodrio::builder::*;
+///
+///         p(bump)
+///             .children([
+///                 text("This is "),
+///                 strong(bump).children([text("my component")]).finish(),
+///                 text(" rendered!"),
+///             ])
+///             .finish()
 ///     }
 /// }
 /// ```
