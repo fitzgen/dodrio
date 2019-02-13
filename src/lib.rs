@@ -3,7 +3,7 @@
 //! ## Example
 //!
 //! ```no_run
-//! use dodrio::{on, bumpalo::Bump, Attribute, Node, Render};
+//! use dodrio::{bumpalo::Bump, Attribute, Node, Render};
 //! use wasm_bindgen::UnwrapThrowExt;
 //!
 //! /// A component that greets someone.
@@ -67,6 +67,6 @@ pub mod builder;
 
 // Re-export items at the top level.
 pub use self::cached::Cached;
-pub use self::node::{on, Attribute, ElementNode, Listener, ListenerCallback, Node, TextNode};
+pub use self::node::{Attribute, ElementNode, Listener, ListenerCallback, Node, TextNode};
 pub use self::render::{Render, RootRender};
 pub use self::vdom::{Vdom, VdomWeak};

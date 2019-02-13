@@ -43,9 +43,9 @@ pub type ListenerCallback<'a> =
 /// An event listener.
 pub struct Listener<'a> {
     /// The type of event to listen for.
-    pub event: &'a str,
+    pub(crate) event: &'a str,
     /// The callback to invoke when the event happens.
-    pub callback: ListenerCallback<'a>,
+    pub(crate) callback: ListenerCallback<'a>,
 }
 
 /// An attribute on a DOM node, such as `id="my-thing"` or
@@ -194,21 +194,5 @@ impl Listener<'_> {
             debug_assert!(a != 0);
             (a, b)
         }
-    }
-}
-
-/// Utility function for creating event listeners and downcasting the component
-/// to its `RootRender` concrete type.
-pub fn on<'a, F>(bump: &'a Bump, event: &'a str, callback: F) -> Listener<'a>
-where
-    F: Fn(&mut dyn RootRender, VdomWeak, web_sys::Event) + 'static,
-{
-    Listener {
-        event,
-        callback: bump.alloc(
-            move |component: &mut dyn RootRender, vdom: VdomWeak, event: web_sys::Event| {
-                callback(component, vdom, event);
-            },
-        ),
     }
 }
