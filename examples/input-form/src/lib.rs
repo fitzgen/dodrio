@@ -1,5 +1,5 @@
 use dodrio::bumpalo::{self, Bump};
-use dodrio::{on, Attribute, Node, Render};
+use dodrio::{Node, Render};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
@@ -25,48 +25,39 @@ impl SayHelloTo {
 // The `Render` implementation has a text `<input>` and a `<div>` that shows a
 // greeting to the `<input>`'s value.
 impl Render for SayHelloTo {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> dodrio::Node<'bump>
+    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
     where
         'a: 'bump,
     {
-        let input = Node::element(
-            bump,
-            "input",
-            [on(bump, "input", |root, vdom, event| {
-                // If the event's target is our input...
-                let input = match event
-                    .target()
-                    .and_then(|t| t.dyn_into::<web_sys::HtmlInputElement>().ok())
-                {
-                    None => return,
-                    Some(input) => input,
-                };
+        use dodrio::builder::*;
 
-                // ...then get its value and update who we are greeting.
-                let value = input.value();
-                let hello = root.unwrap_mut::<SayHelloTo>();
-                hello.set_who(value);
+        div(bump)
+            .children([
+                input(bump)
+                    .attr("type", "text")
+                    .attr("value", &self.who)
+                    .on("input", |root, vdom, event| {
+                        // If the event's target is our input...
+                        let input = match event
+                            .target()
+                            .and_then(|t| t.dyn_into::<web_sys::HtmlInputElement>().ok())
+                        {
+                            None => return,
+                            Some(input) => input,
+                        };
 
-                // Finally, re-render the component on the next animation frame.
-                vdom.schedule_render();
-            })],
-            [
-                Attribute {
-                    name: "type",
-                    value: "text",
-                },
-                Attribute {
-                    name: "value",
-                    value: &self.who,
-                },
-            ],
-            [],
-        );
+                        // ...then get its value and update who we are greeting.
+                        let value = input.value();
+                        let hello = root.unwrap_mut::<SayHelloTo>();
+                        hello.set_who(value);
 
-        let hello = bumpalo::format!(in bump, "Hello, {}!", self.who);
-        let hello = Node::text(hello.into_bump_str());
-
-        Node::element(bump, "div", [], [], [input, hello])
+                        // Finally, re-render the component on the next animation frame.
+                        vdom.schedule_render();
+                    })
+                    .finish(),
+                text(bumpalo::format!(in bump, "Hello, {}!", self.who).into_bump_str()),
+            ])
+            .finish()
     }
 }
 
