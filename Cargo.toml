@@ -10,13 +10,13 @@ default = []
 [dependencies]
 bumpalo = "2.1.0"
 futures = "0.1.25"
-wasm-bindgen = "0.2.34"
-wasm-bindgen-futures = "0.3.11"
-js-sys = "0.3.11"
+wasm-bindgen = "0.2.36"
+wasm-bindgen-futures = "0.3.13"
+js-sys = "0.3.13"
 log = "0.4.6"
 
 [dependencies.web-sys]
-version = "0.3.11"
+version = "0.3.13"
 features = [
   "console",
   "Document",
@@ -27,11 +27,11 @@ features = [
 ]
 
 [dev-dependencies]
-wasm-bindgen-test = "0.2.34"
+wasm-bindgen-test = "0.2.36"
 console_log = "0.1.2"
 
 [dev-dependencies.web-sys]
-version = "0.3.11"
+version = "0.3.13"
 features = [
   "Attr",
   "EventTarget",
