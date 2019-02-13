@@ -87,7 +87,7 @@ impl<'a> Attribute<'a> {
 impl<'a> Node<'a> {
     /// Construct a new element node with the given tag name and children.
     #[inline]
-    pub fn element<Listeners, Attributes, Children>(
+    pub(crate) fn element<Listeners, Attributes, Children>(
         bump: &'a Bump,
         tag_name: &'a str,
         listeners: Listeners,
@@ -134,7 +134,7 @@ impl<'a> Node<'a> {
 
     /// Construct a new text node with the given text.
     #[inline]
-    pub fn text(text: &'a str) -> Node<'a> {
+    pub(crate) fn text(text: &'a str) -> Node<'a> {
         Node::Text(TextNode { text })
     }
 }
