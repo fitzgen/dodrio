@@ -4,7 +4,6 @@ use super::RootRender;
 use crate::events::EventsRegistry;
 use bumpalo::Bump;
 use futures::future::Future;
-use log::*;
 use std::cell::Cell;
 use std::cell::RefCell;
 use std::cmp;

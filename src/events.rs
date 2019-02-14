@@ -1,6 +1,5 @@
 use crate::vdom::{VdomInner, VdomWeak};
 use crate::{Listener, ListenerCallback};
-use log::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;

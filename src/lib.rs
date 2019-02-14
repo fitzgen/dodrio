@@ -53,6 +53,9 @@
 // Re-export the `bumpalo` crate.
 pub use bumpalo;
 
+#[macro_use]
+mod logging;
+
 // Only `pub` so that the wasm-bindgen bindings work.
 #[doc(hidden)]
 pub mod change_list;

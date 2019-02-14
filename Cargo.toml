@@ -4,16 +4,14 @@ version = "0.1.0"
 authors = ["Nick Fitzgerald <fitzgen@gmail.com>"]
 edition = "2018"
 
-[features]
-default = []
-
 [dependencies]
 bumpalo = "2.1.0"
+cfg-if = "0.1.6"
 futures = "0.1.25"
 wasm-bindgen = "0.2.36"
 wasm-bindgen-futures = "0.3.13"
 js-sys = "0.3.13"
-log = "0.4.6"
+log = { version = "0.4.6", optional = true }
 
 [dependencies.web-sys]
 version = "0.3.13"
@@ -27,8 +25,9 @@ features = [
 ]
 
 [dev-dependencies]
-wasm-bindgen-test = "0.2.36"
 console_log = "0.1.2"
+log = "0.4.6"
+wasm-bindgen-test = "0.2.36"
 
 [dev-dependencies.web-sys]
 version = "0.3.13"
