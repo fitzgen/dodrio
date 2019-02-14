@@ -10,7 +10,7 @@ function with_dir {
     popd
 }
 
-cargo fmt --all
+cargo fmt --all || true
 cargo check --all --target wasm32-unknown-unknown
 
 for x in ./examples/*; do
