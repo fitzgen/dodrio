@@ -1,5 +1,5 @@
 use dodrio::bumpalo::{self, Bump};
-use dodrio::{on, Node, Render};
+use dodrio::Render;
 use log::*;
 use wasm_bindgen::prelude::*;
 
@@ -32,19 +32,15 @@ impl Render for Counter {
     where
         'a: 'bump,
     {
+        use dodrio::builder::*;
+
         // Stringify the count as a bump-allocated string.
         let count = bumpalo::format!(in bump, "{}", self.count);
 
-        Node::element(
-            bump,
-            "div",
-            [],
-            [],
-            [
-                Node::element(
-                    bump,
-                    "button",
-                    [on(bump, "click", |root, vdom, _event| {
+        div(bump)
+            .children([
+                button(bump)
+                    .on("click", |root, vdom, _event| {
                         // Cast the root render component to a `Counter`, since
                         // we know that's what it is.
                         let counter = root.unwrap_mut::<Counter>();
@@ -55,24 +51,20 @@ impl Render for Counter {
                         // Since the count has updated, we should re-render the
                         // counter on the next animation frame.
                         vdom.schedule_render();
-                    })],
-                    [],
-                    [Node::text("+")],
-                ),
-                Node::text(count.into_bump_str()),
-                Node::element(
-                    bump,
-                    "button",
-                    [on(bump, "click", |root, vdom, _event| {
+                    })
+                    .children([text("+")])
+                    .finish(),
+                text(count.into_bump_str()),
+                button(bump)
+                    .on("click", |root, vdom, _event| {
                         // Same as above, but decrementing instead of incrementing.
                         root.unwrap_mut::<Counter>().decrement();
                         vdom.schedule_render();
-                    })],
-                    [],
-                    [Node::text("-")],
-                ),
-            ],
-        )
+                    })
+                    .children([text("-")])
+                    .finish(),
+            ])
+            .finish()
     }
 }
 

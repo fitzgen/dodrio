@@ -43,19 +43,17 @@ pub type ListenerCallback<'a> =
 /// An event listener.
 pub struct Listener<'a> {
     /// The type of event to listen for.
-    pub event: &'a str,
+    pub(crate) event: &'a str,
     /// The callback to invoke when the event happens.
-    pub callback: ListenerCallback<'a>,
+    pub(crate) callback: ListenerCallback<'a>,
 }
 
 /// An attribute on a DOM node, such as `id="my-thing"` or
 /// `href="https://example.com"`.
 #[derive(Clone, Debug)]
 pub struct Attribute<'a> {
-    /// The attribute name, such as `id`.
-    pub name: &'a str,
-    /// The attribute value, such as `"my-thing"`.
-    pub value: &'a str,
+    pub(crate) name: &'a str,
+    pub(crate) value: &'a str,
 }
 
 impl fmt::Debug for Listener<'_> {
@@ -71,6 +69,18 @@ impl fmt::Debug for Listener<'_> {
 }
 
 impl<'a> Attribute<'a> {
+    /// Get this attribute's name, such as `"id"` in `<div id="my-thing" />`.
+    #[inline]
+    pub fn name(&self) -> &'a str {
+        self.name
+    }
+
+    /// The attribute value, such as `"my-thing"` in `<div id="my-thing" />`.
+    #[inline]
+    pub fn value(&self) -> &'a str {
+        self.value
+    }
+
     /// Certain attributes are considered "volatile" and can change via user
     /// input that we can't see when diffing against the old virtual DOM. For
     /// these attributes, we want to always re-set the attribute on the physical
@@ -87,7 +97,7 @@ impl<'a> Attribute<'a> {
 impl<'a> Node<'a> {
     /// Construct a new element node with the given tag name and children.
     #[inline]
-    pub fn element<Listeners, Attributes, Children>(
+    pub(crate) fn element<Listeners, Attributes, Children>(
         bump: &'a Bump,
         tag_name: &'a str,
         listeners: Listeners,
@@ -134,7 +144,7 @@ impl<'a> Node<'a> {
 
     /// Construct a new text node with the given text.
     #[inline]
-    pub fn text(text: &'a str) -> Node<'a> {
+    pub(crate) fn text(text: &'a str) -> Node<'a> {
         Node::Text(TextNode { text })
     }
 }
@@ -184,21 +194,5 @@ impl Listener<'_> {
             debug_assert!(a != 0);
             (a, b)
         }
-    }
-}
-
-/// Utility function for creating event listeners and downcasting the component
-/// to its `RootRender` concrete type.
-pub fn on<'a, F>(bump: &'a Bump, event: &'a str, callback: F) -> Listener<'a>
-where
-    F: Fn(&mut dyn RootRender, VdomWeak, web_sys::Event) + 'static,
-{
-    Listener {
-        event,
-        callback: bump.alloc(
-            move |component: &mut dyn RootRender, vdom: VdomWeak, event: web_sys::Event| {
-                callback(component, vdom, event);
-            },
-        ),
     }
 }

@@ -7,7 +7,7 @@ use crate::visibility::Visibility;
 use crate::{keys, utils};
 use dodrio::{
     bumpalo::{self, Bump},
-    on, Attribute, Node, Render, RootRender, VdomWeak,
+    Node, Render, RootRender, VdomWeak,
 };
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
@@ -140,65 +140,42 @@ impl<C: TodosActions> Todos<C> {
     where
         'a: 'bump,
     {
-        Node::element(
-            bump,
-            "header",
-            [],
-            [Attribute {
-                name: "class",
-                value: "header",
-            }],
-            [
-                Node::element(bump, "h1", [], [], [Node::text("todos")]),
-                Node::element(
-                    bump,
-                    "input",
-                    [
-                        on(bump, "input", |root, vdom, event| {
-                            let input = event
-                                .target()
-                                .unwrap_throw()
-                                .unchecked_into::<web_sys::HtmlInputElement>();
-                            C::update_draft(root, vdom, input.value());
-                        }),
-                        on(bump, "keydown", |root, vdom, event| {
-                            let event = event.unchecked_into::<web_sys::KeyboardEvent>();
-                            if event.key_code() == keys::ENTER {
-                                C::finish_draft(root, vdom);
-                            }
-                        }),
-                    ],
-                    [
-                        Attribute {
-                            name: "class",
-                            value: "new-todo",
-                        },
-                        Attribute {
-                            name: "placeholder",
-                            value: "What needs to be done?",
-                        },
-                        Attribute {
-                            name: "autofocus",
-                            value: "",
-                        },
-                        Attribute {
-                            name: "value",
-                            value: &self.draft,
-                        },
-                    ],
-                    [],
-                ),
-            ],
-        )
+        use dodrio::builder::*;
+
+        header(bump)
+            .attr("class", "header")
+            .children([
+                h1(bump).children([text("todos")]).finish(),
+                input(bump)
+                    .on("input", |root, vdom, event| {
+                        let input = event
+                            .target()
+                            .unwrap_throw()
+                            .unchecked_into::<web_sys::HtmlInputElement>();
+                        C::update_draft(root, vdom, input.value());
+                    })
+                    .on("keydown", |root, vdom, event| {
+                        let event = event.unchecked_into::<web_sys::KeyboardEvent>();
+                        if event.key_code() == keys::ENTER {
+                            C::finish_draft(root, vdom);
+                        }
+                    })
+                    .attr("class", "new-todo")
+                    .attr("placeholder", "What needs to be done?")
+                    .attr("autofocus", "")
+                    .attr("value", &self.draft)
+                    .finish(),
+            ])
+            .finish()
     }
 
     fn todos_list<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
     where
         'a: 'bump,
     {
-        use dodrio::bumpalo::collections::Vec;
+        use dodrio::{builder::*, bumpalo::collections::Vec};
 
-        let mut todos = Vec::new_in(bump);
+        let mut todos = Vec::with_capacity_in(self.todos.len(), bump);
         todos.extend(
             self.todos
                 .iter()
@@ -209,91 +186,43 @@ impl<C: TodosActions> Todos<C> {
                 })
                 .map(|t| t.render(bump)),
         );
-        let todos = todos.into_bump_slice();
 
-        let mut input_attrs = bumpalo::vec![
-            in bump;
-            Attribute {
-                name: "class",
-                value: "toggle-all",
-            },
-            Attribute {
-                name: "id",
-                value: "toggle-all",
-            },
-            Attribute {
-                name: "type",
-                value: "checkbox",
-            },
-            Attribute {
-                name: "name",
-                value: "toggle",
-            }
-        ];
-        if self.todos.iter().all(|t| t.is_complete()) {
-            input_attrs.push(Attribute {
-                name: "checked",
-                value: "",
-            });
-        }
-        let input_attrs = input_attrs.into_bump_slice();
-
-        Node::element(
-            bump,
-            "section",
-            [],
-            [
-                Attribute {
-                    name: "class",
-                    value: "main",
+        section(bump)
+            .attr("class", "main")
+            .attr(
+                "visibility",
+                if self.todos.is_empty() {
+                    "hidden"
+                } else {
+                    "visible"
                 },
-                Attribute {
-                    name: "visibility",
-                    value: if self.todos.is_empty() {
-                        "hidden"
-                    } else {
-                        "visible"
-                    },
-                },
-            ],
-            [
-                Node::element(
-                    bump,
-                    "input",
-                    [on(bump, "click", |root, vdom, _event| {
+            )
+            .children([
+                input(bump)
+                    .attr("class", "toggle-all")
+                    .attr("id", "toggle-all")
+                    .attr("type", "checkbox")
+                    .attr("name", "toggle")
+                    .bool_attr("checked", self.todos.iter().all(|t| t.is_complete()))
+                    .on("click", |root, vdom, _event| {
                         C::toggle_all(root, vdom);
-                    })],
-                    input_attrs,
-                    [],
-                ),
-                Node::element(
-                    bump,
-                    "label",
-                    [],
-                    [Attribute {
-                        name: "for",
-                        value: "toggle-all",
-                    }],
-                    [Node::text("Mark all as complete")],
-                ),
-                Node::element(
-                    bump,
-                    "ul",
-                    [],
-                    [Attribute {
-                        name: "class",
-                        value: "todo-list",
-                    }],
-                    todos,
-                ),
-            ],
-        )
+                    })
+                    .finish(),
+                label(bump)
+                    .attr("for", "toggle-all")
+                    .children([text("Mark all as complete")])
+                    .finish(),
+                ul(bump).attr("class", "todo-list").children(todos).finish(),
+            ])
+            .finish()
     }
 
     fn footer<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
     where
         'a: 'bump,
     {
+        use dodrio::builder::*;
+
         let completed_count = self.todos.iter().filter(|t| t.is_complete()).count();
         let incomplete_count = self.todos.len() - completed_count;
         let items_left = if incomplete_count == 1 {
@@ -303,95 +232,43 @@ impl<C: TodosActions> Todos<C> {
         };
         let incomplete_count = bumpalo::format!(in bump, "{}", incomplete_count);
 
-        let attrs = if self.todos.is_empty() {
-            &bump.alloc([
-                Attribute {
-                    name: "class",
-                    value: "footer",
-                },
-                Attribute {
-                    name: "hidden",
-                    value: "",
-                },
-            ])[..]
-        } else {
-            &bump.alloc([Attribute {
-                name: "class",
-                value: "footer",
-            }])[..]
-        };
-
         let clear_completed_text = bumpalo::format!(
             in bump,
             "Clear completed ({})",
             self.todos.iter().filter(|t| t.is_complete()).count()
         );
 
-        Node::element(
-            bump,
-            "footer",
-            [],
-            attrs,
-            [
-                Node::element(
-                    bump,
-                    "span",
-                    [],
-                    [Attribute {
-                        name: "class",
-                        value: "todo-count",
-                    }],
-                    [
-                        Node::element(
-                            bump,
-                            "strong",
-                            [],
-                            [],
-                            [Node::text(incomplete_count.into_bump_str())],
-                        ),
-                        Node::text(items_left),
-                    ],
-                ),
-                Node::element(
-                    bump,
-                    "ul",
-                    [],
-                    [Attribute {
-                        name: "class",
-                        value: "filters",
-                    }],
-                    [
+        footer(bump)
+            .attr("class", "footer")
+            .bool_attr("hidden", self.todos.is_empty())
+            .children([
+                span(bump)
+                    .attr("class", "todo-count")
+                    .children([
+                        strong(bump)
+                            .children([text(incomplete_count.into_bump_str())])
+                            .finish(),
+                        text(items_left),
+                    ])
+                    .finish(),
+                ul(bump)
+                    .attr("class", "filters")
+                    .children([
                         self.visibility_swap(bump, "#/", Visibility::All),
                         self.visibility_swap(bump, "#/active", Visibility::Active),
                         self.visibility_swap(bump, "#/completed", Visibility::Completed),
-                    ],
-                ),
-                Node::element(
-                    bump,
-                    "button",
-                    [on(bump, "click", |root, vdom, _event| {
+                    ])
+                    .finish(),
+                button(bump)
+                    .on("click", |root, vdom, _event| {
                         C::delete_completed(root, vdom);
-                    })],
-                    {
-                        let mut attrs = bumpalo::vec![
-                            in bump;
-                            Attribute {
-                                name: "class",
-                                value: "clear-completed",
-                            }
-                        ];
-                        if self.todos.iter().all(|t| !t.is_complete()) {
-                            attrs.push(Attribute {
-                                name: "hidden",
-                                value: "",
-                            });
-                        }
-                        attrs
-                    },
-                    [Node::text(clear_completed_text.into_bump_str())],
-                ),
-            ],
-        )
+                    })
+                    .attr("class", "clear-completed")
+                    .bool_attr("hidden", completed_count == 0)
+                    .children([text(clear_completed_text.into_bump_str())])
+                    .finish(),
+            ])
+            .finish()
     }
 
     fn visibility_swap<'a, 'bump>(
@@ -403,34 +280,25 @@ impl<C: TodosActions> Todos<C> {
     where
         'a: 'bump,
     {
-        Node::element(
-            bump,
-            "li",
-            [on(bump, "click", move |root, vdom, _event| {
+        use dodrio::builder::*;
+
+        li(bump)
+            .on("click", move |root, vdom, _event| {
                 C::change_visibility(root, vdom, target_vis);
-            })],
-            [],
-            [Node::element(
-                bump,
-                "a",
-                [],
-                [
-                    Attribute {
-                        name: "href",
-                        value: url,
+            })
+            .children([a(bump)
+                .attr("href", url)
+                .attr(
+                    "class",
+                    if self.visibility == target_vis {
+                        "selected"
+                    } else {
+                        ""
                     },
-                    Attribute {
-                        name: "class",
-                        value: if self.visibility == target_vis {
-                            "selected"
-                        } else {
-                            ""
-                        },
-                    },
-                ],
-                [Node::text(target_vis.label())],
-            )],
-        )
+                )
+                .children([text(target_vis.label())])
+                .finish()])
+            .finish()
     }
 }
 
@@ -439,12 +307,10 @@ impl<C: TodosActions> Render for Todos<C> {
     where
         'a: 'bump,
     {
-        Node::element(
-            bump,
-            "div",
-            [],
-            [],
-            [self.header(bump), self.todos_list(bump), self.footer(bump)],
-        )
+        use dodrio::builder::*;
+
+        div(bump)
+            .children([self.header(bump), self.todos_list(bump), self.footer(bump)])
+            .finish()
     }
 }

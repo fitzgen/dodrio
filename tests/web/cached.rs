@@ -1,5 +1,5 @@
 use super::{assert_rendered, create_element, RenderFn};
-use dodrio::{bumpalo::Bump, Cached, Node, Render, Vdom};
+use dodrio::{builder::*, bumpalo::Bump, Cached, Node, Render, Vdom};
 use futures::prelude::*;
 use std::cell::Cell;
 use std::rc::Rc;
@@ -27,12 +27,14 @@ impl Render for CountRenders {
         self.render_count.set(count);
 
         let s = bumpalo::format!(in bump, "{}", count);
-        Node::text(s.into_bump_str())
+        text(s.into_bump_str())
     }
 }
 
 #[wasm_bindgen_test(async)]
 fn uses_cached_render() -> impl Future<Item = (), Error = JsValue> {
+    use dodrio::builder::*;
+
     let cached = Cached::new(CountRenders::new());
 
     let container0 = create_element("div");
@@ -58,7 +60,7 @@ fn uses_cached_render() -> impl Future<Item = (), Error = JsValue> {
             vdom0.weak().with_component(move |comp| {
                 let comp = comp.unwrap_mut::<Cached<CountRenders>>();
                 assert_eq!(comp.render_count.get(), 1);
-                assert_rendered(&container1, &RenderFn(|_| Node::text("1")));
+                assert_rendered(&container1, &RenderFn(|_| text("1")));
             })
         })
         // We re-render, re-use the cached node, and get "1" again.
@@ -67,7 +69,7 @@ fn uses_cached_render() -> impl Future<Item = (), Error = JsValue> {
             vdom2.weak().with_component(move |comp| {
                 let comp = comp.unwrap_mut::<Cached<CountRenders>>();
                 assert_eq!(comp.render_count.get(), 1);
-                assert_rendered(&container2, &RenderFn(|_| Node::text("1")));
+                assert_rendered(&container2, &RenderFn(|_| text("1")));
             })
         })
         // We invalidate the cache, re-render, re-populate the cache, and should
@@ -83,7 +85,7 @@ fn uses_cached_render() -> impl Future<Item = (), Error = JsValue> {
             vdom5.weak().with_component(move |comp| {
                 let comp = comp.unwrap_mut::<Cached<CountRenders>>();
                 assert_eq!(comp.render_count.get(), 2);
-                assert_rendered(&container3, &RenderFn(|_| Node::text("2")));
+                assert_rendered(&container3, &RenderFn(|_| text("2")));
             })
         })
         // We re-render, re-use the cached node, and get "2" again.
@@ -92,7 +94,7 @@ fn uses_cached_render() -> impl Future<Item = (), Error = JsValue> {
             vdom7.weak().with_component(move |comp| {
                 let comp = comp.unwrap_mut::<Cached<CountRenders>>();
                 assert_eq!(comp.render_count.get(), 2);
-                assert_rendered(&container4, &RenderFn(|_| Node::text("2")));
+                assert_rendered(&container4, &RenderFn(|_| text("2")));
             })
         })
         .map_err(|e| JsValue::from(e.to_string()))

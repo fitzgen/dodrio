@@ -1,6 +1,6 @@
 use super::create_element;
 use bumpalo::Bump;
-use dodrio::{on, Attribute, Node, Render, Vdom};
+use dodrio::{Node, Render, Vdom};
 use futures::Future;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -30,18 +30,13 @@ impl Render for EventContainer {
     where
         'a: 'bump,
     {
-        Node::element(
-            bump,
-            "div",
-            [on(bump, self.event, |root, _scheduler, _event| {
+        use dodrio::builder::*;
+        div(bump)
+            .attr("id", "target")
+            .on(self.event, |root, _scheduler, _event| {
                 (root.unwrap_mut::<EventContainer>().on_event)();
-            })],
-            [Attribute {
-                name: "id",
-                value: "target",
-            }],
-            [],
-        )
+            })
+            .finish()
     }
 }
 
@@ -147,33 +142,18 @@ impl Render for ListensOnlyOnFirstRender {
     where
         'a: 'bump,
     {
+        use dodrio::builder::*;
+
         let count = self.count.get();
         self.count.set(count + 1);
+
+        let mut elem = div(bump).attr("id", "target");
         if count == 0 {
-            Node::element(
-                bump,
-                "div",
-                [on(bump, "click", |root, _scheduler, _event| {
-                    (root.unwrap_mut::<ListensOnlyOnFirstRender>().callback)();
-                })],
-                [Attribute {
-                    name: "id",
-                    value: "target",
-                }],
-                [],
-            )
-        } else {
-            Node::element(
-                bump,
-                "div",
-                [],
-                [Attribute {
-                    name: "id",
-                    value: "target",
-                }],
-                [],
-            )
+            elem = elem.on("click", |root, _scheduler, _event| {
+                (root.unwrap_mut::<ListensOnlyOnFirstRender>().callback)();
+            });
         }
+        elem.finish()
     }
 }
 
@@ -315,23 +295,20 @@ impl Render for CountRendersAndListen {
     where
         'a: 'bump,
     {
+        use dodrio::builder::*;
+
         let count = self.count.get() + 1;
         self.count.set(count);
-        Node::element(
-            bump,
-            "button",
-            [on(bump, "click", |comp, _vdom, _event| {
+
+        button(bump)
+            .attr("id", "target")
+            .on("click", |comp, _vdom, _event| {
                 let comp: &mut _ = comp.unwrap_mut::<dodrio::Cached<CountRendersAndListen>>();
                 let comp: &mut CountRendersAndListen = comp;
                 let n = comp.count.get();
                 (comp.callback)(n);
-            })],
-            [Attribute {
-                name: "id",
-                value: "target",
-            }],
-            [],
-        )
+            })
+            .finish()
     }
 }
 
