@@ -16,7 +16,6 @@ install:
   - *INSTALL_NODE_VIA_NVM
   - *INSTALL_WASM_PACK
   - rustup target add wasm32-unknown-unknown
-  - rustup component add rustfmt
 
 matrix:
   include:
