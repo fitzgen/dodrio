@@ -83,6 +83,7 @@ name = "dodrio"
 version = "0.1.0"
 dependencies = [
  "bumpalo 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cfg-if 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "console_log 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "js-sys 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
