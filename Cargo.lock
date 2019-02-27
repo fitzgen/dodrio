@@ -130,6 +130,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "dodrio-js-api"
+version = "0.1.0"
+
+[[package]]
 name = "dodrio-todomvc"
 version = "0.1.0"
 dependencies = [

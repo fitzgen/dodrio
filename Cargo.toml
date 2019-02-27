@@ -46,6 +46,7 @@ opt-level = "s"
 
 [workspace]
 members = [
+  "./crates/js-api",
   "./examples/counter",
   "./examples/hello-world",
   "./examples/input-form",
