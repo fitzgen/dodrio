@@ -203,7 +203,11 @@ impl VdomWeak {
 }
 
 impl JsRender {
-    /// TODO
+    /// Convert a `js_sys::Object` into a `JsRender`.
+    ///
+    /// The given object must have a `render` method that conforms to the
+    /// duck-typed virtual DOM interface which is described in the crate-level
+    /// documentation.
     pub fn new<O>(object: O) -> JsRender
     where
         O: Into<Object>,
