@@ -22,6 +22,48 @@ where
     children: Children,
 }
 
+impl<'a>
+    ElementBuilder<
+        'a,
+        bumpalo::collections::Vec<'a, Listener<'a>>,
+        bumpalo::collections::Vec<'a, Attribute<'a>>,
+        bumpalo::collections::Vec<'a, Node<'a>>,
+    >
+{
+    /// Create a new `ElementBuilder` for an element with the given tag name.
+    ///
+    /// In general, only use this constructor if the tag is dynamic (i.e. you
+    /// might build a `<div>` or you might build a `<span>` and you don't know
+    /// until runtime). Prefer using the tag-specific constructors instead:
+    /// `div(bump)` or `span(bump)`, etc.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use dodrio::{builder::*, bumpalo::Bump};
+    ///
+    /// let b = Bump::new();
+    ///
+    /// let tag_name = if flip_coin() {
+    ///     "div"
+    /// } else {
+    ///     "span"
+    /// };
+    ///
+    /// let my_element_builder = ElementBuilder::new(&b, tag_name);
+    /// # fn flip_coin() -> bool { true }
+    /// ```
+    pub fn new(bump: &'a Bump, tag_name: &'a str) -> Self {
+        ElementBuilder {
+            bump,
+            tag_name,
+            listeners: bumpalo::collections::Vec::new_in(bump),
+            attributes: bumpalo::collections::Vec::new_in(bump),
+            children: bumpalo::collections::Vec::new_in(bump),
+        }
+    }
+}
+
 impl<'a, Listeners, Attributes, Children> ElementBuilder<'a, Listeners, Attributes, Children>
 where
     Listeners: 'a + AsRef<[Listener<'a>]>,
@@ -312,13 +354,7 @@ macro_rules! builder_constructors {
                 bumpalo::collections::Vec<'a, Attribute<'a>>,
                 bumpalo::collections::Vec<'a, Node<'a>>,
             > {
-                ElementBuilder {
-                    bump,
-                    tag_name: stringify!($name),
-                    listeners: bumpalo::collections::Vec::new_in(bump),
-                    attributes: bumpalo::collections::Vec::new_in(bump),
-                    children: bumpalo::collections::Vec::new_in(bump),
-                }
+                ElementBuilder::new(bump, stringify!($name))
             }
         )*
     }

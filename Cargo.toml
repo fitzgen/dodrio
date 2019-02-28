@@ -26,6 +26,7 @@ features = [
 
 [dev-dependencies]
 console_log = "0.1.2"
+dodrio-js-api = { version = "=0.1.0", path = "./crates/js-api" }
 log = "0.4.6"
 wasm-bindgen-test = "0.2.36"
 
@@ -46,8 +47,10 @@ opt-level = "s"
 
 [workspace]
 members = [
+  "./crates/js-api",
   "./examples/counter",
   "./examples/hello-world",
   "./examples/input-form",
+  "./examples/js-component",
   "./examples/todomvc",
 ]

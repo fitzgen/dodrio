@@ -1,0 +1,26 @@
+[package]
+name = "dodrio-js-component"
+version = "0.1.0"
+authors = ["Nick Fitzgerald <fitzgen@gmail.com>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[features]
+
+[dependencies]
+dodrio = { path = "../.." }
+dodrio-js-api = { path = "../../crates/js-api" }
+wasm-bindgen = "0.2.36"
+console_error_panic_hook = "0.1.5"
+js-sys = "0.3.14"
+
+[dependencies.web-sys]
+version = "0.3.13"
+features = [
+  "Document",
+  "HtmlElement",
+  "Node",
+  "Window",
+]

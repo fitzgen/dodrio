@@ -1,0 +1,15 @@
+[package]
+name = "dodrio-js-api"
+version = "0.1.0"
+authors = ["Nick Fitzgerald <fitzgen@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+dodrio = { version = "=0.1.0", path = "../.." }
+wasm-bindgen = "0.2.37"
+js-sys = "0.3.14"
+wasm-bindgen-futures = "0.3.14"
+futures = "0.1.25"
+
+[dev-dependencies]
+wasm-bindgen-test = "0.2.37"
