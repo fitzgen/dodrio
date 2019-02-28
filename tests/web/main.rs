@@ -15,6 +15,7 @@ wasm_bindgen_test_configure!(run_in_browser);
 
 pub mod cached;
 pub mod events;
+pub mod js_api;
 pub mod render;
 
 pub fn window() -> web_sys::Window {
