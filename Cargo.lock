@@ -62,7 +62,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "console_error_panic_hook"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "cfg-if 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -99,7 +99,7 @@ dependencies = [
 name = "dodrio-counter"
 version = "0.1.0"
 dependencies = [
- "console_error_panic_hook 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "console_error_panic_hook 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "console_log 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "dodrio 0.1.0",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -112,7 +112,7 @@ dependencies = [
 name = "dodrio-hello-world"
 version = "0.1.0"
 dependencies = [
- "console_error_panic_hook 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "console_error_panic_hook 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "dodrio 0.1.0",
  "wasm-bindgen 0.2.37 (registry+https://github.com/rust-lang/crates.io-index)",
  "wasm-bindgen-test 0.2.37 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -123,7 +123,7 @@ dependencies = [
 name = "dodrio-input-form"
 version = "0.1.0"
 dependencies = [
- "console_error_panic_hook 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "console_error_panic_hook 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "dodrio 0.1.0",
  "wasm-bindgen 0.2.37 (registry+https://github.com/rust-lang/crates.io-index)",
  "wasm-bindgen-test 0.2.37 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -146,7 +146,7 @@ dependencies = [
 name = "dodrio-js-component"
 version = "0.1.0"
 dependencies = [
- "console_error_panic_hook 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "console_error_panic_hook 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "dodrio 0.1.0",
  "dodrio-js-api 0.1.0",
  "js-sys 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -159,7 +159,7 @@ name = "dodrio-todomvc"
 version = "0.1.0"
 dependencies = [
  "cfg-if 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "console_error_panic_hook 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "console_error_panic_hook 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "console_log 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "dodrio 0.1.0",
  "futures 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -507,7 +507,7 @@ name = "wasm-bindgen-test"
 version = "0.2.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "console_error_panic_hook 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "console_error_panic_hook 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "js-sys 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "scoped-tls 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -606,7 +606,7 @@ dependencies = [
 "checksum bumpalo 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "21ef2109240a377370f55ea3ef0b486b46d7b5c0f7455ab0ec676d73f875d58a"
 "checksum cc 1.0.29 (registry+https://github.com/rust-lang/crates.io-index)" = "4390a3b5f4f6bce9c1d0c00128379df433e53777fdd30e92f16a529332baec4e"
 "checksum cfg-if 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "082bb9b28e00d3c9d39cc03e64ce4cea0f1bb9b3fde493f0cbc008472d22bdf4"
-"checksum console_error_panic_hook 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "6c5dd2c094474ec60a6acaf31780af270275e3153bafff2db5995b715295762e"
+"checksum console_error_panic_hook 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "b8d976903543e0c48546a91908f21588a680a8c8f984df9a5d69feccb2b2a211"
 "checksum console_log 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "1e7871d2947441b0fdd8e2bd1ce2a2f75304f896582c0d572162d48290683c48"
 "checksum env_logger 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "afb070faf94c85d17d50ca44f6ad076bce18ae92f0037d350947240a36e9d42e"
 "checksum failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "795bd83d3abeb9220f257e597aa0080a508b27533824adf336529648f6abf7e2"
