@@ -21,7 +21,7 @@ console_log = { optional = true, version = "0.1.2" }
 js-sys = "0.3.14"
 
 [dependencies.web-sys]
-version = "0.3.13"
+version = "0.3.14"
 features = [
   "Document",
   "Element",
@@ -35,7 +35,7 @@ features = [
 ]
 
 [dev-dependencies]
-wasm-bindgen-test = "0.2.36"
+wasm-bindgen-test = "0.2.37"
 
 [features]
 logging = [
