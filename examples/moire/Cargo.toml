@@ -1,37 +1,37 @@
 [package]
+name = "dodrio-moire"
+version = "0.1.0"
 authors = ["Nick Fitzgerald <fitzgen@gmail.com>"]
 edition = "2018"
-name = "dodrio-todomvc"
-version = "0.1.0"
+
+[lib]
+crate-type = ["cdylib"]
 
 [dependencies]
 cfg-if = "0.1.6"
-dodrio = { path = "../.."  }
+dodrio = { path = "../.." }
 futures = "0.1.25"
-js-sys = "0.3.14"
-serde = { features = ["derive"], version = "1.0.89" }
-serde_json = "1.0.39"
+log = "0.4.6"
 wasm-bindgen = "0.2.37"
 wasm-bindgen-futures = "0.3.14"
 
 # Optional dependencies for logging.
 console_error_panic_hook = { optional = true, version = "0.1.6" }
 console_log = { optional = true, version = "0.1.2" }
-log = { optional = true, version = "0.4.6" }
+js-sys = "0.3.14"
 
 [dependencies.web-sys]
 version = "0.3.14"
 features = [
-    "Document",
-    "Event",
-    "EventTarget",
-    "HtmlElement",
-    "HtmlInputElement",
-    "KeyboardEvent",
-    "Location",
-    "Storage",
-    "Node",
-    "Window",
+  "Document",
+  "Element",
+  "Event",
+  "EventTarget",
+  "HtmlElement",
+  "HtmlInputElement",
+  "Node",
+  "Performance",
+  "Window",
 ]
 
 [dev-dependencies]
@@ -41,8 +41,4 @@ wasm-bindgen-test = "0.2.37"
 logging = [
     "console_log",
     "console_error_panic_hook",
-    "log",
 ]
-
-[lib]
-crate-type = ["cdylib"]
