@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8"/>
+    <title>Moire patterns! Originally a WebRender demo</title>
+    <style>
+     main {
+         position: absolute;
+         top: 0;
+         left: 0;
+         right: 0;
+         bottom: 0;
+         overflow: hidden;
+     }
+     .circle {
+         border-radius: 50%;
+         position: absolute;
+         top: 50%;
+         left: 50%;
+         border-style: solid;
+         border-width: 3px;
+     }
+     .object {
+         position: absolute;
+         width: 100%;
+         height: 100%;
+         left: 0;
+         top: 0;
+     }
+     code {
+         position: relative;
+         font-size: 150%;
+         z-index: 10;
+     }
+     #circle-count {
+         position: absolute;
+         margin-top: 30px;
+         z-index: 2;
+     }
+    </style>
+  </head>
+  <body>
+    <code>FPS: <output id="fps"></code></code>
+    <div id="scene"></div>
+    <script src="pkg/dodrio_moire.js"></script>
+    <script>
+     wasm_bindgen("pkg/dodrio_moire_bg.wasm");
+    </script>
+    <script>
+     let lastTime = 0
+     let frameCount = 0
+     const fps = document.getElementById('fps')
+     function updateFPS(time) {
+       frameCount++
+       if (lastTime + 1000.0 <= time) {
+         fps.textContent = frameCount
+         lastTime = time
+         frameCount = 0
+       }
+     }
+     requestAnimationFrame(function loop(now) {
+       updateFPS(now);
+       requestAnimationFrame(loop);
+     })
+    </script>
+  </body>
+</html>

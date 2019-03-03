@@ -52,5 +52,6 @@ members = [
   "./examples/hello-world",
   "./examples/input-form",
   "./examples/js-component",
+  "./examples/moire",
   "./examples/todomvc",
 ]
