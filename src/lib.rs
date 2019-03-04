@@ -53,8 +53,15 @@
 // Re-export the `bumpalo` crate.
 pub use bumpalo;
 
-#[macro_use]
-mod logging;
+cfg_if::cfg_if! {
+    if #[cfg(feature = "log")] {
+        #[macro_use]
+        extern crate log;
+    } else {
+        #[macro_use]
+        mod logging;
+    }
+}
 
 // Only `pub` so that the wasm-bindgen bindings work.
 #[doc(hidden)]
