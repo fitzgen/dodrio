@@ -5,7 +5,7 @@ name = "dodrio-todomvc"
 version = "0.1.0"
 
 [dependencies]
-cfg-if = "0.1.6"
+cfg-if = "0.1.7"
 dodrio = { path = "../.."  }
 futures = "0.1.25"
 js-sys = "0.3.14"

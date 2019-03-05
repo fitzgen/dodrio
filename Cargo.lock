@@ -30,7 +30,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "autocfg 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "backtrace-sys 0.1.28 (registry+https://github.com/rust-lang/crates.io-index)",
- "cfg-if 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cfg-if 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.48 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-demangle 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -57,7 +57,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "cfg-if"
-version = "0.1.6"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -65,7 +65,7 @@ name = "console_error_panic_hook"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "cfg-if 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cfg-if 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "wasm-bindgen 0.2.37 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -83,7 +83,7 @@ name = "dodrio"
 version = "0.1.0"
 dependencies = [
  "bumpalo 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "cfg-if 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cfg-if 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "console_log 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "dodrio-js-api 0.1.0",
  "futures 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -158,7 +158,7 @@ dependencies = [
 name = "dodrio-moire"
 version = "0.1.0"
 dependencies = [
- "cfg-if 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cfg-if 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "console_error_panic_hook 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "console_log 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "dodrio 0.1.0",
@@ -175,7 +175,7 @@ dependencies = [
 name = "dodrio-todomvc"
 version = "0.1.0"
 dependencies = [
- "cfg-if 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cfg-if 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "console_error_panic_hook 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "console_log 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "dodrio 0.1.0",
@@ -271,7 +271,7 @@ name = "log"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "cfg-if 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cfg-if 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -622,7 +622,7 @@ dependencies = [
 "checksum backtrace-sys 0.1.28 (registry+https://github.com/rust-lang/crates.io-index)" = "797c830ac25ccc92a7f8a7b9862bde440715531514594a6154e3d4a54dd769b6"
 "checksum bumpalo 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "21ef2109240a377370f55ea3ef0b486b46d7b5c0f7455ab0ec676d73f875d58a"
 "checksum cc 1.0.29 (registry+https://github.com/rust-lang/crates.io-index)" = "4390a3b5f4f6bce9c1d0c00128379df433e53777fdd30e92f16a529332baec4e"
-"checksum cfg-if 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "082bb9b28e00d3c9d39cc03e64ce4cea0f1bb9b3fde493f0cbc008472d22bdf4"
+"checksum cfg-if 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)" = "11d43355396e872eefb45ce6342e4374ed7bc2b3a502d1b28e36d6e23c05d1f4"
 "checksum console_error_panic_hook 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "b8d976903543e0c48546a91908f21588a680a8c8f984df9a5d69feccb2b2a211"
 "checksum console_log 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "1e7871d2947441b0fdd8e2bd1ce2a2f75304f896582c0d572162d48290683c48"
 "checksum env_logger 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "afb070faf94c85d17d50ca44f6ad076bce18ae92f0037d350947240a36e9d42e"
