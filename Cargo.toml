@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 bumpalo = "2.1.0"
-cfg-if = "0.1.6"
+cfg-if = "0.1.7"
 futures = "0.1.25"
 wasm-bindgen = "0.2.37"
 wasm-bindgen-futures = "0.3.14"
