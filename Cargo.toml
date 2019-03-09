@@ -49,6 +49,7 @@ opt-level = "s"
 members = [
   "./crates/js-api",
   "./examples/counter",
+  "./examples/game-of-life",
   "./examples/hello-world",
   "./examples/input-form",
   "./examples/js-component",
