@@ -43,12 +43,10 @@ const OP_TABLE = [
 
   // 3
   function setAttribute(changeList, mem8, mem32, i) {
-    const pointer1 = mem32[i++];
-    const length1 = mem32[i++];
-    const name = string(mem8, pointer1, length1);
-    const pointer2 = mem32[i++];
-    const length2 = mem32[i++];
-    const value = string(mem8, pointer2, length2);
+    const nameId = mem32[i++];
+    const valueId = mem32[i++];
+    const name = changeList.getString(nameId);
+    const value = changeList.getString(valueId);
     const node = top(changeList.stack);
     node.setAttribute(name, value);
 
@@ -68,9 +66,8 @@ const OP_TABLE = [
 
   // 4
   function removeAttribute(changeList, mem8, mem32, i) {
-    const pointer = mem32[i++];
-    const length = mem32[i++];
-    const name = string(mem8, pointer, length);
+    const nameId = mem32[i++];
+    const name = changeList.getString(nameId);
     const node = top(changeList.stack);
     node.removeAttribute(name);
 
@@ -125,18 +122,16 @@ const OP_TABLE = [
 
   // 10
   function createElement(changeList, mem8, mem32, i) {
-    const pointer = mem32[i++];
-    const length = mem32[i++];
-    const tagName = string(mem8, pointer, length);
+    const tagNameId = mem32[i++];
+    const tagName = changeList.getString(tagNameId);
     changeList.stack.push(document.createElement(tagName));
     return i;
   },
 
   // 11
   function newEventListener(changeList, mem8, mem32, i) {
-    const pointer = mem32[i++];
-    const length = mem32[i++];
-    const eventType = string(mem8, pointer, length);
+    const eventId = mem32[i++];
+    const eventType = changeList.getString(eventId);
     const a = mem32[i++];
     const b = mem32[i++];
     const el = top(changeList.stack);
@@ -149,9 +144,8 @@ const OP_TABLE = [
 
   // 12
   function updateEventListener(changeList, mem8, mem32, i) {
-    const pointer = mem32[i++];
-    const length = mem32[i++];
-    const eventType = string(mem8, pointer, length);
+    const eventId = mem32[i++];
+    const eventType = changeList.getString(eventId);
     const el = top(changeList.stack);
     const listener = el[`dodrio-${eventType}`];
     listener.a = mem32[i++];
@@ -161,13 +155,29 @@ const OP_TABLE = [
 
   // 13
   function removeEventListener(changeList, mem8, mem32, i) {
-    const pointer = mem32[i++];
-    const length = mem32[i++];
-    const eventType = string(mem8, pointer, length);
+    const eventId = mem32[i++];
+    const eventType = changeList.getString(eventId);
     const el = top(changeList.stack);
     const listener = el[`dodrio-${eventType}`];
     el.removeEventListener(eventType, listener.callback);
     changeList.listeners.delete(listener);
+    return i;
+  },
+
+  // 14
+  function addString(changeList, mem8, mem32, i) {
+    const pointer = mem32[i++];
+    const length = mem32[i++];
+    const id = mem32[i++];
+    const str = string(mem8, pointer, length);
+    changeList.addString(str, id);
+    return i;
+  },
+
+  // 15
+  function dropString(changeList, mem8, mem32, i) {
+    const id = mem32[i++];
+    changeList.dropString(id);
     return i;
   }
 ];
@@ -195,6 +205,7 @@ class ChangeList {
     this.container = container;
     this.ranges = [];
     this.stack = [];
+    this.strings = new Map();
   }
 
   unmount() {
@@ -214,6 +225,7 @@ class ChangeList {
     this.container = null;
     this.ranges = null;
     this.stack = null;
+    this.strings = null;
   }
 
   addChangeListRange(start, len) {
@@ -246,6 +258,18 @@ class ChangeList {
       const op = mem32[i++];
       i = OP_TABLE[op](this, mem8, mem32, i);
     }
+  }
+
+  addString(str, id) {
+    this.strings.set(id, str);
+  }
+
+  dropString(id) {
+    this.strings.delete(id);
+  }
+
+  getString(id) {
+    return this.strings.get(id);
   }
 
   initEventsTrampoline(trampoline) {

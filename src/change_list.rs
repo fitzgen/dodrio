@@ -1,5 +1,7 @@
 use crate::Listener;
 use bumpalo::Bump;
+use std::cell::Cell;
+use std::collections::HashMap;
 use std::fmt;
 use std::sync::Once;
 use wasm_bindgen::prelude::*;
@@ -32,8 +34,15 @@ pub mod js {
     }
 }
 
+struct StringsCacheEntry {
+    key: u32,
+    used: bool,
+}
+
 pub(crate) struct ChangeList {
     bump: Bump,
+    strings_cache: HashMap<String, StringsCacheEntry>,
+    next_string_key: Cell<u32>,
     js: js::ChangeList,
     events_trampoline: Option<Closure<Fn(web_sys::Event, u32, u32)>>,
 }
@@ -69,9 +78,12 @@ impl ChangeList {
         });
 
         let bump = Bump::new();
+        let strings_cache = HashMap::new();
         let js = js::ChangeList::new(container);
         ChangeList {
             bump,
+            strings_cache,
+            next_string_key: Cell::new(0),
             js,
             events_trampoline: None,
         }
@@ -238,6 +250,24 @@ enum ChangeDiscriminant {
     /// stack.top().removeEventListener(String(pointer, length));
     /// ```
     RemoveEventListener = 13,
+
+    /// Immediates: `(pointer, length, id)`
+    ///
+    /// Stack: `[...] -> [...]`
+    ///
+    /// ```text
+    /// addString(String(pointer, length), id);
+    /// ```
+    AddString = 14,
+
+    /// Immediates: `(id)`
+    ///
+    /// Stack: `[...] -> [...]`
+    ///
+    /// ```text
+    /// dropString(id);
+    /// ```
+    DropString = 15,
 }
 
 // Allocation utilities to ensure that we only allocation sequences of `u32`s
@@ -249,22 +279,62 @@ impl ChangeList {
         self.bump.alloc(discriminant as u32);
     }
 
-    // Note: no 1-immediate opcodes at this time.
+    // Allocate an opcode with one immediate.
+    fn op1(&self, discriminant: ChangeDiscriminant, a: u32) {
+        self.bump.alloc([discriminant as u32, a]);
+    }
 
     // Allocate an opcode with two immediates.
     fn op2(&self, discriminant: ChangeDiscriminant, a: u32, b: u32) {
         self.bump.alloc([discriminant as u32, a, b]);
     }
 
-    // Note: no 3-immediate opcodes at this time.
-
-    // Allocate an opcode with four immediates.
-    fn op4(&self, discriminant: ChangeDiscriminant, a: u32, b: u32, c: u32, d: u32) {
-        self.bump.alloc([discriminant as u32, a, b, c, d]);
+    // Allocate an opcode with three immediates.
+    fn op3(&self, discriminant: ChangeDiscriminant, a: u32, b: u32, c: u32) {
+        self.bump.alloc([discriminant as u32, a, b, c]);
     }
+
+    // Note: no 4-immediate opcodes at this time.
 }
 
 impl ChangeList {
+    fn ensure_string(&mut self, string: &str) -> u32 {
+        let entry = self.strings_cache.get_mut(string);
+        if entry.is_some() {
+            let entry = entry.unwrap();
+            entry.used = true;
+            entry.key
+        } else {
+            let key = self.next_string_key.get();
+            self.next_string_key.set(key + 1);
+            let entry = StringsCacheEntry { key, used: true };
+            self.strings_cache.insert(string.to_string(), entry);
+            self.op3(
+                ChangeDiscriminant::AddString,
+                string.as_ptr() as u32,
+                string.len() as u32,
+                key
+            );
+            key
+        }
+    }
+
+    pub(crate) fn drop_unused_strings(&mut self) {
+        debug!("drop_unused_strings()");
+        let mut new_cache = HashMap::new();
+        for (key, val) in self.strings_cache.iter() {
+            if val.used {
+                new_cache.insert(key.clone(), StringsCacheEntry { key: val.key, used: false });
+            } else {
+                self.op1(
+                    ChangeDiscriminant::DropString,
+                    val.key,
+                );
+            }
+        }
+        self.strings_cache = new_cache;
+    }
+
     pub(crate) fn emit_set_text(&self, text: &str) {
         debug!("emit_set_text({:?})", text);
         self.op2(
@@ -284,23 +354,23 @@ impl ChangeList {
         self.op0(ChangeDiscriminant::ReplaceWith);
     }
 
-    pub(crate) fn emit_set_attribute(&self, name: &str, value: &str) {
+    pub(crate) fn emit_set_attribute(&mut self, name: &str, value: &str) {
         debug!("emit_set_attribute({:?}, {:?})", name, value);
-        self.op4(
+        let name_id = self.ensure_string(name);
+        let value_id = self.ensure_string(value);
+        self.op2(
             ChangeDiscriminant::SetAttribute,
-            name.as_ptr() as u32,
-            name.len() as u32,
-            value.as_ptr() as u32,
-            value.len() as u32,
+            name_id,
+            value_id,
         );
     }
 
-    pub(crate) fn emit_remove_attribute(&self, name: &str) {
+    pub(crate) fn emit_remove_attribute(&mut self, name: &str) {
         debug!("emit_remove_attribute({:?})", name);
-        self.op2(
+        let name_id = self.ensure_string(name);
+        self.op1(
             ChangeDiscriminant::RemoveAttribute,
-            name.as_ptr() as u32,
-            name.len() as u32,
+            name_id,
         );
     }
 
@@ -333,47 +403,47 @@ impl ChangeList {
         );
     }
 
-    pub(crate) fn emit_create_element(&self, tag_name: &str) {
+    pub(crate) fn emit_create_element(&mut self, tag_name: &str) {
         debug!("emit_create_element({:?})", tag_name);
-        self.op2(
+        let tag_name_id = self.ensure_string(tag_name);
+        self.op1(
             ChangeDiscriminant::CreateElement,
-            tag_name.as_ptr() as u32,
-            tag_name.len() as u32,
+            tag_name_id,
         );
     }
 
-    pub(crate) fn emit_new_event_listener(&self, listener: &Listener) {
+    pub(crate) fn emit_new_event_listener(&mut self, listener: &Listener) {
         debug!("emit_new_event_listener({:?})", listener);
         let (a, b) = listener.get_callback_parts();
         debug_assert!(a != 0);
-        self.op4(
+        let event_id = self.ensure_string(listener.event);
+        self.op3(
             ChangeDiscriminant::NewEventListener,
-            listener.event.as_ptr() as u32,
-            listener.event.len() as u32,
+            event_id,
             a,
             b,
         );
     }
 
-    pub(crate) fn emit_update_event_listener(&self, listener: &Listener) {
+    pub(crate) fn emit_update_event_listener(&mut self, listener: &Listener) {
         debug!("emit_update_event_listener({:?})", listener);
         let (a, b) = listener.get_callback_parts();
         debug_assert!(a != 0);
-        self.op4(
+        let event_id = self.ensure_string(listener.event);
+        self.op3(
             ChangeDiscriminant::UpdateEventListener,
-            listener.event.as_ptr() as u32,
-            listener.event.len() as u32,
+            event_id,
             a,
             b,
         );
     }
 
-    pub(crate) fn emit_remove_event_listener(&self, event: &str) {
+    pub(crate) fn emit_remove_event_listener(&mut self, event: &str) {
         debug!("emit_remove_event_listener({:?})", event);
-        self.op2(
+        let event_id = self.ensure_string(event);
+        self.op1(
             ChangeDiscriminant::RemoveEventListener,
-            event.as_ptr() as u32,
-            event.len() as u32,
+            event_id,
         );
     }
 }
