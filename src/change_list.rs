@@ -310,7 +310,7 @@ impl ChangeList {
                 ChangeDiscriminant::AddString,
                 string.as_ptr() as u32,
                 string.len() as u32,
-                key
+                key,
             );
             key
         }
@@ -321,12 +321,15 @@ impl ChangeList {
         let mut new_cache = FxHashMap::default();
         for (key, val) in self.strings_cache.iter() {
             if val.used {
-                new_cache.insert(key.clone(), StringsCacheEntry { key: val.key, used: false });
-            } else {
-                self.op1(
-                    ChangeDiscriminant::DropString,
-                    val.key,
+                new_cache.insert(
+                    key.clone(),
+                    StringsCacheEntry {
+                        key: val.key,
+                        used: false,
+                    },
                 );
+            } else {
+                self.op1(ChangeDiscriminant::DropString, val.key);
             }
         }
         self.strings_cache = new_cache;
@@ -355,20 +358,13 @@ impl ChangeList {
         debug!("emit_set_attribute({:?}, {:?})", name, value);
         let name_id = self.ensure_string(name);
         let value_id = self.ensure_string(value);
-        self.op2(
-            ChangeDiscriminant::SetAttribute,
-            name_id,
-            value_id,
-        );
+        self.op2(ChangeDiscriminant::SetAttribute, name_id, value_id);
     }
 
     pub(crate) fn emit_remove_attribute(&mut self, name: &str) {
         debug!("emit_remove_attribute({:?})", name);
         let name_id = self.ensure_string(name);
-        self.op1(
-            ChangeDiscriminant::RemoveAttribute,
-            name_id,
-        );
+        self.op1(ChangeDiscriminant::RemoveAttribute, name_id);
     }
 
     pub(crate) fn emit_push_first_child(&self) {
@@ -403,10 +399,7 @@ impl ChangeList {
     pub(crate) fn emit_create_element(&mut self, tag_name: &str) {
         debug!("emit_create_element({:?})", tag_name);
         let tag_name_id = self.ensure_string(tag_name);
-        self.op1(
-            ChangeDiscriminant::CreateElement,
-            tag_name_id,
-        );
+        self.op1(ChangeDiscriminant::CreateElement, tag_name_id);
     }
 
     pub(crate) fn emit_new_event_listener(&mut self, listener: &Listener) {
@@ -414,12 +407,7 @@ impl ChangeList {
         let (a, b) = listener.get_callback_parts();
         debug_assert!(a != 0);
         let event_id = self.ensure_string(listener.event);
-        self.op3(
-            ChangeDiscriminant::NewEventListener,
-            event_id,
-            a,
-            b,
-        );
+        self.op3(ChangeDiscriminant::NewEventListener, event_id, a, b);
     }
 
     pub(crate) fn emit_update_event_listener(&mut self, listener: &Listener) {
@@ -427,20 +415,12 @@ impl ChangeList {
         let (a, b) = listener.get_callback_parts();
         debug_assert!(a != 0);
         let event_id = self.ensure_string(listener.event);
-        self.op3(
-            ChangeDiscriminant::UpdateEventListener,
-            event_id,
-            a,
-            b,
-        );
+        self.op3(ChangeDiscriminant::UpdateEventListener, event_id, a, b);
     }
 
     pub(crate) fn emit_remove_event_listener(&mut self, event: &str) {
         debug!("emit_remove_event_listener({:?})", event);
         let event_id = self.ensure_string(event);
-        self.op1(
-            ChangeDiscriminant::RemoveEventListener,
-            event_id,
-        );
+        self.op1(ChangeDiscriminant::RemoveEventListener, event_id);
     }
 }
