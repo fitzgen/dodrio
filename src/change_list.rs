@@ -1,7 +1,7 @@
 use crate::Listener;
 use bumpalo::Bump;
 use std::cell::Cell;
-use std::collections::HashMap;
+use fxhash::FxHashMap;
 use std::fmt;
 use std::sync::Once;
 use wasm_bindgen::prelude::*;
@@ -41,7 +41,7 @@ struct StringsCacheEntry {
 
 pub(crate) struct ChangeList {
     bump: Bump,
-    strings_cache: HashMap<String, StringsCacheEntry>,
+    strings_cache: FxHashMap<String, StringsCacheEntry>,
     next_string_key: Cell<u32>,
     js: js::ChangeList,
     events_trampoline: Option<Closure<Fn(web_sys::Event, u32, u32)>>,
@@ -78,7 +78,7 @@ impl ChangeList {
         });
 
         let bump = Bump::new();
-        let strings_cache = HashMap::new();
+        let strings_cache = FxHashMap::default();
         let js = js::ChangeList::new(container);
         ChangeList {
             bump,
@@ -321,7 +321,7 @@ impl ChangeList {
 
     pub(crate) fn drop_unused_strings(&mut self) {
         debug!("drop_unused_strings()");
-        let mut new_cache = HashMap::new();
+        let mut new_cache = FxHashMap::default();
         for (key, val) in self.strings_cache.iter() {
             if val.used {
                 new_cache.insert(key.clone(), StringsCacheEntry { key: val.key, used: false });
