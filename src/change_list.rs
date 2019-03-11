@@ -1,6 +1,5 @@
 use crate::Listener;
 use bumpalo::Bump;
-use std::cell::Cell;
 use fxhash::FxHashMap;
 use std::fmt;
 use std::sync::Once;
@@ -42,7 +41,7 @@ struct StringsCacheEntry {
 pub(crate) struct ChangeList {
     bump: Bump,
     strings_cache: FxHashMap<String, StringsCacheEntry>,
-    next_string_key: Cell<u32>,
+    next_string_key: u32,
     js: js::ChangeList,
     events_trampoline: Option<Closure<Fn(web_sys::Event, u32, u32)>>,
 }
@@ -83,7 +82,7 @@ impl ChangeList {
         ChangeList {
             bump,
             strings_cache,
-            next_string_key: Cell::new(0),
+            next_string_key: 0,
             js,
             events_trampoline: None,
         }
@@ -299,14 +298,12 @@ impl ChangeList {
 
 impl ChangeList {
     fn ensure_string(&mut self, string: &str) -> u32 {
-        let entry = self.strings_cache.get_mut(string);
-        if entry.is_some() {
-            let entry = entry.unwrap();
+        if let Some(entry) = self.strings_cache.get_mut(string) {
             entry.used = true;
             entry.key
         } else {
-            let key = self.next_string_key.get();
-            self.next_string_key.set(key + 1);
+            let key = self.next_string_key;
+            self.next_string_key += 1;
             let entry = StringsCacheEntry { key, used: true };
             self.strings_cache.insert(string.to_string(), entry);
             self.op3(
