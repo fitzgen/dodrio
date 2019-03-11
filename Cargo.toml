@@ -8,13 +8,13 @@ edition = "2018"
 bumpalo = "2.1.0"
 cfg-if = "0.1.7"
 futures = "0.1.25"
-wasm-bindgen = "0.2.37"
-wasm-bindgen-futures = "0.3.14"
-js-sys = "0.3.14"
+wasm-bindgen = "0.2.38"
+wasm-bindgen-futures = "0.3.15"
+js-sys = "0.3.15"
 log = { version = "0.4.6", optional = true }
 
 [dependencies.web-sys]
-version = "0.3.14"
+version = "0.3.15"
 features = [
   "console",
   "Document",
@@ -28,10 +28,10 @@ features = [
 console_log = "0.1.2"
 dodrio-js-api = { version = "=0.1.0", path = "./crates/js-api" }
 log = "0.4.6"
-wasm-bindgen-test = "0.2.37"
+wasm-bindgen-test = "0.2.38"
 
 [dev-dependencies.web-sys]
-version = "0.3.14"
+version = "0.3.15"
 features = [
   "Attr",
   "EventTarget",
@@ -49,6 +49,7 @@ opt-level = "s"
 members = [
   "./crates/js-api",
   "./examples/counter",
+  "./examples/game-of-life",
   "./examples/hello-world",
   "./examples/input-form",
   "./examples/js-component",

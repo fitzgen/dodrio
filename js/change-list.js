@@ -255,3 +255,5 @@ class ChangeList {
   }
 }
 window.ChangeList = ChangeList;
+
+//# sourceURL=dodrio/change-list.js

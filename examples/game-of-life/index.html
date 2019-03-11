@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8"/>
+    <title>Conway's Game of Life</title>
+    <style>
+     .cell {
+         display: inline-block;
+         width: 1vh;
+         height: 1vh;
+         border: 1px #cccccc solid;
+         margin: -1px;
+         padding: 0;
+     }
+
+     .row {
+         height: 1vh;
+         margin: 0;
+         padding: 0;
+     }
+
+     .universe {
+     }
+
+     body {
+         width: 100vw;
+         height: 100vh;
+         display: flex;
+         align-items: center;
+         justify-content: center;
+         padding: 0;
+         margin: 0;
+     }
+
+     html {
+         padding: 0;
+         margin: 0;
+     }
+    </style>
+  </head>
+  <body>
+    <script src="pkg/dodrio_game_of_life.js"></script>
+    <script>
+     wasm_bindgen("pkg/dodrio_game_of_life_bg.wasm");
+    </script>
+  </body>
+</html>
