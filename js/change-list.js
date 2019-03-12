@@ -136,8 +136,8 @@ const OP_TABLE = [
     const b = mem32[i++];
     const el = top(changeList.stack);
     el.addEventListener(eventType, changeList.eventHandler);
-    el["dodrio-a-" + eventType] = a;
-    el["dodrio-b-" + eventType] = b;
+    el[`dodrio-a-${eventType}`] = a;
+    el[`dodrio-b-${eventType}`] = b;
     return i;
   },
 
@@ -146,8 +146,8 @@ const OP_TABLE = [
     const eventId = mem32[i++];
     const eventType = changeList.getString(eventId);
     const el = top(changeList.stack);
-    el["dodrio-a-" + eventType] = mem32[i++];
-    el["dodrio-b-" + eventType] = mem32[i++];
+    el[`dodrio-a-${eventType}`] = mem32[i++];
+    el[`dodrio-b-${eventType}`] = mem32[i++];
     return i;
   },
 
@@ -257,8 +257,8 @@ class ChangeList {
       // to listen for events on, this ensures that we always get the right
       // values for `a` and `b`.
       const type = event.type;
-      const a = this["dodrio-a-" + type];
-      const b = this["dodrio-b-" + type];
+      const a = this[`dodrio-a-${type}`];
+      const b = this[`dodrio-b-${type}`];
       trampoline(event, a, b);
     }
   }
