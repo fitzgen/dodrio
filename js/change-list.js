@@ -135,10 +135,9 @@ const OP_TABLE = [
     const a = mem32[i++];
     const b = mem32[i++];
     const el = top(changeList.stack);
-    const listener = new Listener(a, b, eventType, changeList.eventsTrampoline, el);
-    changeList.listeners.add(listener);
-    el.addEventListener(eventType, listener.callback);
-    el[`dodrio-${eventType}`] = listener;
+    el.addEventListener(eventType, changeList.eventHandler);
+    el[`dodrio-a-${eventType}`] = a;
+    el[`dodrio-b-${eventType}`] = b;
     return i;
   },
 
@@ -147,9 +146,8 @@ const OP_TABLE = [
     const eventId = mem32[i++];
     const eventType = changeList.getString(eventId);
     const el = top(changeList.stack);
-    const listener = el[`dodrio-${eventType}`];
-    listener.a = mem32[i++];
-    listener.b = mem32[i++];
+    el[`dodrio-a-${eventType}`] = mem32[i++];
+    el[`dodrio-b-${eventType}`] = mem32[i++];
     return i;
   },
 
@@ -158,9 +156,7 @@ const OP_TABLE = [
     const eventId = mem32[i++];
     const eventType = changeList.getString(eventId);
     const el = top(changeList.stack);
-    const listener = el[`dodrio-${eventType}`];
-    el.removeEventListener(eventType, listener.callback);
-    changeList.listeners.delete(listener);
+    el.removeEventListener(eventType, changeList.eventHandler);
     return i;
   },
 
@@ -182,25 +178,9 @@ const OP_TABLE = [
   }
 ];
 
-class Listener {
-  constructor(a, b, eventType, trampoline, el) {
-    this.a = a;
-    this.b = b;
-    this.eventType = eventType;
-    this.trampoline = trampoline;
-    this.el = el;
-    this.callback = this.callback.bind(this);
-  }
-
-  callback(event) {
-    this.trampoline(event, this.a, this.b);
-  }
-}
-
 // export
 class ChangeList {
   constructor(container) {
-    this.listeners = new Set();
     this.trampoline = null;
     this.container = container;
     this.ranges = [];
@@ -209,18 +189,10 @@ class ChangeList {
   }
 
   unmount() {
-    for (const listener of this.listeners) {
-      listener.el.removeEventListener(listener.eventType, listener.callback);
-      listener.trampoline = () => {
-        throw new Error("invocation of listener after it has been removed");
-      };
-      listener.a = 0;
-      listener.b = 0;
-    }
+    this.trampoline.mounted = false;
 
     // Null out all of our properties just to ensure that if we mistakenly ever
     // call a method on this instance again, it will throw.
-    this.listeners = null;
     this.trampoline = null;
     this.container = null;
     this.ranges = null;
@@ -273,9 +245,22 @@ class ChangeList {
   }
 
   initEventsTrampoline(trampoline) {
-    this.eventsTrampoline = (...args) => {
-      trampoline(...args);
-    };
+    this.trampoline = trampoline;
+    trampoline.mounted = true;
+    this.eventHandler = function(event) {
+      if (!trampoline.mounted) {
+        throw new Error("invocation of listener after VDOM has been unmounted");
+      }
+
+      // `this` always refers to the element the handler was added to.
+      // Since we're adding the handler to all elements our content wants
+      // to listen for events on, this ensures that we always get the right
+      // values for `a` and `b`.
+      const type = event.type;
+      const a = this[`dodrio-a-${type}`];
+      const b = this[`dodrio-b-${type}`];
+      trampoline(event, a, b);
+    }
   }
 }
 window.ChangeList = ChangeList;
