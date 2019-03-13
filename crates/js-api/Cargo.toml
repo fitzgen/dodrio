@@ -1,8 +1,16 @@
 [package]
-name = "dodrio-js-api"
-version = "0.1.0"
 authors = ["Nick Fitzgerald <fitzgen@gmail.com>"]
+categories = ["wasm", "web-programming"]
+description = "An API for implementing Dodrio rendering components with JavaScript"
 edition = "2018"
+keywords = ["javascript", "js", "vdom", "virtual-dom"]
+license = "MPL-2.0"
+name = "dodrio-js-api"
+repository = "https://github.com/fitzgen/dodrio"
+version = "0.1.0"
+
+[badges]
+travis-ci = { repository = "fitzgen/dodrio" }
 
 [dependencies]
 dodrio = { version = "=0.1.0", path = "../.." }

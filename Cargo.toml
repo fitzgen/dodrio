@@ -1,8 +1,17 @@
 [package]
-name = "dodrio"
-version = "0.1.0"
 authors = ["Nick Fitzgerald <fitzgen@gmail.com>"]
+categories = ["wasm", "web-programming"]
+description = "A fast, bump-allocated virtual DOM library."
 edition = "2018"
+keywords = ["virtual-dom", "vdom", "render", "bump"]
+license = "MPL-2.0"
+name = "dodrio"
+readme = "./README.md"
+repository = "https://github.com/fitzgen/dodrio"
+version = "0.1.0"
+
+[badges]
+travis-ci = { repository = "fitzgen/dodrio" }
 
 [dependencies]
 bumpalo = "2.1.0"
