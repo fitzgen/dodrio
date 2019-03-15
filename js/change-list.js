@@ -191,12 +191,10 @@ const OP_TABLE = [
   function setAttributeNS(changeList, mem8, mem32, i) {
     const nameId = mem32[i++];
     const valueId = mem32[i++];
-    const nsId = mem32[i++];
     const name = changeList.getString(nameId);
     const value = changeList.getString(valueId);
-    const ns = changeList.getString(nsId);
     const node = top(changeList.stack);
-    node.setAttributeNS(ns, name, value);
+    node.setAttributeNS(null, name, value);
     return i;
   }
 ];

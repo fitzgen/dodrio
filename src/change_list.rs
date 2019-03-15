@@ -379,12 +379,11 @@ impl ChangeList {
         self.op2(ChangeDiscriminant::SetAttribute, name_id, value_id);
     }
 
-    pub(crate) fn emit_set_attribute_ns(&mut self, name: &str, value: &str, ns: &str) {
-        debug!("emit_set_attribute_ns({:?}, {:?})", name, value, ns);
-        let ns_id = self.ensure_string(ns);
+    pub(crate) fn emit_set_attribute_ns(&mut self, name: &str, value: &str) {
+        debug!("emit_set_attribute_ns({:?}, {:?}", name, value);
         let name_id = self.ensure_string(name);
         let value_id = self.ensure_string(value);
-        self.op3(ChangeDiscriminant::SetAttributeNS, name_id, value_id, ns_id);
+        self.op2(ChangeDiscriminant::SetAttributeNS, name_id, value_id);
     }
 
     pub(crate) fn emit_remove_attribute(&mut self, name: &str) {
