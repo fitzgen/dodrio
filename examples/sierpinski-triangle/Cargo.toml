@@ -1,0 +1,29 @@
+[package]
+name = "dodrio-sierpinski"
+version = "0.1.0"
+authors = ["Steven Seguin <steven.seguin@gmail.com>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+dodrio = { path = "../.." }
+wasm-bindgen = "0.2.39"
+console_error_panic_hook = "0.1.6"
+js-sys = "0.3.16"
+wasm-bindgen-futures = "0.3.16"
+futures = "0.1.25"
+
+[dependencies.web-sys]
+version = "0.3.16"
+features = [
+  "Document",
+  "HtmlElement",
+  "Node",
+  "Performance",
+  "Window",
+]
+
+[dev-dependencies]
+wasm-bindgen-test = "0.2.39"
