@@ -463,7 +463,12 @@ impl VdomInnerExclusive {
                 attributes,
                 children,
             }) => {
-                self.change_list.emit_create_element(tag_name);
+                if ["svg", "path"].contains(&tag_name) {
+                    self.change_list
+                        .emit_create_element_ns(tag_name, "http://www.w3.org/2000/svg");
+                } else {
+                    self.change_list.emit_create_element(tag_name);
+                }
                 for l in listeners {
                     unsafe {
                         registry.add(l);
@@ -471,7 +476,15 @@ impl VdomInnerExclusive {
                     self.change_list.emit_new_event_listener(l);
                 }
                 for attr in attributes {
-                    self.change_list.emit_set_attribute(&attr.name, &attr.value);
+                    if ["svg", "path"].contains(&tag_name) {
+                        self.change_list.emit_set_attribute_ns(
+                            &attr.name,
+                            &attr.value,
+                            "http://www.w3.org/2000/svg",
+                        );
+                    } else {
+                        self.change_list.emit_set_attribute(&attr.name, &attr.value);
+                    }
                 }
                 for child in children {
                     self.create(registry, child.clone());

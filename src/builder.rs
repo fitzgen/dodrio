@@ -856,6 +856,14 @@ builder_constructors! {
     /// element.
     slot;
     /// Build a
+    /// [`<svg>`](https://developer.mozilla.org/en-US/docs/Web/SVG/Element/svg)
+    /// element.
+    svg;
+    /// Build a
+    /// [`<path>`](https://developer.mozilla.org/en-US/docs/Web/SVG/Element/path)
+    /// element.
+    path;
+    /// Build a
     /// [`<template>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template)
     /// element.
     template;
