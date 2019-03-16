@@ -268,21 +268,21 @@ enum ChangeDiscriminant {
     /// ```
     DropString = 15,
 
-    /// Immediates: `(pointer, length)`
+    /// Immediates: `(pointer1, length1, pointer2, length2)`
     ///
     /// Stack: `[...] -> [... Node]`
     ///
     /// ```text
-    /// stack.push(createElement(String(pointer, length))
+    /// stack.push(createElementNS(String(pointer1, length1), String(pointer2, length2))
     /// ```
     CreateElementNS = 16,
 
-    /// Immediates: `(pointer, length)`
+    /// Immediates: `(pointer1, length1, pointer2, length2, pointer3, length3)`
     ///
-    /// Stack: `[...] -> [... Node]`
+    /// Stack: `[... Node] -> [... Node]`
     ///
     /// ```text
-    /// stack.push(createElement(String(pointer, length))
+    /// stack.top().setAttributeNS(String(pointer1, length1), String(pointer2, length2), String(pointer3, length3))
     /// ```
     SetAttributeNS = 17,
 }

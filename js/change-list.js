@@ -247,7 +247,7 @@ class ChangeList {
 
   applyChangeRange(mem8, mem32, start, len) {
     const end = (start + len) / 4;
-    for (let i = start / 4; i < end;) {
+    for (let i = start / 4; i < end; ) {
       const op = mem32[i++];
       i = OP_TABLE[op](this, mem8, mem32, i);
     }
@@ -268,7 +268,7 @@ class ChangeList {
   initEventsTrampoline(trampoline) {
     this.trampoline = trampoline;
     trampoline.mounted = true;
-    this.eventHandler = function (event) {
+    this.eventHandler = function(event) {
       if (!trampoline.mounted) {
         throw new Error("invocation of listener after VDOM has been unmounted");
       }

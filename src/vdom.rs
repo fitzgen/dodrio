@@ -287,30 +287,43 @@ impl VdomInnerExclusive {
                     self.change_list.emit_set_text(new_text);
                 }
             }
-            (&Node::Text(TextNode { .. }), Node::Element(ElementNode { .. })) => {
+            (&Node::Text(_), Node::Element(_))
+            | (&Node::Text(_), Node::NamespacedElement(_, _)) => {
                 debug!("  replacing a text node with an element");
                 self.create(registry, new);
                 self.change_list.emit_replace_with();
             }
-            (&Node::Element(ElementNode { .. }), Node::Text(TextNode { .. })) => {
+            (&Node::Element(_), Node::Text(_))
+            | (&Node::NamespacedElement(_, _), Node::Text(_)) => {
                 debug!("  replacing an element with a text node");
                 self.create(registry, new);
                 self.change_list.emit_replace_with();
             }
-            (
-                &Node::Element(ElementNode {
+            (&Node::Element(ref new_element_node), Node::Element(ref old_element_node))
+            | (
+                &Node::NamespacedElement(_, ref new_element_node),
+                Node::Element(ref old_element_node),
+            )
+            | (
+                &Node::Element(ref new_element_node),
+                Node::NamespacedElement(_, ref old_element_node),
+            )
+            | (
+                &Node::NamespacedElement(_, ref new_element_node),
+                Node::NamespacedElement(_, ref old_element_node),
+            ) => {
+                let ElementNode {
                     tag_name: new_tag_name,
                     listeners: new_listeners,
                     attributes: new_attributes,
                     children: new_children,
-                }),
-                Node::Element(ElementNode {
+                } = new_element_node;
+                let ElementNode {
                     tag_name: old_tag_name,
                     listeners: old_listeners,
                     attributes: old_attributes,
                     children: old_children,
-                }),
-            ) => {
+                } = old_element_node;
                 debug!("  updating an element");
                 if new_tag_name != old_tag_name {
                     debug!("  different tag names; creating new element and replacing old element");
@@ -463,12 +476,7 @@ impl VdomInnerExclusive {
                 attributes,
                 children,
             }) => {
-                if ["svg", "path"].contains(&tag_name) {
-                    self.change_list
-                        .emit_create_element_ns(tag_name, "http://www.w3.org/2000/svg");
-                } else {
-                    self.change_list.emit_create_element(tag_name);
-                }
+                self.change_list.emit_create_element(tag_name);
                 for l in listeners {
                     unsafe {
                         registry.add(l);
@@ -476,12 +484,32 @@ impl VdomInnerExclusive {
                     self.change_list.emit_new_event_listener(l);
                 }
                 for attr in attributes {
-                    if ["svg", "path"].contains(&tag_name) && attr.name != "xmlns" {
-                        self.change_list
-                            .emit_set_attribute_ns(&attr.name, &attr.value);
-                    } else {
-                        self.change_list.emit_set_attribute(&attr.name, &attr.value);
+                    self.change_list.emit_set_attribute(&attr.name, &attr.value);
+                }
+                for child in children {
+                    self.create(registry, child.clone());
+                    self.change_list.emit_append_child();
+                }
+            }
+            Node::NamespacedElement(
+                namepsace,
+                ElementNode {
+                    tag_name,
+                    listeners,
+                    attributes,
+                    children,
+                },
+            ) => {
+                self.change_list.emit_create_element_ns(tag_name, namepsace);
+                for l in listeners {
+                    unsafe {
+                        registry.add(l);
                     }
+                    self.change_list.emit_new_event_listener(l);
+                }
+                for attr in attributes {
+                    self.change_list
+                        .emit_set_attribute_ns(&attr.name, &attr.value);
                 }
                 for child in children {
                     self.create(registry, child.clone());

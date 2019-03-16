@@ -20,6 +20,7 @@ where
     listeners: Listeners,
     attributes: Attributes,
     children: Children,
+    namespace: Option<&'a str>,
 }
 
 impl<'a>
@@ -60,6 +61,19 @@ impl<'a>
             listeners: bumpalo::collections::Vec::new_in(bump),
             attributes: bumpalo::collections::Vec::new_in(bump),
             children: bumpalo::collections::Vec::new_in(bump),
+            namespace: None,
+        }
+    }
+
+    /// FIX ME
+    pub fn new_with_namespace(bump: &'a Bump, tag_name: &'a str, namespace: &'a str) -> Self {
+        ElementBuilder {
+            bump,
+            tag_name,
+            listeners: bumpalo::collections::Vec::new_in(bump),
+            attributes: bumpalo::collections::Vec::new_in(bump),
+            children: bumpalo::collections::Vec::new_in(bump),
+            namespace: Some(namespace),
         }
     }
 }
@@ -108,6 +122,7 @@ where
             listeners,
             attributes: self.attributes,
             children: self.children,
+            namespace: self.namespace,
         }
     }
 
@@ -145,6 +160,7 @@ where
             listeners: self.listeners,
             attributes,
             children: self.children,
+            namespace: self.namespace,
         }
     }
 
@@ -182,6 +198,7 @@ where
             listeners: self.listeners,
             attributes: self.attributes,
             children,
+            namespace: self.namespace,
         }
     }
 
@@ -202,13 +219,17 @@ where
     /// ```
     #[inline]
     pub fn finish(self) -> Node<'a> {
-        Node::element(
+        let element = Node::element_node(
             self.bump,
             self.tag_name,
             self.listeners,
             self.attributes,
             self.children,
-        )
+        );
+        match self.namespace {
+            Some(namespace) => Node::NamespacedElement(namespace, element),
+            None => Node::Element(element),
+        }
     }
 }
 
@@ -355,6 +376,25 @@ macro_rules! builder_constructors {
                 bumpalo::collections::Vec<'a, Node<'a>>,
             > {
                 ElementBuilder::new(bump, stringify!($name))
+            }
+        )*
+    };
+    ( $(
+        $(#[$attr:meta])*
+        $name:ident <> $namespace:tt;
+    )* ) => {
+        $(
+            $(#[$attr])*
+            #[inline]
+            pub fn $name<'a>(
+                bump: &'a Bump,
+            ) -> ElementBuilder<
+                'a,
+                bumpalo::collections::Vec<'a, Listener<'a>>,
+                bumpalo::collections::Vec<'a, Attribute<'a>>,
+                bumpalo::collections::Vec<'a, Node<'a>>,
+            > {
+                ElementBuilder::new_with_namespace(bump, stringify!($name), stringify!(namespace))
             }
         )*
     }
@@ -856,17 +896,22 @@ builder_constructors! {
     /// element.
     slot;
     /// Build a
-    /// [`<svg>`](https://developer.mozilla.org/en-US/docs/Web/SVG/Element/svg)
-    /// element.
-    svg;
-    /// Build a
-    /// [`<path>`](https://developer.mozilla.org/en-US/docs/Web/SVG/Element/path)
-    /// element.
-    path;
-    /// Build a
     /// [`<template>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template)
     /// element.
     template;
+}
+
+builder_constructors! {
+    // SVG components
+
+    /// Build a
+    /// [`<svg>`](https://developer.mozilla.org/en-US/docs/Web/SVG/Element/svg)
+    /// element.
+    svg <> "http://www.w3.org/2000/svg" ;
+    /// Build a
+    /// [`<path>`](https://developer.mozilla.org/en-US/docs/Web/SVG/Element/path)
+    /// element.
+    path <> "http://www.w3.org/2000/svg";
 }
 
 /// Construct a text node.
