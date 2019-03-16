@@ -140,7 +140,7 @@ impl Vdom {
         // Create a dummy `<div/>` in our container.
         let current_root = Node::element(&dom_buffers[0], "div", [], [], []);
         let current_root = Some(unsafe { extend_node_lifetime(current_root) });
-        let window = web_sys::window().expect("should have acess to the Window");
+        let window = web_sys::window().expect("should have access to the Window");
         let document = window
             .document()
             .expect("should have access to the Document");

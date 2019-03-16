@@ -3,7 +3,7 @@ use dodrio::Render;
 use log::*;
 use wasm_bindgen::prelude::*;
 
-/// A counter that can be incremented and decrmented!
+/// A counter that can be incremented and decremented!
 struct Counter {
     count: isize,
 }
