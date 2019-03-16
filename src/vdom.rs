@@ -508,8 +508,12 @@ impl VdomInnerExclusive {
                     self.change_list.emit_new_event_listener(l);
                 }
                 for attr in attributes {
-                    self.change_list
-                        .emit_set_attribute_ns(&attr.name, &attr.value);
+                    if attr.name == "xmlns" {
+                        self.change_list.emit_set_attribute(&attr.name, &attr.value);
+                    } else {
+                        self.change_list
+                            .emit_set_attribute_ns(&attr.name, &attr.value);
+                    }
                 }
                 for child in children {
                     self.create(registry, child.clone());

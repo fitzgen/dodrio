@@ -394,7 +394,7 @@ macro_rules! builder_constructors {
                 bumpalo::collections::Vec<'a, Attribute<'a>>,
                 bumpalo::collections::Vec<'a, Node<'a>>,
             > {
-                ElementBuilder::new_with_namespace(bump, stringify!($name), stringify!(namespace))
+                ElementBuilder::new_with_namespace(bump, stringify!($name), $namespace)
             }
         )*
     }
