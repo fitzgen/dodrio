@@ -64,5 +64,6 @@ members = [
   "./examples/input-form",
   "./examples/js-component",
   "./examples/moire",
+  "./examples/sierpinski-triangle",
   "./examples/todomvc",
 ]

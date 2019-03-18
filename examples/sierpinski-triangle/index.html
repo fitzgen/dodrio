@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+  <title>Sierpinski Triangle</title>
+  <style>
+    .container {
+      position: absolute;
+      transform-origin: 0 0;
+      left: 50%;
+      top: 50%;
+      width: 10px;
+      height: 10px;
+      background: #eee;
+    }
+
+    .dot {
+      position: absolute;
+      background: #61dafb;
+      font: normal 15px sans-serif;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    .dot:hover {
+      background: url("ferris.png") no-repeat center center;
+      z-index: 999;
+    }
+
+    code {
+      position: relative;
+      font-size: 150%;
+    }
+  </style>
+</head>
+
+<body>
+  <code>FPS: <output id="fps">...</output></code>
+  <div id="scene"></div>
+
+  <script src="pkg/dodrio_sierpinski.js"></script>
+  <script>
+    wasm_bindgen("pkg/dodrio_sierpinski_bg.wasm");
+  </script>
+
+  <script>
+    let lastTime = 0;
+    let frameCount = 0;
+    const fps = document.getElementById('fps');
+
+    function updateFPS(time) {
+      frameCount++;
+      if (lastTime + 1000.0 <= time) {
+        fps.textContent = frameCount;
+        lastTime = time;
+        frameCount = 0;
+      }
+    }
+
+    requestAnimationFrame(function loop(now) {
+      updateFPS(now);
+      requestAnimationFrame(loop);
+    })
+
+  </script>
+</body>
+
+</html>
