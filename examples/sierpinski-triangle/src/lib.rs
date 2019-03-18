@@ -79,27 +79,23 @@ impl Container {
         y: f64,
         s: f64,
         content: u32,
-    ) -> Vec<Node<'bump>>
-    where
+        children: &mut bumpalo::collections::Vec<Node<'bump>>,
+    ) where
         'a: 'bump,
     {
         if s <= self.size {
-            return vec![self.dot(bump, x, y, content)];
+            children.push(self.dot(bump, x, y, content));
+            return;
         }
 
         let s = s / 2.0;
 
-        vec![
-            // Top of triangle
-            self.triangle(bump, x, y - (s / 2.0), s, content),
-            // Bottom-left of triangle
-            self.triangle(bump, x - s, y + (s / 2.0), s, content),
-            // Bottom-right of triangle
-            self.triangle(bump, x + s, y + (s / 2.0), s, content),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
+        // Top of triangle
+        self.triangle(bump, x, y - (s / 2.0), s, content, children);
+        // Bottom-left of triangle
+        self.triangle(bump, x - s, y + (s / 2.0), s, content, children);
+        // Bottom-right of triangle
+        self.triangle(bump, x + s, y + (s / 2.0), s, content, children);
     }
 }
 
@@ -119,10 +115,13 @@ impl Render for Container {
 
         let modulus = elapsed as u32 % 10;
 
+        let mut children = bumpalo::collections::Vec::new_in(bump);
+        self.triangle(bump, 0.0, 0.0, 1000.0, modulus, &mut children);
+
         div(bump)
             .attr("class", "container")
             .attr("style", self.container_transform(bump, elapsed))
-            .children(self.triangle(bump, 0.0, 0.0, 1000.0, modulus))
+            .children(children)
             .finish()
     }
 }
