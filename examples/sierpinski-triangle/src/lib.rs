@@ -1,24 +1,23 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-
 use dodrio::bumpalo::{self, Bump};
 use dodrio::{Node, Render, Vdom};
+use std::cell::RefCell;
+use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::Window;
 
-// Triangle container defining target size
+// Triangle container defining target size.
 struct Container {
     size: f64,
 }
 
 impl Container {
-    // Construct a new container
+    // Construct a new container.
     pub fn new() -> Container {
         Container { size: 25.0 }
     }
 
-    // Generate the container style to fluctuate triangle width
+    // Generate the container style to fluctuate triangle width.
     fn container_transform<'a, 'bump>(&'a self, bump: &'bump Bump, elapsed: f64) -> &'bump str
     where
         'a: 'bump,
@@ -33,7 +32,7 @@ impl Container {
         transform.into_bump_str()
     }
 
-    // Generate the dot's position on the grid
+    // Generate the dot's position on the grid.
     fn dot_style<'a, 'bump>(&'a self, bump: &'bump Bump, x: f64, y: f64) -> &'bump str
     where
         'a: 'bump,
@@ -55,7 +54,7 @@ impl Container {
         styles.into_bump_str()
     }
 
-    // Create a dot node
+    // Create a dot node.
     fn dot<'a, 'bump>(&'a self, bump: &'bump Bump, x: f64, y: f64, content: u32) -> Node<'bump>
     where
         'a: 'bump,
