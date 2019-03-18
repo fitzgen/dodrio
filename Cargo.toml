@@ -14,7 +14,7 @@ version = "0.1.0"
 travis-ci = { repository = "fitzgen/dodrio" }
 
 [dependencies]
-bumpalo = "2.1.0"
+bumpalo = "2.2.0"
 cfg-if = "0.1.7"
 futures = "0.1.25"
 wasm-bindgen = "0.2.38"
