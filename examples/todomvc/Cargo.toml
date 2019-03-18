@@ -8,11 +8,11 @@ version = "0.1.0"
 cfg-if = "0.1.7"
 dodrio = { path = "../.."  }
 futures = "0.1.25"
-js-sys = "0.3.15"
+js-sys = "0.3.16"
 serde = { features = ["derive"], version = "1.0.89" }
 serde_json = "1.0.39"
-wasm-bindgen = "0.2.38"
-wasm-bindgen-futures = "0.3.15"
+wasm-bindgen = "0.2.39"
+wasm-bindgen-futures = "0.3.16"
 
 # Optional dependencies for logging.
 console_error_panic_hook = { optional = true, version = "0.1.6" }
@@ -20,7 +20,7 @@ console_log = { optional = true, version = "0.1.2" }
 log = { optional = true, version = "0.4.6" }
 
 [dependencies.web-sys]
-version = "0.3.15"
+version = "0.3.16"
 features = [
     "Document",
     "Event",
@@ -35,7 +35,7 @@ features = [
 ]
 
 [dev-dependencies]
-wasm-bindgen-test = "0.2.38"
+wasm-bindgen-test = "0.2.39"
 
 [features]
 logging = [
