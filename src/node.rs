@@ -98,7 +98,7 @@ impl<'a> Attribute<'a> {
 }
 
 impl<'a> Node<'a> {
-    // Construct a new Node of type element with given tag name and children
+    /// Construct a new Node of type element with given tag name and children
     #[inline]
     pub(crate) fn element<Listeners, Attributes, Children>(
         bump: &'a Bump,
