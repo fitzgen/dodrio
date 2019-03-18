@@ -176,7 +176,7 @@ where
         .map_err(|e| JsValue::from(e.to_string()))
 }
 
-/// A helper macro for decalaring a bunch of `assert_before_after` tests.
+/// A helper macro for declaring a bunch of `assert_before_after` tests.
 #[macro_export]
 macro_rules! before_after {
     ( $(

@@ -36,7 +36,7 @@ pub struct ElementNode<'a> {
 ///
 /// 1. The virtual DOM's root rendering component.
 /// 2. A capability to scheduler virtual DOM re-rendering.
-/// 3. The event that ocurred.
+/// 3. The event that occurred.
 pub type ListenerCallback<'a> =
     &'a (dyn Fn(&mut dyn RootRender, VdomWeak, web_sys::Event) + 'static);
 

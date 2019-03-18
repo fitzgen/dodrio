@@ -72,7 +72,7 @@ impl<R> Cached<R> {
     /// # Example
     ///
     /// The `Cached<Hello>` component must have its cache invalidated whenever
-    /// the `who` string is changed, or else the cached rendering whill keep
+    /// the `who` string is changed, or else the cached rendering will keep
     /// displaying greetings to old `who`s.
     ///
     /// ```
