@@ -150,6 +150,13 @@ impl<'a> Node<'a> {
     }
 }
 
+/// A node can become an iterator that yields the node itself once.
+///
+/// This implementation of `IntoIterator` mostly exists to improve the
+/// `typed-html` ergonomics, where the macro invokes `.into_iter()` on the child
+/// contents of a tag. By implementing `IntoIterator` here, we avoid having to
+/// do nasty shenanigans like `<p>vec![$contents]</p>` instead of plain old
+/// `<p>$contents</p>`.
 impl<'a> IntoIterator for Node<'a> {
     type Item = Node<'a>;
     type IntoIter = iter::Once<Self::Item>;
