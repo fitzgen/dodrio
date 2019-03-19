@@ -924,6 +924,30 @@ builder_constructors! {
     /// [`<path>`](https://developer.mozilla.org/en-US/docs/Web/SVG/Element/path)
     /// element.
     path <> "http://www.w3.org/2000/svg";
+    /// Build a
+    /// [`<circle>`](https://developer.mozilla.org/en-US/docs/Web/SVG/Element/circle)
+    /// element.
+    circle <>  "http://www.w3.org/2000/svg";
+    /// Build a
+    /// [`<ellipse>`](https://developer.mozilla.org/en-US/docs/Web/SVG/Element/ellipse)
+    /// element.
+    ellipse <> "http://www.w3.org/2000/svg";
+    /// Build a
+    /// [`<line>`](https://developer.mozilla.org/en-US/docs/Web/SVG/Element/line)
+    /// element.
+    line <> "http://www.w3.org/2000/svg";
+    /// Build a
+    /// [`<polygon>`](https://developer.mozilla.org/en-US/docs/Web/SVG/Element/polygon)
+    /// element.
+    polygon <> "http://www.w3.org/2000/svg";
+    /// Build a
+    /// [`<polyline>`](https://developer.mozilla.org/en-US/docs/Web/SVG/Element/polyline)
+    /// element.
+    polyline <> "http://www.w3.org/2000/svg";
+    /// Build a
+    /// [`<rect>`](https://developer.mozilla.org/en-US/docs/Web/SVG/Element/rect)
+    /// element.
+    rect <> "http://www.w3.org/2000/svg";
 }
 
 /// Construct a text node.
