@@ -478,7 +478,7 @@ impl VdomInnerExclusive {
                     self.change_list.emit_new_event_listener(l);
                 }
                 for attr in attributes {
-                    if namespace.is_none() || attr.name == "xmlns" {
+                    if namespace.is_none() || attr.name.starts_with("xmlns") {
                         self.change_list.emit_set_attribute(&attr.name, &attr.value);
                     } else {
                         self.change_list
