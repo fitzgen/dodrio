@@ -1,6 +1,7 @@
 use crate::{RootRender, VdomWeak};
 use bumpalo::Bump;
 use std::fmt;
+use std::iter;
 use std::mem;
 
 /// A node is either a text node or an element.
@@ -146,6 +147,15 @@ impl<'a> Node<'a> {
     #[inline]
     pub(crate) fn text(text: &'a str) -> Node<'a> {
         Node::Text(TextNode { text })
+    }
+}
+
+impl<'a> IntoIterator for Node<'a> {
+    type Item = Node<'a>;
+    type IntoIter = iter::Once<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        iter::once(self)
     }
 }
 
