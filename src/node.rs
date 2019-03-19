@@ -11,9 +11,6 @@ pub enum Node<'a> {
 
     /// An element potentially with attributes and children.
     Element(ElementNode<'a>),
-
-    /// An element with a namespace and potentially with attributes and children.
-    NamespacedElement(&'a str, ElementNode<'a>),
 }
 
 /// Text nodes are just a string of text. They cannot have attributes or
@@ -31,6 +28,7 @@ pub struct ElementNode<'a> {
     pub(crate) listeners: &'a [Listener<'a>],
     pub(crate) attributes: &'a [Attribute<'a>],
     pub(crate) children: &'a [Node<'a>],
+    pub(crate) namespace: Option<&'a str>,
 }
 
 /// An event listener callback function.
@@ -106,25 +104,8 @@ impl<'a> Node<'a> {
         listeners: Listeners,
         attributes: Attributes,
         children: Children,
+        namespace: Option<&'a str>,
     ) -> Node<'a>
-    where
-        Listeners: 'a + AsRef<[Listener<'a>]>,
-        Attributes: 'a + AsRef<[Attribute<'a>]>,
-        Children: 'a + AsRef<[Node<'a>]>,
-    {
-        let element_node = Node::element_node(bump, tag_name, listeners, attributes, children);
-        Node::Element(element_node)
-    }
-
-    /// Construct a new element node with the given tag name and children.
-    #[inline]
-    pub(crate) fn element_node<Listeners, Attributes, Children>(
-        bump: &'a Bump,
-        tag_name: &'a str,
-        listeners: Listeners,
-        attributes: Attributes,
-        children: Children,
-    ) -> ElementNode<'a>
     where
         Listeners: 'a + AsRef<[Listener<'a>]>,
         Attributes: 'a + AsRef<[Attribute<'a>]>,
@@ -139,12 +120,13 @@ impl<'a> Node<'a> {
         let attributes: &'a Attributes = bump.alloc(attributes);
         let attributes: &'a [Attribute<'a>] = attributes.as_ref();
 
-        ElementNode {
+        Node::Element(ElementNode {
             tag_name,
             listeners,
             attributes,
             children,
-        }
+            namespace,
+        })
     }
 
     /// Is this node a text node?

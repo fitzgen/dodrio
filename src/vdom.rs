@@ -138,7 +138,7 @@ impl Vdom {
         container.set_inner_html("");
 
         // Create a dummy `<div/>` in our container.
-        let current_root = Node::element(&dom_buffers[0], "div", [], [], []);
+        let current_root = Node::element(&dom_buffers[0], "div", [], [], [], None);
         let current_root = Some(unsafe { extend_node_lifetime(current_root) });
         let window = web_sys::window().expect("should have acess to the Window");
         let document = window
@@ -287,43 +287,32 @@ impl VdomInnerExclusive {
                     self.change_list.emit_set_text(new_text);
                 }
             }
-            (&Node::Text(_), Node::Element(_))
-            | (&Node::Text(_), Node::NamespacedElement(_, _)) => {
+            (&Node::Text(_), Node::Element(_)) => {
                 debug!("  replacing a text node with an element");
                 self.create(registry, new);
                 self.change_list.emit_replace_with();
             }
-            (&Node::Element(_), Node::Text(_))
-            | (&Node::NamespacedElement(_, _), Node::Text(_)) => {
+            (&Node::Element(_), Node::Text(_)) => {
                 debug!("  replacing an element with a text node");
                 self.create(registry, new);
                 self.change_list.emit_replace_with();
             }
-            (&Node::Element(ref new_element_node), Node::Element(ref old_element_node))
-            | (
-                &Node::NamespacedElement(_, ref new_element_node),
-                Node::Element(ref old_element_node),
-            )
-            | (
-                &Node::Element(ref new_element_node),
-                Node::NamespacedElement(_, ref old_element_node),
-            )
-            | (
-                &Node::NamespacedElement(_, ref new_element_node),
-                Node::NamespacedElement(_, ref old_element_node),
-            ) => {
-                let ElementNode {
+            (
+                &Node::Element(ElementNode {
                     tag_name: new_tag_name,
                     listeners: new_listeners,
                     attributes: new_attributes,
                     children: new_children,
-                } = new_element_node;
-                let ElementNode {
+                    namespace: _,
+                }),
+                Node::Element(ElementNode {
                     tag_name: old_tag_name,
                     listeners: old_listeners,
                     attributes: old_attributes,
                     children: old_children,
-                } = old_element_node;
+                    namespace: _,
+                }),
+            ) => {
                 debug!("  updating an element");
                 if new_tag_name != old_tag_name {
                     debug!("  different tag names; creating new element and replacing old element");
@@ -475,8 +464,13 @@ impl VdomInnerExclusive {
                 listeners,
                 attributes,
                 children,
+                namespace,
             }) => {
-                self.change_list.emit_create_element(tag_name);
+                if let Some(namespace) = namespace {
+                    self.change_list.emit_create_element_ns(tag_name, namespace);
+                } else {
+                    self.change_list.emit_create_element(tag_name);
+                }
                 for l in listeners {
                     unsafe {
                         registry.add(l);
@@ -484,31 +478,7 @@ impl VdomInnerExclusive {
                     self.change_list.emit_new_event_listener(l);
                 }
                 for attr in attributes {
-                    self.change_list.emit_set_attribute(&attr.name, &attr.value);
-                }
-                for child in children {
-                    self.create(registry, child.clone());
-                    self.change_list.emit_append_child();
-                }
-            }
-            Node::NamespacedElement(
-                namepsace,
-                ElementNode {
-                    tag_name,
-                    listeners,
-                    attributes,
-                    children,
-                },
-            ) => {
-                self.change_list.emit_create_element_ns(tag_name, namepsace);
-                for l in listeners {
-                    unsafe {
-                        registry.add(l);
-                    }
-                    self.change_list.emit_new_event_listener(l);
-                }
-                for attr in attributes {
-                    if attr.name == "xmlns" {
+                    if namespace.is_none() || attr.name == "xmlns" {
                         self.change_list.emit_set_attribute(&attr.name, &attr.value);
                     } else {
                         self.change_list

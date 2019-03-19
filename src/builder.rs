@@ -64,18 +64,6 @@ impl<'a>
             namespace: None,
         }
     }
-
-    /// FIX ME
-    pub fn new_with_namespace(bump: &'a Bump, tag_name: &'a str, namespace: &'a str) -> Self {
-        ElementBuilder {
-            bump,
-            tag_name,
-            listeners: bumpalo::collections::Vec::new_in(bump),
-            attributes: bumpalo::collections::Vec::new_in(bump),
-            children: bumpalo::collections::Vec::new_in(bump),
-            namespace: Some(namespace),
-        }
-    }
 }
 
 impl<'a, Listeners, Attributes, Children> ElementBuilder<'a, Listeners, Attributes, Children>
@@ -202,6 +190,32 @@ where
         }
     }
 
+    /// Set the namespace for this element.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use dodrio::{builder::*, bumpalo::Bump};
+    ///
+    /// let b = Bump::new();
+    ///
+    /// // Create a `<td>` tag with an xhtml namespace
+    /// let my_div = td(&b)
+    ///     .namepace(Some("http://www.w3.org/1999/xhtml"))
+    ///     .finish();
+    /// ```
+    #[inline]
+    pub fn namespace(self, namespace: Option<&'a str>) -> Self {
+        ElementBuilder {
+            bump: self.bump,
+            tag_name: self.tag_name,
+            listeners: self.listeners,
+            attributes: self.attributes,
+            children: self.children,
+            namespace,
+        }
+    }
+
     /// Create the virtual DOM node described by this builder.
     ///
     /// # Example
@@ -219,17 +233,14 @@ where
     /// ```
     #[inline]
     pub fn finish(self) -> Node<'a> {
-        let element = Node::element_node(
+        Node::element(
             self.bump,
             self.tag_name,
             self.listeners,
             self.attributes,
             self.children,
-        );
-        match self.namespace {
-            Some(namespace) => Node::NamespacedElement(namespace, element),
-            None => Node::Element(element),
-        }
+            self.namespace,
+        )
     }
 }
 
@@ -394,7 +405,8 @@ macro_rules! builder_constructors {
                 bumpalo::collections::Vec<'a, Attribute<'a>>,
                 bumpalo::collections::Vec<'a, Node<'a>>,
             > {
-                ElementBuilder::new_with_namespace(bump, stringify!($name), $namespace)
+                let builder = ElementBuilder::new(bump, stringify!($name));
+                builder.namespace(Some($namespace))
             }
         )*
     }
