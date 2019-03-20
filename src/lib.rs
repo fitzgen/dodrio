@@ -67,7 +67,6 @@ cfg_if::cfg_if! {
 #[doc(hidden)]
 pub mod change_list;
 
-mod cached;
 mod events;
 mod node;
 mod render;
@@ -76,7 +75,6 @@ mod vdom;
 pub mod builder;
 
 // Re-export items at the top level.
-pub use self::cached::Cached;
 pub use self::node::{Attribute, ElementNode, Listener, ListenerCallback, Node, TextNode};
 pub use self::render::{Render, RootRender};
 pub use self::vdom::{Vdom, VdomWeak};

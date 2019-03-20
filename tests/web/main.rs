@@ -13,7 +13,6 @@ use wasm_bindgen_test::*;
 
 wasm_bindgen_test_configure!(run_in_browser);
 
-pub mod cached;
 pub mod events;
 pub mod js_api;
 pub mod render;
