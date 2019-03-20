@@ -80,3 +80,17 @@ pub use self::cached::Cached;
 pub use self::node::{Attribute, ElementNode, Listener, ListenerCallback, Node, TextNode};
 pub use self::render::{Render, RootRender};
 pub use self::vdom::{Vdom, VdomWeak};
+
+cfg_if::cfg_if! {
+    if #[cfg(feature = "xxx-unstable-internal-use-only")] {
+        /// An element node in the physical DOM.
+        pub type Element = ();
+
+        pub(crate) type EventsTrampoline = ();
+    } else {
+        /// An element node in the physical DOM.
+        pub type Element = web_sys::Element;
+
+        pub(crate) type EventsTrampoline = wasm_bindgen::closure::Closure<Fn(web_sys::Event, u32, u32)>;
+    }
+}

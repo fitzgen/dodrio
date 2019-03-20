@@ -2,34 +2,63 @@ use crate::Listener;
 use bumpalo::Bump;
 use fxhash::FxHashMap;
 use std::fmt;
-use std::sync::Once;
-use wasm_bindgen::prelude::*;
 
 pub mod js {
-    use wasm_bindgen::prelude::*;
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "xxx-unstable-internal-use-only")] {
+            #[derive(Clone, Debug)]
+            pub struct ChangeList {}
+            impl ChangeList {
+                pub fn new(_container: &crate::Element) -> ChangeList {
+                    ChangeList {}
+                }
+                pub fn unmount(&self) {}
+                pub fn add_change_list_range(&self, _start: usize, _len: usize) {}
+                pub fn init_events_trampoline(&self, _trampoline: &crate::EventsTrampoline) {}
+            }
 
-    #[wasm_bindgen]
-    extern "C" {
-        #[derive(Clone, Debug)]
-        pub type ChangeList;
+            pub fn eval_change_list() {}
+        } else {
+            use wasm_bindgen::prelude::*;
 
-        #[wasm_bindgen(constructor)]
-        pub fn new(container: &web_sys::Node) -> ChangeList;
+            #[wasm_bindgen]
+            extern "C" {
+                #[derive(Clone, Debug)]
+                pub type ChangeList;
 
-        #[wasm_bindgen(structural, method)]
-        pub fn unmount(this: &ChangeList);
+                #[wasm_bindgen(constructor)]
+                pub fn new(container: &web_sys::Element) -> ChangeList;
 
-        #[wasm_bindgen(structural, method, js_name = addChangeListRange)]
-        pub fn add_change_list_range(this: &ChangeList, start: usize, len: usize);
+                #[wasm_bindgen(structural, method)]
+                pub fn unmount(this: &ChangeList);
 
-        #[wasm_bindgen(structural, method, js_name = applyChanges)]
-        pub fn apply_changes(this: &ChangeList, memory: JsValue);
+                #[wasm_bindgen(structural, method, js_name = addChangeListRange)]
+                pub fn add_change_list_range(this: &ChangeList, start: usize, len: usize);
 
-        #[wasm_bindgen(structural, method, js_name = initEventsTrampoline)]
-        pub fn init_events_trampoline(
-            this: &ChangeList,
-            trampoline: &Closure<Fn(web_sys::Event, u32, u32)>,
-        );
+                #[wasm_bindgen(structural, method, js_name = applyChanges)]
+                pub fn apply_changes(this: &ChangeList, memory: JsValue);
+
+                #[wasm_bindgen(structural, method, js_name = initEventsTrampoline)]
+                pub fn init_events_trampoline(
+                    this: &ChangeList,
+                    trampoline: &crate::EventsTrampoline,
+                );
+            }
+
+            pub fn eval_change_list() {
+                use std::sync::Once;
+                // XXX: Because wasm-bindgen-test doesn't support third party JS
+                // dependencies, we can't use `wasm_bindgen(module = "...")` for our
+                // `ChangeList` JS import. Instead, this *should* be a local JS snippet,
+                // but that isn't implemented yet:
+                // https://github.com/rustwasm/rfcs/pull/6
+                static EVAL: Once = Once::new();
+                EVAL.call_once(|| {
+                    js_sys::eval(include_str!("../js/change-list.js"))
+                        .expect_throw("should eval change-list.js OK");
+                });
+            }
+        }
     }
 }
 
@@ -43,7 +72,7 @@ pub(crate) struct ChangeList {
     strings_cache: FxHashMap<String, StringsCacheEntry>,
     next_string_key: u32,
     js: js::ChangeList,
-    events_trampoline: Option<Closure<Fn(web_sys::Event, u32, u32)>>,
+    events_trampoline: Option<crate::EventsTrampoline>,
 }
 
 impl Drop for ChangeList {
@@ -64,18 +93,8 @@ impl fmt::Debug for ChangeList {
 }
 
 impl ChangeList {
-    pub(crate) fn new(container: &web_sys::Node) -> ChangeList {
-        // XXX: Because wasm-bindgen-test doesn't support third party JS
-        // dependencies, we can't use `wasm_bindgen(module = "...")` for our
-        // `ChangeList` JS import. Instead, this *should* be a local JS snippet,
-        // but that isn't implemented yet:
-        // https://github.com/rustwasm/rfcs/pull/6
-        static EVAL: Once = Once::new();
-        EVAL.call_once(|| {
-            js_sys::eval(include_str!("../js/change-list.js"))
-                .expect("should eval change-list.js OK");
-        });
-
+    pub(crate) fn new(container: &crate::Element) -> ChangeList {
+        js::eval_change_list();
         let bump = Bump::new();
         let strings_cache = FxHashMap::default();
         let js = js::ChangeList::new(container);
@@ -88,6 +107,12 @@ impl ChangeList {
         }
     }
 
+    #[cfg(feature = "xxx-unstable-internal-use-only")]
+    pub(crate) fn apply_changes(&mut self) {
+        // Do nothing...
+    }
+
+    #[cfg(not(feature = "xxx-unstable-internal-use-only"))]
     pub(crate) fn apply_changes(&mut self) {
         let js = &self.js;
         unsafe {
@@ -99,10 +124,7 @@ impl ChangeList {
         self.bump.reset();
     }
 
-    pub(crate) fn init_events_trampoline(
-        &mut self,
-        trampoline: Closure<Fn(web_sys::Event, u32, u32)>,
-    ) {
+    pub(crate) fn init_events_trampoline(&mut self, trampoline: crate::EventsTrampoline) {
         debug_assert!(self.events_trampoline.is_none());
         self.js.init_events_trampoline(&trampoline);
         self.events_trampoline = Some(trampoline);

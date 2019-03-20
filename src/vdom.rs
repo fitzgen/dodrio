@@ -56,7 +56,7 @@ pub(crate) struct VdomInnerExclusive {
 
     dom_buffers: [Bump; 2],
     change_list: ManuallyDrop<ChangeList>,
-    container: web_sys::Element,
+    container: crate::Element,
     events_registry: Option<Rc<RefCell<EventsRegistry>>>,
 
     // Actually a reference into `self.dom_buffers[0]` or if `self.component` is
@@ -109,7 +109,36 @@ impl Drop for VdomInnerExclusive {
         let mut registry = registry.borrow_mut();
         registry.clear_active_listeners();
 
-        self.container.set_inner_html("");
+        empty_container(&self.container);
+    }
+}
+
+cfg_if::cfg_if! {
+    if #[cfg(feature = "xxx-unstable-internal-use-only")] {
+        fn empty_container(_container: &crate::Element) {}
+        fn initialize_container(_container: &crate::Element) {}
+    } else {
+        fn empty_container(container: &crate::Element) {
+            container.set_inner_html("");
+        }
+
+        fn initialize_container(container: &crate::Element) {
+            empty_container(container);
+
+            // Create the dummy `<div/>` child in the container.
+            let window = web_sys::window().expect_throw("should have access to the Window");
+            let document = window
+                .document()
+                .expect("should have access to the Document");
+            container
+                .append_child(
+                    document
+                        .create_element("div")
+                        .expect("should create element OK")
+                        .as_ref(),
+                )
+                .expect("should append child OK");
+        }
     }
 }
 
@@ -118,7 +147,7 @@ impl Vdom {
     /// rendering component.
     ///
     /// This will box the given component into trait object.
-    pub fn new<R>(container: &web_sys::Element, component: R) -> Vdom
+    pub fn new<R>(container: &crate::Element, component: R) -> Vdom
     where
         R: RootRender,
     {
@@ -127,31 +156,17 @@ impl Vdom {
 
     /// Construct a `Vdom` with the already-boxed-as-a-trait-object root
     /// rendering component.
-    pub fn with_boxed_root_render(
-        container: &web_sys::Element,
+    pub fn with_boxed_root_render<'a, 'bump>(
+        container: &crate::Element,
         component: Box<RootRender>,
     ) -> Vdom {
         let dom_buffers = [Bump::new(), Bump::new()];
         let change_list = ManuallyDrop::new(ChangeList::new(container));
 
-        // Ensure that the container is empty.
-        container.set_inner_html("");
-
         // Create a dummy `<div/>` in our container.
+        initialize_container(container);
         let current_root = Node::element(&dom_buffers[0], "div", [], [], [], None);
         let current_root = Some(unsafe { extend_node_lifetime(current_root) });
-        let window = web_sys::window().expect("should have access to the Window");
-        let document = window
-            .document()
-            .expect("should have access to the Document");
-        container
-            .append_child(
-                document
-                    .create_element("div")
-                    .expect("should create element OK")
-                    .as_ref(),
-            )
-            .expect("should append child OK");
 
         let container = container.clone();
         let inner = Rc::new(VdomInner {
@@ -180,6 +195,19 @@ impl Vdom {
         }
 
         Vdom { inner }
+    }
+
+    /// Immediately re-render and diff. Only for internal testing and
+    /// benchmarking purposes.
+    #[cfg(feature = "xxx-unstable-internal-use-only")]
+    pub fn immediately_render_and_diff<R>(&self, component: R)
+    where
+        R: RootRender,
+    {
+        let mut exclusive = self.inner.exclusive.borrow_mut();
+        let component = Box::new(component) as Box<RootRender>;
+        exclusive.component = Some(component);
+        exclusive.render();
     }
 
     /// Run this virtual DOM and its listeners forever and never unmount it.
