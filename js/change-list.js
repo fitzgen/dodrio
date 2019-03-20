@@ -175,6 +175,27 @@ const OP_TABLE = [
     const id = mem32[i++];
     changeList.dropString(id);
     return i;
+  },
+
+  // 16
+  function createElementNS(changeList, mem8, mem32, i) {
+    const tagNameId = mem32[i++];
+    const tagName = changeList.getString(tagNameId);
+    const nsId = mem32[i++];
+    const ns = changeList.getString(nsId);
+    changeList.stack.push(document.createElementNS(ns, tagName));
+    return i;
+  },
+
+  // 17
+  function setAttributeNS(changeList, mem8, mem32, i) {
+    const nameId = mem32[i++];
+    const valueId = mem32[i++];
+    const name = changeList.getString(nameId);
+    const value = changeList.getString(valueId);
+    const node = top(changeList.stack);
+    node.setAttributeNS(null, name, value);
+    return i;
   }
 ];
 

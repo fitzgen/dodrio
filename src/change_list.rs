@@ -267,6 +267,24 @@ enum ChangeDiscriminant {
     /// dropString(id);
     /// ```
     DropString = 15,
+
+    /// Immediates: `(pointer1, length1, pointer2, length2)`
+    ///
+    /// Stack: `[...] -> [... Node]`
+    ///
+    /// ```text
+    /// stack.push(createElementNS(String(pointer1, length1), String(pointer2, length2))
+    /// ```
+    CreateElementNS = 16,
+
+    /// Immediates: `(pointer1, length1, pointer2, length2, pointer3, length3)`
+    ///
+    /// Stack: `[... Node] -> [... Node]`
+    ///
+    /// ```text
+    /// stack.top().setAttributeNS(String(pointer1, length1), String(pointer2, length2), String(pointer3, length3))
+    /// ```
+    SetAttributeNS = 17,
 }
 
 // Allocation utilities to ensure that we only allocation sequences of `u32`s
@@ -361,6 +379,13 @@ impl ChangeList {
         self.op2(ChangeDiscriminant::SetAttribute, name_id, value_id);
     }
 
+    pub(crate) fn emit_set_attribute_ns(&mut self, name: &str, value: &str) {
+        debug!("emit_set_attribute_ns({:?}, {:?}", name, value);
+        let name_id = self.ensure_string(name);
+        let value_id = self.ensure_string(value);
+        self.op2(ChangeDiscriminant::SetAttributeNS, name_id, value_id);
+    }
+
     pub(crate) fn emit_remove_attribute(&mut self, name: &str) {
         debug!("emit_remove_attribute({:?})", name);
         let name_id = self.ensure_string(name);
@@ -400,6 +425,13 @@ impl ChangeList {
         debug!("emit_create_element({:?})", tag_name);
         let tag_name_id = self.ensure_string(tag_name);
         self.op1(ChangeDiscriminant::CreateElement, tag_name_id);
+    }
+
+    pub(crate) fn emit_create_element_ns(&mut self, tag_name: &str, ns: &str) {
+        debug!("emit_create_element_ns({:?}, {:?})", tag_name, ns);
+        let tag_name_id = self.ensure_string(tag_name);
+        let ns_id = self.ensure_string(ns);
+        self.op2(ChangeDiscriminant::CreateElementNS, tag_name_id, ns_id);
     }
 
     pub(crate) fn emit_new_event_listener(&mut self, listener: &Listener) {

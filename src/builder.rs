@@ -20,6 +20,7 @@ where
     listeners: Listeners,
     attributes: Attributes,
     children: Children,
+    namespace: Option<&'a str>,
 }
 
 impl<'a>
@@ -60,6 +61,7 @@ impl<'a>
             listeners: bumpalo::collections::Vec::new_in(bump),
             attributes: bumpalo::collections::Vec::new_in(bump),
             children: bumpalo::collections::Vec::new_in(bump),
+            namespace: None,
         }
     }
 }
@@ -108,6 +110,7 @@ where
             listeners,
             attributes: self.attributes,
             children: self.children,
+            namespace: self.namespace,
         }
     }
 
@@ -145,6 +148,7 @@ where
             listeners: self.listeners,
             attributes,
             children: self.children,
+            namespace: self.namespace,
         }
     }
 
@@ -182,6 +186,33 @@ where
             listeners: self.listeners,
             attributes: self.attributes,
             children,
+            namespace: self.namespace,
+        }
+    }
+
+    /// Set the namespace for this element.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use dodrio::{builder::*, bumpalo::Bump};
+    ///
+    /// let b = Bump::new();
+    ///
+    /// // Create a `<td>` tag with an xhtml namespace
+    /// let my_div = td(&b)
+    ///     .namespace(Some("http://www.w3.org/1999/xhtml"))
+    ///     .finish();
+    /// ```
+    #[inline]
+    pub fn namespace(self, namespace: Option<&'a str>) -> Self {
+        ElementBuilder {
+            bump: self.bump,
+            tag_name: self.tag_name,
+            listeners: self.listeners,
+            attributes: self.attributes,
+            children: self.children,
+            namespace,
         }
     }
 
@@ -208,6 +239,7 @@ where
             self.listeners,
             self.attributes,
             self.children,
+            self.namespace,
         )
     }
 }
@@ -355,6 +387,26 @@ macro_rules! builder_constructors {
                 bumpalo::collections::Vec<'a, Node<'a>>,
             > {
                 ElementBuilder::new(bump, stringify!($name))
+            }
+        )*
+    };
+    ( $(
+        $(#[$attr:meta])*
+        $name:ident <> $namespace:tt;
+    )* ) => {
+        $(
+            $(#[$attr])*
+            #[inline]
+            pub fn $name<'a>(
+                bump: &'a Bump,
+            ) -> ElementBuilder<
+                'a,
+                bumpalo::collections::Vec<'a, Listener<'a>>,
+                bumpalo::collections::Vec<'a, Attribute<'a>>,
+                bumpalo::collections::Vec<'a, Node<'a>>,
+            > {
+                let builder = ElementBuilder::new(bump, stringify!($name));
+                builder.namespace(Some($namespace))
             }
         )*
     }
@@ -859,6 +911,43 @@ builder_constructors! {
     /// [`<template>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template)
     /// element.
     template;
+}
+
+builder_constructors! {
+    // SVG components
+
+    /// Build a
+    /// [`<svg>`](https://developer.mozilla.org/en-US/docs/Web/SVG/Element/svg)
+    /// element.
+    svg <> "http://www.w3.org/2000/svg" ;
+    /// Build a
+    /// [`<path>`](https://developer.mozilla.org/en-US/docs/Web/SVG/Element/path)
+    /// element.
+    path <> "http://www.w3.org/2000/svg";
+    /// Build a
+    /// [`<circle>`](https://developer.mozilla.org/en-US/docs/Web/SVG/Element/circle)
+    /// element.
+    circle <>  "http://www.w3.org/2000/svg";
+    /// Build a
+    /// [`<ellipse>`](https://developer.mozilla.org/en-US/docs/Web/SVG/Element/ellipse)
+    /// element.
+    ellipse <> "http://www.w3.org/2000/svg";
+    /// Build a
+    /// [`<line>`](https://developer.mozilla.org/en-US/docs/Web/SVG/Element/line)
+    /// element.
+    line <> "http://www.w3.org/2000/svg";
+    /// Build a
+    /// [`<polygon>`](https://developer.mozilla.org/en-US/docs/Web/SVG/Element/polygon)
+    /// element.
+    polygon <> "http://www.w3.org/2000/svg";
+    /// Build a
+    /// [`<polyline>`](https://developer.mozilla.org/en-US/docs/Web/SVG/Element/polyline)
+    /// element.
+    polyline <> "http://www.w3.org/2000/svg";
+    /// Build a
+    /// [`<rect>`](https://developer.mozilla.org/en-US/docs/Web/SVG/Element/rect)
+    /// element.
+    rect <> "http://www.w3.org/2000/svg";
 }
 
 /// Construct a text node.

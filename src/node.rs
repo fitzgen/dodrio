@@ -29,6 +29,7 @@ pub struct ElementNode<'a> {
     pub(crate) listeners: &'a [Listener<'a>],
     pub(crate) attributes: &'a [Attribute<'a>],
     pub(crate) children: &'a [Node<'a>],
+    pub(crate) namespace: Option<&'a str>,
 }
 
 /// An event listener callback function.
@@ -96,7 +97,7 @@ impl<'a> Attribute<'a> {
 }
 
 impl<'a> Node<'a> {
-    /// Construct a new element node with the given tag name and children.
+    /// Construct a new Node of type element with given tag name and children
     #[inline]
     pub(crate) fn element<Listeners, Attributes, Children>(
         bump: &'a Bump,
@@ -104,6 +105,7 @@ impl<'a> Node<'a> {
         listeners: Listeners,
         attributes: Attributes,
         children: Children,
+        namespace: Option<&'a str>,
     ) -> Node<'a>
     where
         Listeners: 'a + AsRef<[Listener<'a>]>,
@@ -124,6 +126,7 @@ impl<'a> Node<'a> {
             listeners,
             attributes,
             children,
+            namespace,
         })
     }
 
@@ -187,6 +190,11 @@ impl<'a> ElementNode<'a> {
     /// Get this element's attributes.
     pub fn children(&self) -> &'a [Node<'a>] {
         self.children
+    }
+
+    /// Get this element's namespace.
+    pub fn namespace(&self) -> Option<&'a str> {
+        self.namespace
     }
 }
 
