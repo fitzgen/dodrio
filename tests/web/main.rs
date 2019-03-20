@@ -92,6 +92,9 @@ pub fn assert_rendered<R: Render>(container: &web_sys::Element, r: &R) {
                     .expect("`actual` should be an `Element`");
                 check_attributes(actual.attributes(), elem.attributes());
                 check_children(actual.child_nodes(), elem.children());
+                if let Some(namespace) = elem.namespace() {
+                    assert_eq!(actual.namespace_uri(), Some(namespace.into()))
+                }
             }
         }
     }

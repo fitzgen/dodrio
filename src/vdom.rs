@@ -303,19 +303,19 @@ impl VdomInnerExclusive {
                     listeners: new_listeners,
                     attributes: new_attributes,
                     children: new_children,
-                    namespace: _,
+                    namespace: new_namespace,
                 }),
                 Node::Element(ElementNode {
                     tag_name: old_tag_name,
                     listeners: old_listeners,
                     attributes: old_attributes,
                     children: old_children,
-                    namespace: _,
+                    namespace: old_namespace,
                 }),
             ) => {
                 debug!("  updating an element");
-                if new_tag_name != old_tag_name {
-                    debug!("  different tag names; creating new element and replacing old element");
+                if new_tag_name != old_tag_name || new_namespace != old_namespace {
+                    debug!("  different tag names or namespaces; creating new element and replacing old element");
                     self.create(registry, new);
                     self.change_list.emit_replace_with();
                     return;

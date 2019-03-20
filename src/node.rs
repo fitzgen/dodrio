@@ -174,6 +174,11 @@ impl<'a> ElementNode<'a> {
     pub fn children(&self) -> &'a [Node<'a>] {
         self.children
     }
+
+    /// Get this element's namespace.
+    pub fn namespace(&self) -> Option<&'a str> {
+        self.namespace
+    }
 }
 
 union CallbackFatPtr<'a> {

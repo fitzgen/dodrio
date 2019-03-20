@@ -240,4 +240,17 @@ before_after! {
                 .finish()
         }
     }
+
+    same_tag_different_namespace {
+        before(bump) {
+            div(bump)
+                .namespace(Some("http://example.com"))
+                .finish()
+        }
+        after(bump) {
+            div(bump)
+                .namespace(Some("http://example.net"))
+                .finish()
+        }
+    }
 }
