@@ -93,10 +93,7 @@ impl<C> Todo<C> {
 }
 
 impl<C: TodoActions> Render for Todo<C> {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn render<'bump>(&self, bump: &'bump Bump) -> Node<'bump> {
         use dodrio::{
             builder::*,
             bumpalo::{self, collections::String},
@@ -104,6 +101,7 @@ impl<C: TodoActions> Render for Todo<C> {
 
         let id = self.id;
         let title = self.edits.as_ref().unwrap_or(&self.title);
+        let title = bumpalo::format!(in bump, "{}", title).into_bump_str();
 
         li(bump)
             .attr("class", {

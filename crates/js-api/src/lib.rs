@@ -222,10 +222,7 @@ impl JsRender {
 }
 
 impl Render for JsRender {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn render<'bump>(&self, bump: &'bump Bump) -> Node<'bump> {
         create(bump, self.render())
     }
 }

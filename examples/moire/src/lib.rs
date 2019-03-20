@@ -107,10 +107,7 @@ impl Moire {
 }
 
 impl Render for Moire {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn render<'bump>(&self, bump: &'bump Bump) -> Node<'bump> {
         use dodrio::builder::*;
 
         let elapsed = web_sys::window()
@@ -154,10 +151,7 @@ impl Render for Moire {
 /// Rendering helper methods.
 impl Moire {
     /// Generate the main Moire element's inline CSS styles.
-    fn moire_style<'a, 'bump>(&'a self, bump: &'bump Bump, elapsed: f64) -> &'bump str
-    where
-        'a: 'bump,
-    {
+    fn moire_style<'bump>(&self, bump: &'bump Bump, elapsed: f64) -> &'bump str {
         let elapsed = elapsed / 3.0;
         let color = colors::get_interpolated_color(|(_, bg)| bg, elapsed % 1.0);
         let style = bumpalo::format!(
@@ -171,10 +165,7 @@ impl Moire {
     }
 
     /// Generate the orbiting circle objects.
-    fn orbiting_objects<'a, 'bump>(&'a self, bump: &'bump Bump, elapsed: f64) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn orbiting_objects<'bump>(&self, bump: &'bump Bump, elapsed: f64) -> Node<'bump> {
         const D: f64 = 200.0;
         let x = elapsed.sin() * D;
         let y = elapsed.cos() * D;
@@ -183,10 +174,7 @@ impl Moire {
 
     /// Generate the lemniscate circle objects that interact with the orbiting
     /// circle objects to form Moire patterns.
-    fn lemniscate_objects<'a, 'bump>(&'a self, bump: &'bump Bump, elapsed: f64) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn lemniscate_objects<'bump>(&self, bump: &'bump Bump, elapsed: f64) -> Node<'bump> {
         const A: f64 = 150.0;
         let x = elapsed.sin() * A;
         let y = elapsed.sin() * elapsed.cos() * A;
@@ -199,10 +187,7 @@ impl Moire {
         elapsed: f64,
         x: f64,
         y: f64,
-    ) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    ) -> Node<'bump> {
         use dodrio::builder::*;
         div(bump)
             .attr("class", "object")
@@ -212,18 +197,12 @@ impl Moire {
     }
 
     /// Generate inline CSS styles for a moving object.
-    fn moving_object_style<'a, 'bump>(&'a self, bump: &'bump Bump, x: f64, y: f64) -> &'bump str
-    where
-        'a: 'bump,
-    {
+    fn moving_object_style<'bump>(&self, bump: &'bump Bump, x: f64, y: f64) -> &'bump str {
         bumpalo::format!(in bump, "left: {}px; top: {}px;", x, y).into_bump_str()
     }
 
     /// Recursively generate `self.count` concentric circles.
-    fn circle<'a, 'bump>(&'a self, bump: &'bump Bump, elapsed: f64, n: u32) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn circle<'bump>(&self, bump: &'bump Bump, elapsed: f64, n: u32) -> Node<'bump> {
         use dodrio::builder::*;
 
         let r = n * 16;
@@ -244,16 +223,7 @@ impl Moire {
     }
 
     /// Generate inline CSS styles for a circle.
-    fn circle_style<'a, 'bump>(
-        &'a self,
-        bump: &'bump Bump,
-        elapsed: f64,
-        n: u32,
-        r: u32,
-    ) -> &'bump str
-    where
-        'a: 'bump,
-    {
+    fn circle_style<'bump>(&self, bump: &'bump Bump, elapsed: f64, n: u32, r: u32) -> &'bump str {
         let (border, alpha) = self.circle_color(elapsed, n);
         let margin = r / 2 + 3;
         let style = bumpalo::format!(

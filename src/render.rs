@@ -14,16 +14,6 @@ use wasm_bindgen::UnwrapThrowExt;
 /// `Render` implementations can use the provided `Bump` for very fast
 /// allocation for anything that needs to be allocated during rendering.
 ///
-/// ## The `'a: 'bump` Lifetime Bound
-///
-/// The `'a: 'bump` bounds enforce that `self` outlives the given bump
-/// allocator. This means that if `self` contains a string, the string does not
-/// need to be copied into the output `Node` and can be used by reference
-/// instead (i.e. it prevents accidentally using the string after its been
-/// freed). The `'a: 'bump` bound also enables abstractions like
-/// `dodrio::Cached` that can re-use cached `Node`s across `render`s without
-/// copying them.
-///
 /// ## Example
 ///
 /// ```no_run
@@ -51,19 +41,14 @@ use wasm_bindgen::UnwrapThrowExt;
 pub trait Render {
     /// Render `self` as a virtual DOM. Use the given `Bump` for temporary
     /// allocations.
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump;
+    fn render<'bump>(&self, bump: &'bump Bump) -> Node<'bump>;
 }
 
 impl<'r, R> Render for &'r R
 where
     R: Render,
 {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn render<'bump>(&self, bump: &'bump Bump) -> Node<'bump> {
         (**self).render(bump)
     }
 }
@@ -72,10 +57,7 @@ impl<R> Render for Rc<R>
 where
     R: Render,
 {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn render<'bump>(&self, bump: &'bump Bump) -> Node<'bump> {
         (**self).render(bump)
     }
 }
@@ -99,7 +81,10 @@ pub trait RootRender: Any + Render {
     fn as_any_mut(&mut self) -> &mut Any;
 }
 
-impl<T: Any + Render> RootRender for T {
+impl<T> RootRender for T
+where
+    T: Any + Render,
+{
     fn as_any(&self) -> &Any {
         self
     }
@@ -117,7 +102,10 @@ impl dyn RootRender {
     ///
     /// Panics if this virtual DOM's root rendering component is not an `R`
     /// instance.
-    pub fn unwrap_ref<R: RootRender>(&self) -> &R {
+    pub fn unwrap_ref<R>(&self) -> &R
+    where
+        R: RootRender,
+    {
         self.as_any()
             .downcast_ref::<R>()
             .expect_throw("bad `RootRender::unwrap_ref` call")
@@ -130,7 +118,10 @@ impl dyn RootRender {
     ///
     /// Panics if this virtual DOM's root rendering component is not an `R`
     /// instance.
-    pub fn unwrap_mut<R: RootRender>(&mut self) -> &mut R {
+    pub fn unwrap_mut<R>(&mut self) -> &mut R
+    where
+        R: RootRender,
+    {
         self.as_any_mut()
             .downcast_mut::<R>()
             .expect_throw("bad `RootRender::unwrap_ref` call")

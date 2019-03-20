@@ -303,10 +303,6 @@ impl VdomInnerExclusive {
     }
 
     fn diff<'a>(&mut self, registry: &mut EventsRegistry, old: Node<'a>, new: Node<'a>) {
-        // debug!("---------------------------------------------------------");
-        // debug!("dodrio::Vdom::diff");
-        // debug!("  old = {:#?}", old);
-        // debug!("  new = {:#?}", new);
         match (&new, old) {
             (&Node::Text(TextNode { text: new_text }), Node::Text(TextNode { text: old_text })) => {
                 debug!("  both are text nodes");

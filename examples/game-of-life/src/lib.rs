@@ -129,10 +129,7 @@ impl Universe {
 
 /// The rendering implementation for our Game of Life.
 impl Render for Universe {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn render<'bump>(&self, bump: &'bump Bump) -> Node<'bump> {
         use dodrio::builder::*;
 
         let mut rows = bumpalo::collections::Vec::with_capacity_in(self.height as usize, bump);

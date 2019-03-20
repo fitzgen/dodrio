@@ -26,10 +26,7 @@ impl EventContainer {
 }
 
 impl Render for EventContainer {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn render<'bump>(&self, bump: &'bump Bump) -> Node<'bump> {
         use dodrio::builder::*;
         div(bump)
             .attr("id", "target")
@@ -138,10 +135,7 @@ impl ListensOnlyOnFirstRender {
 }
 
 impl Render for ListensOnlyOnFirstRender {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn render<'bump>(&self, bump: &'bump Bump) -> Node<'bump> {
         use dodrio::builder::*;
 
         let count = self.count.get();

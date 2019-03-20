@@ -139,10 +139,7 @@ impl<F> Render for RenderFn<F>
 where
     F: for<'bump> Fn(&'bump Bump) -> Node<'bump>,
 {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn render<'bump>(&self, bump: &'bump Bump) -> Node<'bump> {
         (self.0)(bump)
     }
 }

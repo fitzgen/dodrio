@@ -16,10 +16,7 @@ use dodrio::{
 /// The simplest thing we can render: `<div/>`.
 struct Empty;
 impl Render for Empty {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn render<'bump>(&self, bump: &'bump Bump) -> Node<'bump> {
         div(bump).finish()
     }
 }
@@ -27,10 +24,7 @@ impl Render for Empty {
 /// Render a list that is `self.0` items long, has attributes and listeners.
 struct SimpleList(usize);
 impl Render for SimpleList {
-    fn render<'a, 'bump>(&self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn render<'bump>(&self, bump: &'bump Bump) -> Node<'bump> {
         let mut children = bumpalo::collections::Vec::with_capacity_in(self.0, bump);
         children.extend((0..self.0).map(|_| {
             li(bump)

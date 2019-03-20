@@ -37,10 +37,7 @@ impl WrapJs {
 }
 
 impl Render for WrapJs {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn render<'bump>(&self, bump: &'bump Bump) -> Node<'bump> {
         div(bump)
             .attr("class", "wrap-js")
             .children([self.inner.render(bump)])

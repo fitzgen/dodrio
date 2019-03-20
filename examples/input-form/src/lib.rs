@@ -25,17 +25,17 @@ impl SayHelloTo {
 // The `Render` implementation has a text `<input>` and a `<div>` that shows a
 // greeting to the `<input>`'s value.
 impl Render for SayHelloTo {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn render<'bump>(&self, bump: &'bump Bump) -> Node<'bump> {
         use dodrio::builder::*;
 
         div(bump)
             .children([
                 input(bump)
                     .attr("type", "text")
-                    .attr("value", &self.who)
+                    .attr(
+                        "value",
+                        bumpalo::format!(in bump, "{}", self.who).into_bump_str(),
+                    )
                     .on("input", |root, vdom, event| {
                         // If the event's target is our input...
                         let input = match event

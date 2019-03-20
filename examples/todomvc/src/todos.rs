@@ -136,10 +136,7 @@ impl<C> Todos<C> {
 
 /// Rendering helpers.
 impl<C: TodosActions> Todos<C> {
-    fn header<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn header<'bump>(&self, bump: &'bump Bump) -> Node<'bump> {
         use dodrio::builder::*;
 
         header(bump)
@@ -163,16 +160,16 @@ impl<C: TodosActions> Todos<C> {
                     .attr("class", "new-todo")
                     .attr("placeholder", "What needs to be done?")
                     .attr("autofocus", "")
-                    .attr("value", &self.draft)
+                    .attr(
+                        "value",
+                        bumpalo::format!(in bump, "{}", self.draft).into_bump_str(),
+                    )
                     .finish(),
             ])
             .finish()
     }
 
-    fn todos_list<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn todos_list<'bump>(&self, bump: &'bump Bump) -> Node<'bump> {
         use dodrio::{builder::*, bumpalo::collections::Vec};
 
         let mut todos = Vec::with_capacity_in(self.todos.len(), bump);
@@ -217,10 +214,7 @@ impl<C: TodosActions> Todos<C> {
             .finish()
     }
 
-    fn footer<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn footer<'bump>(&self, bump: &'bump Bump) -> Node<'bump> {
         use dodrio::builder::*;
 
         let completed_count = self.todos.iter().filter(|t| t.is_complete()).count();
@@ -271,15 +265,12 @@ impl<C: TodosActions> Todos<C> {
             .finish()
     }
 
-    fn visibility_swap<'a, 'bump>(
-        &'a self,
+    fn visibility_swap<'bump>(
+        &self,
         bump: &'bump Bump,
         url: &'static str,
         target_vis: Visibility,
-    ) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    ) -> Node<'bump> {
         use dodrio::builder::*;
 
         li(bump)
@@ -303,10 +294,7 @@ impl<C: TodosActions> Todos<C> {
 }
 
 impl<C: TodosActions> Render for Todos<C> {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn render<'bump>(&self, bump: &'bump Bump) -> Node<'bump> {
         use dodrio::builder::*;
 
         div(bump)
