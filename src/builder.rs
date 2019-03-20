@@ -201,7 +201,7 @@ where
     ///
     /// // Create a `<td>` tag with an xhtml namespace
     /// let my_div = td(&b)
-    ///     .namepace(Some("http://www.w3.org/1999/xhtml"))
+    ///     .namespace(Some("http://www.w3.org/1999/xhtml"))
     ///     .finish();
     /// ```
     #[inline]
