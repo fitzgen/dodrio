@@ -146,21 +146,21 @@ enum ChangeDiscriminant {
     /// ```
     ReplaceWith = 2,
 
-    /// Immediates: `(pointer1, length1, pointer2, length2)`
+    /// Immediates: `(id1, id2)`
     ///
     /// Stack: `[... Node] -> [... Node]`
     ///
     /// ```text
-    /// stack.top().setAttribute(String(pointer1, length1), String(pointer2, length2))
+    /// stack.top().setAttribute(String(id1), String(id2))
     /// ```
     SetAttribute = 3,
 
-    /// Immediates: (pointer, length)
+    /// Immediates: (id)
     ///
     /// Stack: `[... Node] -> [... Node]`
     ///
     /// ```text
-    /// stack.top().removeAttribute(String(pointer, length))
+    /// stack.top().removeAttribute(String(id))
     /// ```
     RemoveAttribute = 4,
 
@@ -210,43 +210,43 @@ enum ChangeDiscriminant {
     /// ```
     CreateTextNode = 9,
 
-    /// Immediates: `(pointer, length)`
+    /// Immediates: `(id)`
     ///
     /// Stack: `[...] -> [... Node]`
     ///
     /// ```text
-    /// stack.push(createElement(String(pointer, length))
+    /// stack.push(createElement(String(id))
     /// ```
     CreateElement = 10,
 
-    /// Immediate: `(pointer, length, A, B)`
+    /// Immediates: `(id, A, B)`
     ///
     /// Stack: `[... Node] -> [... Node]`
     ///
     /// ```text
-    /// event = String(pointer, length)
-    /// callback = ProxyToRustCallback(A, B);
-    /// stack.top().addEventListener(event, callback);
+    /// event = String(id)
+    /// callback = ProxyToRustCallback(A, B)
+    /// stack.top().addEventListener(event, callback)
     /// ```
     NewEventListener = 11,
 
-    /// Immediate: `(pointer, length, A, B)`
+    /// Immediates: `(id, A, B)`
     ///
     /// Stack: `[... Node] -> [... Node]`
     ///
     /// ```text
-    /// event = String(pointer, length)
+    /// event = String(id)
     /// new_callback = ProxyToRustCallback(A, B);
     /// stack.top().updateEventlistener(new_callback)
     /// ```
     UpdateEventListener = 12,
 
-    /// Immediates: `(pointer, length)`
+    /// Immediates: `(id)`
     ///
     /// Stack: `[... Node] -> [... Node]`
     ///
     /// ```text
-    /// stack.top().removeEventListener(String(pointer, length));
+    /// stack.top().removeEventListener(String(id));
     /// ```
     RemoveEventListener = 13,
 
@@ -268,21 +268,21 @@ enum ChangeDiscriminant {
     /// ```
     DropString = 15,
 
-    /// Immediates: `(pointer1, length1, pointer2, length2)`
+    /// Immediates: `(id1, id2)`
     ///
     /// Stack: `[...] -> [... Node]`
     ///
     /// ```text
-    /// stack.push(createElementNS(String(pointer1, length1), String(pointer2, length2))
+    /// stack.push(createElementNS(String(id1), String(id2))
     /// ```
     CreateElementNS = 16,
 
-    /// Immediates: `(pointer1, length1, pointer2, length2, pointer3, length3)`
+    /// Immediates: `(id1, id2, id3)`
     ///
     /// Stack: `[... Node] -> [... Node]`
     ///
     /// ```text
-    /// stack.top().setAttributeNS(String(pointer1, length1), String(pointer2, length2), String(pointer3, length3))
+    /// stack.top().setAttributeNS(String(id1), String(id2), String(id3))
     /// ```
     SetAttributeNS = 17,
 }
