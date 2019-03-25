@@ -5,7 +5,7 @@ use std::fmt;
 
 pub mod js {
     cfg_if::cfg_if! {
-        if #[cfg(feature = "xxx-unstable-internal-use-only")] {
+        if #[cfg(all(feature = "xxx-unstable-internal-use-only", not(target_arch = "wasm32")))] {
             #[derive(Clone, Debug)]
             pub struct ChangeList {}
             impl ChangeList {
@@ -107,27 +107,33 @@ impl ChangeList {
         }
     }
 
-    #[cfg(feature = "xxx-unstable-internal-use-only")]
-    pub(crate) fn apply_changes(&mut self) {
-        // Do nothing...
-    }
-
-    #[cfg(not(feature = "xxx-unstable-internal-use-only"))]
-    pub(crate) fn apply_changes(&mut self) {
-        let js = &self.js;
-        unsafe {
-            self.bump.each_allocated_chunk(|ch| {
-                js.add_change_list_range(ch.as_ptr() as usize, ch.len());
-            });
-        }
-        js.apply_changes(wasm_bindgen::memory());
-        self.bump.reset();
-    }
-
     pub(crate) fn init_events_trampoline(&mut self, trampoline: crate::EventsTrampoline) {
         debug_assert!(self.events_trampoline.is_none());
         self.js.init_events_trampoline(&trampoline);
         self.events_trampoline = Some(trampoline);
+    }
+}
+
+cfg_if::cfg_if! {
+    if #[cfg(all(feature = "xxx-unstable-internal-use-only", not(target_arch = "wasm32")))] {
+        impl ChangeList {
+            pub(crate) fn apply_changes(&mut self) {
+                // Do nothing...
+            }
+        }
+    } else {
+        impl ChangeList {
+            pub(crate) fn apply_changes(&mut self) {
+                let js = &self.js;
+                unsafe {
+                    self.bump.each_allocated_chunk(|ch| {
+                        js.add_change_list_range(ch.as_ptr() as usize, ch.len());
+                    });
+                }
+                js.apply_changes(wasm_bindgen::memory());
+                self.bump.reset();
+            }
+        }
     }
 }
 

@@ -4,32 +4,49 @@ use std::fmt;
 use std::iter;
 use std::mem;
 
-/// A node is either a text node or an element.
+/// A virtual DOM node.
 #[derive(Debug, Clone)]
-pub enum Node<'a> {
-    /// A text node.
-    Text(TextNode<'a>),
+pub struct Node<'a> {
+    #[cfg(feature = "xxx-unstable-internal-use-only")]
+    #[doc(hidden)]
+    pub kind: NodeKind<'a>,
 
-    /// An element potentially with attributes and children.
-    Element(ElementNode<'a>),
+    #[cfg(not(feature = "xxx-unstable-internal-use-only"))]
+    pub(crate) kind: NodeKind<'a>,
 }
 
-/// Text nodes are just a string of text. They cannot have attributes or
-/// children.
-#[derive(Debug, Clone)]
-pub struct TextNode<'a> {
-    pub(crate) text: &'a str,
+pub_unstable_internal! {
+    /// A node is either a text node or an element.
+    #[derive(Debug, Clone)]
+    pub(crate) enum NodeKind<'a> {
+        /// A text node.
+        Text(TextNode<'a>),
+
+        /// An element potentially with attributes and children.
+        Element(ElementNode<'a>),
+    }
 }
 
-/// Elements have a tag name, zero or more attributes, and zero or more
-/// children.
-#[derive(Debug, Clone)]
-pub struct ElementNode<'a> {
-    pub(crate) tag_name: &'a str,
-    pub(crate) listeners: &'a [Listener<'a>],
-    pub(crate) attributes: &'a [Attribute<'a>],
-    pub(crate) children: &'a [Node<'a>],
-    pub(crate) namespace: Option<&'a str>,
+pub_unstable_internal! {
+    /// Text nodes are just a string of text. They cannot have attributes or
+    /// children.
+    #[derive(Debug, Clone)]
+    pub(crate) struct TextNode<'a> {
+        pub text: &'a str,
+    }
+}
+
+pub_unstable_internal! {
+    /// Elements have a tag name, zero or more attributes, and zero or more
+    /// children.
+    #[derive(Debug, Clone)]
+    pub(crate) struct ElementNode<'a> {
+        pub tag_name: &'a str,
+        pub listeners: &'a [Listener<'a>],
+        pub attributes: &'a [Attribute<'a>],
+        pub children: &'a [Node<'a>],
+        pub namespace: Option<&'a str>,
+    }
 }
 
 /// An event listener callback function.
@@ -39,7 +56,7 @@ pub struct ElementNode<'a> {
 /// 1. The virtual DOM's root rendering component.
 /// 2. A capability to scheduler virtual DOM re-rendering.
 /// 3. The event that occurred.
-pub type ListenerCallback<'a> =
+pub(crate) type ListenerCallback<'a> =
     &'a (dyn Fn(&mut dyn RootRender, VdomWeak, web_sys::Event) + 'static);
 
 /// An event listener.
@@ -121,35 +138,23 @@ impl<'a> Node<'a> {
         let attributes: &'a Attributes = bump.alloc(attributes);
         let attributes: &'a [Attribute<'a>] = attributes.as_ref();
 
-        Node::Element(ElementNode {
-            tag_name,
-            listeners,
-            attributes,
-            children,
-            namespace,
-        })
-    }
-
-    /// Is this node a text node?
-    pub fn is_text(&self) -> bool {
-        match self {
-            Node::Text(_) => true,
-            _ => false,
-        }
-    }
-
-    /// Is this node an element?
-    pub fn is_element(&self) -> bool {
-        match self {
-            Node::Element { .. } => true,
-            _ => false,
+        Node {
+            kind: NodeKind::Element(ElementNode {
+                tag_name,
+                listeners,
+                attributes,
+                children,
+                namespace,
+            }),
         }
     }
 
     /// Construct a new text node with the given text.
     #[inline]
     pub(crate) fn text(text: &'a str) -> Node<'a> {
-        Node::Text(TextNode { text })
+        Node {
+            kind: NodeKind::Text(TextNode { text }),
+        }
     }
 }
 
@@ -166,35 +171,6 @@ impl<'a> IntoIterator for Node<'a> {
 
     fn into_iter(self) -> Self::IntoIter {
         iter::once(self)
-    }
-}
-
-impl<'a> TextNode<'a> {
-    /// Get this text node's text content.
-    pub fn text(&self) -> &'a str {
-        self.text
-    }
-}
-
-impl<'a> ElementNode<'a> {
-    /// Get this element's tag name.
-    pub fn tag_name(&self) -> &'a str {
-        self.tag_name
-    }
-
-    /// Get this element's attributes.
-    pub fn attributes(&self) -> &'a [Attribute<'a>] {
-        self.attributes
-    }
-
-    /// Get this element's attributes.
-    pub fn children(&self) -> &'a [Node<'a>] {
-        self.children
-    }
-
-    /// Get this element's namespace.
-    pub fn namespace(&self) -> Option<&'a str> {
-        self.namespace
     }
 }
 

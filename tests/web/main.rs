@@ -1,9 +1,9 @@
 //! Test suite for the Web and headless browsers.
 
-#![cfg(target_arch = "wasm32")]
+#![cfg(all(feature = "xxx-unstable-internal-use-only", target_arch = "wasm32"))]
 
 use bumpalo::Bump;
-use dodrio::{Attribute, Node, Render, RenderContext, Vdom};
+use dodrio::{Attribute, ElementNode, Node, NodeKind, Render, RenderContext, TextNode, Vdom};
 use futures::prelude::*;
 use log::*;
 use std::rc::Rc;
@@ -68,8 +68,8 @@ pub fn assert_rendered<R: Render>(container: &web_sys::Element, r: &R) {
         debug!("check_render:");
         debug!("    actual = {}", stringify_actual_node(&actual));
         debug!("    expected = {:#?}", expected);
-        match expected {
-            Node::Text(text_node) => {
+        match expected.kind {
+            NodeKind::Text(TextNode { text }) => {
                 assert_eq!(
                     actual.node_name().to_uppercase(),
                     "#TEXT",
@@ -77,22 +77,28 @@ pub fn assert_rendered<R: Render>(container: &web_sys::Element, r: &R) {
                 );
                 assert_eq!(
                     actual.text_content().unwrap_or_default(),
-                    text_node.text(),
+                    text,
                     "actual.text_content() == expected.text()"
                 );
             }
-            Node::Element(elem) => {
+            NodeKind::Element(ElementNode {
+                tag_name,
+                attributes,
+                children,
+                namespace,
+                ..
+            }) => {
                 assert_eq!(
                     actual.node_name().to_uppercase(),
-                    elem.tag_name().to_uppercase(),
+                    tag_name.to_uppercase(),
                     "actual.node_name() == expected.tag_name()"
                 );
                 let actual = actual
                     .dyn_ref::<web_sys::Element>()
                     .expect("`actual` should be an `Element`");
-                check_attributes(actual.attributes(), elem.attributes());
-                check_children(actual.child_nodes(), elem.children());
-                if let Some(namespace) = elem.namespace() {
+                check_attributes(actual.attributes(), attributes);
+                check_children(actual.child_nodes(), children);
+                if let Some(namespace) = namespace {
                     assert_eq!(actual.namespace_uri(), Some(namespace.into()))
                 }
             }

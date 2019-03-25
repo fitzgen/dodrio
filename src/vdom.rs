@@ -1,5 +1,5 @@
 use super::change_list::ChangeList;
-use super::node::{Attribute, ElementNode, Listener, Node, TextNode};
+use super::node::{Attribute, ElementNode, Listener, Node, NodeKind, TextNode};
 use super::RootRender;
 use crate::events::EventsRegistry;
 use crate::RenderContext;
@@ -115,7 +115,7 @@ impl Drop for VdomInnerExclusive {
 }
 
 cfg_if::cfg_if! {
-    if #[cfg(feature = "xxx-unstable-internal-use-only")] {
+    if #[cfg(all(feature = "xxx-unstable-internal-use-only", not(target_arch = "wasm32")))] {
         fn empty_container(_container: &crate::Element) {}
         fn initialize_container(_container: &crate::Element) {}
     } else {
@@ -301,33 +301,36 @@ impl VdomInnerExclusive {
     }
 
     fn diff<'a>(&mut self, registry: &mut EventsRegistry, old: Node<'a>, new: Node<'a>) {
-        match (&new, old) {
-            (&Node::Text(TextNode { text: new_text }), Node::Text(TextNode { text: old_text })) => {
+        match (&new.kind, old.kind) {
+            (
+                &NodeKind::Text(TextNode { text: new_text }),
+                NodeKind::Text(TextNode { text: old_text }),
+            ) => {
                 debug!("  both are text nodes");
                 if new_text != old_text {
                     debug!("  text needs updating");
                     self.change_list.emit_set_text(new_text);
                 }
             }
-            (&Node::Text(_), Node::Element(_)) => {
+            (&NodeKind::Text(_), NodeKind::Element(_)) => {
                 debug!("  replacing a text node with an element");
                 self.create(registry, new);
                 self.change_list.emit_replace_with();
             }
-            (&Node::Element(_), Node::Text(_)) => {
+            (&NodeKind::Element(_), NodeKind::Text(_)) => {
                 debug!("  replacing an element with a text node");
                 self.create(registry, new);
                 self.change_list.emit_replace_with();
             }
             (
-                &Node::Element(ElementNode {
+                &NodeKind::Element(ElementNode {
                     tag_name: new_tag_name,
                     listeners: new_listeners,
                     attributes: new_attributes,
                     children: new_children,
                     namespace: new_namespace,
                 }),
-                Node::Element(ElementNode {
+                NodeKind::Element(ElementNode {
                     tag_name: old_tag_name,
                     listeners: old_listeners,
                     attributes: old_attributes,
@@ -477,11 +480,11 @@ impl VdomInnerExclusive {
     }
 
     fn create<'a>(&mut self, registry: &mut EventsRegistry, node: Node<'a>) {
-        match node {
-            Node::Text(TextNode { text }) => {
+        match node.kind {
+            NodeKind::Text(TextNode { text }) => {
                 self.change_list.emit_create_text_node(text);
             }
-            Node::Element(ElementNode {
+            NodeKind::Element(ElementNode {
                 tag_name,
                 listeners,
                 attributes,

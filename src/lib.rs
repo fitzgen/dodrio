@@ -61,6 +61,26 @@ cfg_if::cfg_if! {
     }
 }
 
+// A macro to expose items unstably, only for internal/testing usage.
+cfg_if::cfg_if! {
+    if #[cfg(feature = "xxx-unstable-internal-use-only")] {
+        macro_rules! pub_unstable_internal {
+            ( $(#[$attr:meta])* pub(crate) $( $thing:tt )* ) => {
+                #[doc(hidden)]
+                $( #[$attr] )*
+                pub $( $thing )*
+            }
+        }
+    } else {
+        macro_rules! pub_unstable_internal {
+            ( $(#[$attr:meta])* pub(crate) $( $thing:tt )* ) => {
+                $( #[$attr] )*
+                pub(crate) $( $thing )*
+            }
+        }
+    }
+}
+
 // Only `pub` so that the wasm-bindgen bindings work.
 #[doc(hidden)]
 pub mod change_list;
@@ -74,13 +94,14 @@ mod vdom;
 pub mod builder;
 
 // Re-export items at the top level.
-pub use self::node::{Attribute, ElementNode, Listener, ListenerCallback, Node, TextNode};
+pub use self::node::{Attribute, Listener, Node};
 pub use self::render::{Render, RootRender};
 pub use self::render_context::RenderContext;
 pub use self::vdom::{Vdom, VdomWeak};
 
+// Polyfill some Web stuff for benchmarking...
 cfg_if::cfg_if! {
-    if #[cfg(feature = "xxx-unstable-internal-use-only")] {
+    if #[cfg(all(feature = "xxx-unstable-internal-use-only", not(target_arch = "wasm32")))] {
         /// An element node in the physical DOM.
         pub type Element = ();
 
@@ -90,5 +111,11 @@ cfg_if::cfg_if! {
         pub type Element = web_sys::Element;
 
         pub(crate) type EventsTrampoline = wasm_bindgen::closure::Closure<Fn(web_sys::Event, u32, u32)>;
+    }
+}
+
+cfg_if::cfg_if! {
+    if #[cfg(feature = "xxx-unstable-internal-use-only")] {
+        pub use self::node::{ElementNode, NodeKind, TextNode};
     }
 }

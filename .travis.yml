@@ -32,12 +32,12 @@ matrix:
       rust: stable
       addons:
         firefox: latest
-      script: wasm-pack test --firefox --headless
+      script: wasm-pack test --firefox --headless -- --features xxx-unstable-internal-use-only
     - name: "headless browser tests (chrome)"
       rust: stable
       addons:
         chrome: stable
-      script: wasm-pack test --chrome --headless
+      script: wasm-pack test --chrome --headless -- --features xxx-unstable-internal-use-only
     - name: "native tests"
       rust: stable
       install: echo "no install"

@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
 cfg_if::cfg_if! {
-    if #[cfg(feature = "xxx-unstable-internal-use-only")] {
+    if #[cfg(all(feature = "xxx-unstable-internal-use-only", not(target_arch = "wasm32")))] {
         #[derive(Debug)]
         pub(crate) struct EventsRegistry {}
         impl EventsRegistry {
@@ -18,7 +18,7 @@ cfg_if::cfg_if! {
             pub(crate) fn clear_active_listeners(&mut self) {}
         }
     } else {
-        use crate::{ListenerCallback, vdom::VdomWeak};
+        use crate::{node::ListenerCallback, vdom::VdomWeak};
         use std::collections::HashMap;
         use std::fmt;
         use std::mem;

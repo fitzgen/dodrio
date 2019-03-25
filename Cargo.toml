@@ -13,6 +13,15 @@ version = "0.1.0"
 [badges]
 travis-ci = { repository = "fitzgen/dodrio" }
 
+[lib]
+path = "src/lib.rs"
+bench = false
+
+[[test]]
+name = "web"
+path = "tests/web/main.rs"
+required-features = ["xxx-unstable-internal-use-only"]
+
 [[bench]]
 name = "benches"
 path = "benches/benches.rs"
@@ -63,10 +72,6 @@ features = [
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 criterion = "0.2.10"
-
-[lib]
-path = "src/lib.rs"
-bench = false
 
 [profile.release]
 incremental = false
