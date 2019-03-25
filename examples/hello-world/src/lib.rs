@@ -14,7 +14,7 @@ impl Render for Hello {
     fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
         let msg = bumpalo::format!(in cx.bump, "Hello, {}!", self.who);
         let msg = msg.into_bump_str();
-        p(cx.bump).children([text(msg)]).finish()
+        p(&cx).children([text(msg)]).finish()
     }
 }
 

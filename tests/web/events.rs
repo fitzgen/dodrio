@@ -27,7 +27,7 @@ impl EventContainer {
 impl Render for EventContainer {
     fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
         use dodrio::builder::*;
-        div(cx.bump)
+        div(&cx)
             .attr("id", "target")
             .on(self.event, |root, _scheduler, _event| {
                 (root.unwrap_mut::<EventContainer>().on_event)();
@@ -140,7 +140,7 @@ impl Render for ListensOnlyOnFirstRender {
         let count = self.count.get();
         self.count.set(count + 1);
 
-        let mut elem = div(cx.bump).attr("id", "target");
+        let mut elem = div(&cx).attr("id", "target");
         if count == 0 {
             elem = elem.on("click", |root, _scheduler, _event| {
                 (root.unwrap_mut::<ListensOnlyOnFirstRender>().callback)();

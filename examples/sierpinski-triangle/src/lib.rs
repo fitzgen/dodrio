@@ -61,7 +61,7 @@ impl Container {
     ) -> Node<'bump> {
         use dodrio::builder::{div, text};
 
-        div(cx.bump)
+        div(&cx)
             .attr("class", "dot")
             .attr("style", self.dot_style(cx, x, y))
             .child(text(
@@ -112,7 +112,7 @@ impl Render for Container {
         let mut children = bumpalo::collections::Vec::new_in(cx.bump);
         self.triangle(cx, 0.0, 0.0, 1000.0, modulus, &mut children);
 
-        div(cx.bump)
+        div(&cx)
             .attr("class", "container")
             .attr("style", self.container_transform(cx, elapsed))
             .children(children)

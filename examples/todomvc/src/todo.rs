@@ -103,7 +103,7 @@ impl<C: TodoActions> Render for Todo<C> {
         let title = self.edits.as_ref().unwrap_or(&self.title);
         let title = bumpalo::format!(in cx.bump, "{}", title).into_bump_str();
 
-        li(cx.bump)
+        li(&cx)
             .attr("class", {
                 let mut class = String::new_in(cx.bump);
                 if self.completed {
@@ -115,10 +115,10 @@ impl<C: TodoActions> Render for Todo<C> {
                 class.into_bump_str()
             })
             .children([
-                div(cx.bump)
+                div(&cx)
                     .attr("class", "view")
                     .children([
-                        input(cx.bump)
+                        input(&cx)
                             .attr("class", "toggle")
                             .attr("type", "checkbox")
                             .bool_attr("checked", self.completed)
@@ -126,13 +126,13 @@ impl<C: TodoActions> Render for Todo<C> {
                                 C::toggle_completed(root, vdom, id);
                             })
                             .finish(),
-                        label(cx.bump)
+                        label(&cx)
                             .on("dblclick", move |root, vdom, _event| {
                                 C::begin_editing(root, vdom, id);
                             })
                             .children([text(title)])
                             .finish(),
-                        button(cx.bump)
+                        button(&cx)
                             .attr("class", "destroy")
                             .on("click", move |root, vdom, _event| {
                                 C::delete(root, vdom, id);
@@ -140,7 +140,7 @@ impl<C: TodoActions> Render for Todo<C> {
                             .finish(),
                     ])
                     .finish(),
-                input(cx.bump)
+                input(&cx)
                     .attr("class", "edit")
                     .attr("value", title)
                     .attr("name", "title")

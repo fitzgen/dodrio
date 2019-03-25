@@ -116,12 +116,12 @@ impl Render for Moire {
             .now();
         let elapsed = elapsed / 1600.0;
 
-        main(cx.bump)
+        main(&cx)
             .attr("style", self.moire_style(cx, elapsed))
             .children([
                 // The `<input>` that lets users control how many circles to
                 // render.
-                input(cx.bump)
+                input(&cx)
                     .attr("id", "circle-count")
                     .attr("type", "range")
                     .attr("min", "30")
@@ -192,7 +192,7 @@ impl Moire {
         y: f64,
     ) -> Node<'bump> {
         use dodrio::builder::*;
-        div(cx.bump)
+        div(&cx)
             .attr("class", "object")
             .attr("style", self.moving_object_style(cx, x, y))
             .children([self.circle(cx, elapsed, self.count)])
@@ -215,7 +215,7 @@ impl Moire {
 
         let r = n * 16;
 
-        let mut circle = div(cx.bump)
+        let mut circle = div(&cx)
             .attr("class", "circle")
             .attr("data-radius", {
                 let r = bumpalo::format!(in cx.bump, "{}", r);

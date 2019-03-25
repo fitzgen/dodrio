@@ -33,9 +33,9 @@ impl Render for Counter {
         // Stringify the count as a bump-allocated string.
         let count = bumpalo::format!(in cx.bump, "{}", self.count);
 
-        div(cx.bump)
+        div(&cx)
             .children([
-                button(cx.bump)
+                button(&cx)
                     .on("click", |root, vdom, _event| {
                         // Cast the root render component to a `Counter`, since
                         // we know that's what it is.
@@ -51,7 +51,7 @@ impl Render for Counter {
                     .children([text("+")])
                     .finish(),
                 text(count.into_bump_str()),
-                button(cx.bump)
+                button(&cx)
                     .on("click", |root, vdom, _event| {
                         // Same as above, but decrementing instead of incrementing.
                         root.unwrap_mut::<Counter>().decrement();

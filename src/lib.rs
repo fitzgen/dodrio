@@ -25,7 +25,7 @@
 //!         let id = bumpalo::format!(in cx.bump, "hello-{}", self.who);
 //!         let who = bumpalo::collections::String::from_str_in(self.who, cx.bump).into_bump_str();
 //!
-//!         div(cx.bump)
+//!         div(&cx)
 //!            .attr("id", id.into_bump_str())
 //!            .on("click", |root, _vdom, _event| {
 //!                 let hello = root.unwrap_mut::<Hello>();
@@ -35,7 +35,7 @@
 //!             })
 //!             .children([
 //!                 text("Hello, "),
-//!                 strong(cx.bump)
+//!                 strong(&cx)
 //!                     .children([
 //!                         text(who),
 //!                         text("!"),

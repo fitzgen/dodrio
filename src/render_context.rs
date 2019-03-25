@@ -36,3 +36,17 @@ impl<'bump> RenderContext<'bump> {
         }
     }
 }
+
+impl<'a, 'bump> From<&'a RenderContext<'bump>> for &'bump Bump {
+    #[inline]
+    fn from(cx: &'a RenderContext<'bump>) -> &'bump Bump {
+        cx.bump
+    }
+}
+
+impl<'a, 'b, 'bump> From<&'a &'b mut RenderContext<'bump>> for &'bump Bump {
+    #[inline]
+    fn from(cx: &'a &'b mut RenderContext<'bump>) -> &'bump Bump {
+        cx.bump
+    }
+}

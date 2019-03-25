@@ -102,7 +102,7 @@ impl GreetingViaJs {
 impl Render for GreetingViaJs {
     fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
         use dodrio::builder::*;
-        p(cx.bump)
+        p(&cx)
             .children([
                 text("JavaScript says: "),
                 self.js.render(cx),

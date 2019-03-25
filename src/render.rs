@@ -25,10 +25,10 @@ use wasm_bindgen::UnwrapThrowExt;
 ///     fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
 ///         use dodrio::builder::*;
 ///
-///         p(cx.bump)
+///         p(&cx)
 ///             .children([
 ///                 text("This is "),
-///                 strong(cx.bump).children([text("my component")]).finish(),
+///                 strong(&cx).children([text("my component")]).finish(),
 ///                 text(" rendered!"),
 ///             ])
 ///             .finish()

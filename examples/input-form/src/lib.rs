@@ -27,9 +27,9 @@ impl Render for SayHelloTo {
     fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
         use dodrio::builder::*;
 
-        div(cx.bump)
+        div(&cx)
             .children([
-                input(cx.bump)
+                input(&cx)
                     .attr("type", "text")
                     .attr(
                         "value",

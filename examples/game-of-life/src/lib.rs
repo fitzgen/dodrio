@@ -139,7 +139,7 @@ impl Render for Universe {
 
             for cell in row {
                 cells.push(
-                    span(cx.bump)
+                    span(&cx)
                         .attr("class", "cell")
                         .attr(
                             "style",
@@ -152,13 +152,10 @@ impl Render for Universe {
                 );
             }
 
-            rows.push(div(cx.bump).attr("class", "row").children(cells).finish());
+            rows.push(div(&cx).attr("class", "row").children(cells).finish());
         }
 
-        div(cx.bump)
-            .attr("class", "universe")
-            .children(rows)
-            .finish()
+        div(&cx).attr("class", "universe").children(rows).finish()
     }
 }
 

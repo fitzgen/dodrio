@@ -10,14 +10,14 @@ use criterion::{
 use dodrio::{
     builder::*,
     bumpalo::{self, Bump},
-    Node, Render, Vdom,
+    Node, Render, RenderContext, Vdom,
 };
 
 /// The simplest thing we can render: `<div/>`.
 struct Empty;
 impl Render for Empty {
     fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
-        div(cx.bump).finish()
+        div(&cx).finish()
     }
 }
 
@@ -25,9 +25,9 @@ impl Render for Empty {
 struct SimpleList(usize);
 impl Render for SimpleList {
     fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
-        let mut children = bumpalo::collections::Vec::with_capacity_in(self.0, bump);
+        let mut children = bumpalo::collections::Vec::with_capacity_in(self.0, cx.bump);
         children.extend((0..self.0).map(|_| {
-            li(bump)
+            li(&cx)
                 .attr("class", "my-list-item")
                 .on("click", |_root, _vdom, _event| {
                     panic!("no one should call this")
@@ -35,7 +35,7 @@ impl Render for SimpleList {
                 .children([text("a list item")])
                 .finish()
         }));
-        ol(bump).attr("id", "my-list").children(children).finish()
+        ol(&cx).attr("id", "my-list").children(children).finish()
     }
 }
 
@@ -46,8 +46,9 @@ fn criterion_benchmark(c: &mut Criterion) {
             let mut bump = Bump::new();
             move |b| {
                 bump.reset();
+                let mut cx = RenderContext::new(&bump);
                 b.iter(|| {
-                    black_box(Empty.render(&bump));
+                    black_box(Empty.render(&mut cx));
                 })
             }
         }),
@@ -61,8 +62,9 @@ fn criterion_benchmark(c: &mut Criterion) {
                 let mut bump = Bump::new();
                 move |b, n| {
                     bump.reset();
+                    let mut cx = RenderContext::new(&bump);
                     b.iter(|| {
-                        black_box(SimpleList(*n).render(&bump));
+                        black_box(SimpleList(*n).render(&mut cx));
                     })
                 }
             },

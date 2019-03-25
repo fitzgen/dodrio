@@ -38,7 +38,7 @@ impl WrapJs {
 
 impl Render for WrapJs {
     fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
-        div(cx.bump)
+        div(&cx)
             .attr("class", "wrap-js")
             .children([self.inner.render(cx)])
             .finish()
@@ -107,13 +107,13 @@ fn can_use_js_rendering_components() -> impl Future<Item = (), Error = JsValue> 
     assert_rendered(
         &container,
         &RenderFn(|cx| {
-            div(cx.bump)
+            div(&cx)
                 .attr("class", "wrap-js")
-                .children([span(cx.bump)
+                .children([span(&cx)
                     .attr("class", "js-component")
                     .children([
                         text("Here is some plain text"),
-                        b(cx.bump)
+                        b(&cx)
                             .children([text("...and here is some bold text")])
                             .finish(),
                         text("0"),
@@ -136,13 +136,13 @@ fn can_use_js_rendering_components() -> impl Future<Item = (), Error = JsValue> 
             assert_rendered(
                 &container,
                 &RenderFn(|cx| {
-                    div(cx.bump)
+                    div(&cx)
                         .attr("class", "wrap-js")
-                        .children([span(cx.bump)
+                        .children([span(&cx)
                             .attr("class", "js-component")
                             .children([
                                 text("Here is some plain text"),
-                                b(cx.bump)
+                                b(&cx)
                                     .children([text("...and here is some bold text")])
                                     .finish(),
                                 text("1"),

@@ -16,9 +16,9 @@ fn render_initial_text() {
 #[wasm_bindgen_test]
 fn render_initial_node() {
     let hello = Rc::new(RenderFn(|cx| {
-        div(cx.bump)
+        div(&cx)
             .attr("id", "hello-world")
-            .children([text("Hello "), span(cx.bump).child(text("World!")).finish()])
+            .children([text("Hello "), span(&cx).child(text("World!")).finish()])
             .finish()
     }));
 
@@ -59,13 +59,13 @@ before_after! {
             text("before")
         }
         after(cx) {
-            div(cx.bump).finish()
+            div(&cx).finish()
         }
     }
 
     replace_elem_with_text {
         before(cx) {
-            div(cx.bump).finish()
+            div(&cx).finish()
         }
         after(_cx) {
             text("before")
@@ -74,52 +74,52 @@ before_after! {
 
     same_elem {
         before(cx) {
-            div(cx.bump).finish()
+            div(&cx).finish()
         }
         after(cx) {
-            div(cx.bump).finish()
+            div(&cx).finish()
         }
     }
 
     elems_with_different_tag_names {
         before(cx) {
-            span(cx.bump).finish()
+            span(&cx).finish()
         }
         after(cx) {
-            div(cx.bump).finish()
+            div(&cx).finish()
         }
     }
 
     same_tag_name_update_attribute {
         before(cx) {
-            div(cx.bump).attr("value", "1").finish()
+            div(&cx).attr("value", "1").finish()
         }
         after(cx) {
-            div(cx.bump).attr("value", "2").finish()
+            div(&cx).attr("value", "2").finish()
         }
     }
 
     same_tag_name_remove_attribute {
         before(cx) {
-            div(cx.bump).attr("value", "1").finish()
+            div(&cx).attr("value", "1").finish()
         }
         after(cx) {
-            div(cx.bump).finish()
+            div(&cx).finish()
         }
     }
 
     same_tag_name_add_attribute {
         before(cx) {
-            div(cx.bump).finish()
+            div(&cx).finish()
         }
         after(cx) {
-            div(cx.bump).attr("value", "2").finish()
+            div(&cx).attr("value", "2").finish()
         }
     }
 
     same_tag_name_many_attributes {
         before(cx) {
-            div(cx.bump)
+            div(&cx)
                 .attr("before-1", "1")
                 .attr("shared-1", "1")
                 .attr("modified-1", "1")
@@ -132,7 +132,7 @@ before_after! {
                 .finish()
         }
         after(cx) {
-            div(cx.bump)
+            div(&cx)
                 .attr("after-1", "1")
                 .attr("shared-1", "1")
                 .attr("modified-1", "100")
@@ -148,56 +148,56 @@ before_after! {
 
     same_tag_same_children {
         before(cx) {
-            div(cx.bump).child(text("child")).finish()
+            div(&cx).child(text("child")).finish()
         }
         after(cx) {
-            div(cx.bump).child(text("child")).finish()
+            div(&cx).child(text("child")).finish()
         }
     }
 
     same_tag_update_child {
         before(cx) {
-            div(cx.bump).child(text("before")).finish()
+            div(&cx).child(text("before")).finish()
         }
         after(cx) {
-            div(cx.bump).child(text("after")).finish()
+            div(&cx).child(text("after")).finish()
         }
     }
 
     same_tag_add_child {
         before(cx) {
-            div(cx.bump).finish()
+            div(&cx).finish()
         }
         after(cx) {
-            div(cx.bump).child(text("child")).finish()
+            div(&cx).child(text("child")).finish()
         }
     }
 
     same_tag_remove_child {
         before(cx) {
-            div(cx.bump).child(text("child")).finish()
+            div(&cx).child(text("child")).finish()
         }
         after(cx) {
-            div(cx.bump).finish()
+            div(&cx).finish()
         }
     }
 
     same_tag_update_many_children {
         before(cx) {
-            div(cx.bump)
+            div(&cx)
                 .children([
-                    div(cx.bump).finish(),
-                    span(cx.bump).finish(),
-                    p(cx.bump).finish(),
+                    div(&cx).finish(),
+                    span(&cx).finish(),
+                    p(&cx).finish(),
                 ])
                 .finish()
         }
         after(cx) {
-            div(cx.bump)
+            div(&cx)
                 .children([
-                    span(cx.bump).finish(),
-                    p(cx.bump).finish(),
-                    div(cx.bump).finish(),
+                    span(&cx).finish(),
+                    p(&cx).finish(),
+                    div(&cx).finish(),
                 ])
                 .finish()
         }
@@ -205,18 +205,18 @@ before_after! {
 
     same_tag_remove_many_children {
         before(cx) {
-            div(cx.bump)
+            div(&cx)
                 .children([
-                    div(cx.bump).finish(),
-                    span(cx.bump).finish(),
-                    p(cx.bump).finish(),
+                    div(&cx).finish(),
+                    span(&cx).finish(),
+                    p(&cx).finish(),
                 ])
                 .finish()
         }
         after(cx) {
-            div(cx.bump)
+            div(&cx)
                 .children([
-                    div(cx.bump).finish(),
+                    div(&cx).finish(),
                 ])
                 .finish()
         }
@@ -224,18 +224,18 @@ before_after! {
 
     same_tag_add_many_children {
         before(cx) {
-            div(cx.bump)
+            div(&cx)
                 .children([
-                    div(cx.bump).finish(),
+                    div(&cx).finish(),
                 ])
                 .finish()
         }
         after(cx) {
-            div(cx.bump)
+            div(&cx)
                 .children([
-                    div(cx.bump).finish(),
-                    span(cx.bump).finish(),
-                    p(cx.bump).finish(),
+                    div(&cx).finish(),
+                    span(&cx).finish(),
+                    p(&cx).finish(),
                 ])
                 .finish()
         }
@@ -243,12 +243,12 @@ before_after! {
 
     same_tag_different_namespace {
         before(cx) {
-            div(cx.bump)
+            div(&cx)
                 .namespace(Some("http://example.com"))
                 .finish()
         }
         after(cx) {
-            div(cx.bump)
+            div(&cx)
                 .namespace(Some("http://example.net"))
                 .finish()
         }

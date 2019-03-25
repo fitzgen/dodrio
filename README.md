@@ -35,7 +35,7 @@ impl Render for Hello {
     where
         'a: 'bump,
     {
-        span(cx.bump)
+        span(cx)
             .children([text("Hello, "), text(&self.who), text("!")])
             .finish()
     }
