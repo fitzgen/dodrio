@@ -1,5 +1,4 @@
-use crate::Node;
-use bumpalo::Bump;
+use crate::{Node, RenderContext};
 use std::any::Any;
 use std::rc::Rc;
 use wasm_bindgen::UnwrapThrowExt;
@@ -11,27 +10,25 @@ use wasm_bindgen::UnwrapThrowExt;
 ///
 /// ## `Bump` Allocation
 ///
-/// `Render` implementations can use the provided `Bump` for very fast
-/// allocation for anything that needs to be allocated during rendering.
+/// `Render` implementations can use the `Bump` inside the provided
+/// `RenderContext` for very fast allocation for anything that needs to be
+/// temporarily allocated during rendering.
 ///
 /// ## Example
 ///
 /// ```no_run
-/// use dodrio::{bumpalo::Bump, Node, Render};
+/// use dodrio::{Node, Render, RenderContext};
 ///
 /// pub struct MyComponent;
 ///
 /// impl Render for MyComponent {
-///     fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-///     where
-///         'a: 'bump
-///     {
+///     fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
 ///         use dodrio::builder::*;
 ///
-///         p(bump)
+///         p(cx.bump)
 ///             .children([
 ///                 text("This is "),
-///                 strong(bump).children([text("my component")]).finish(),
+///                 strong(cx.bump).children([text("my component")]).finish(),
 ///                 text(" rendered!"),
 ///             ])
 ///             .finish()
@@ -39,17 +36,17 @@ use wasm_bindgen::UnwrapThrowExt;
 /// }
 /// ```
 pub trait Render {
-    /// Render `self` as a virtual DOM. Use the given `Bump` for temporary
-    /// allocations.
-    fn render<'bump>(&self, bump: &'bump Bump) -> Node<'bump>;
+    /// Render `self` as a virtual DOM. Use the given context's `Bump` for
+    /// temporary allocations.
+    fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump>;
 }
 
 impl<'r, R> Render for &'r R
 where
     R: Render,
 {
-    fn render<'bump>(&self, bump: &'bump Bump) -> Node<'bump> {
-        (**self).render(bump)
+    fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
+        (**self).render(cx)
     }
 }
 
@@ -57,8 +54,8 @@ impl<R> Render for Rc<R>
 where
     R: Render,
 {
-    fn render<'bump>(&self, bump: &'bump Bump) -> Node<'bump> {
-        (**self).render(bump)
+    fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
+        (**self).render(cx)
     }
 }
 

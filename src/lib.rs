@@ -3,7 +3,7 @@
 //! ## Example
 //!
 //! ```no_run
-//! use dodrio::{bumpalo::Bump, Attribute, Node, Render};
+//! use dodrio::{bumpalo, Attribute, Node, Render, RenderContext};
 //! use wasm_bindgen::UnwrapThrowExt;
 //!
 //! /// A component that greets someone.
@@ -19,15 +19,13 @@
 //! }
 //!
 //! impl<'who> Render for Hello<'who> {
-//!     fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-//!     where
-//!         'a: 'bump,
-//!     {
+//!     fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
 //!         use dodrio::builder::*;
 //!
-//!         let id = bumpalo::format!(in bump, "hello-{}", self.who);
+//!         let id = bumpalo::format!(in cx.bump, "hello-{}", self.who);
+//!         let who = bumpalo::collections::String::from_str_in(self.who, cx.bump).into_bump_str();
 //!
-//!         div(bump)
+//!         div(cx.bump)
 //!            .attr("id", id.into_bump_str())
 //!            .on("click", |root, _vdom, _event| {
 //!                 let hello = root.unwrap_mut::<Hello>();
@@ -37,9 +35,9 @@
 //!             })
 //!             .children([
 //!                 text("Hello, "),
-//!                 strong(bump)
+//!                 strong(cx.bump)
 //!                     .children([
-//!                         text(self.who),
+//!                         text(who),
 //!                         text("!"),
 //!                     ])
 //!                     .finish(),
@@ -70,6 +68,7 @@ pub mod change_list;
 mod events;
 mod node;
 mod render;
+mod render_context;
 mod vdom;
 
 pub mod builder;
@@ -77,6 +76,7 @@ pub mod builder;
 // Re-export items at the top level.
 pub use self::node::{Attribute, ElementNode, Listener, ListenerCallback, Node, TextNode};
 pub use self::render::{Render, RootRender};
+pub use self::render_context::RenderContext;
 pub use self::vdom::{Vdom, VdomWeak};
 
 cfg_if::cfg_if! {

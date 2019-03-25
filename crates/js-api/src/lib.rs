@@ -66,8 +66,7 @@ And here is a Rust rendering component that internally uses the JS rendering
 component:
 
 ```rust,no_run
-use dodrio::bumpalo::Bump;
-use dodrio::{Node, Render, Vdom};
+use dodrio::{Node, Render, RenderContext, Vdom};
 use dodrio_js_api::JsRender;
 use js_sys::Object;
 use wasm_bindgen::prelude::*;
@@ -101,15 +100,12 @@ impl GreetingViaJs {
 /// And finally the `Render` implementation! This adds a `<p>` element and some
 /// text around whatever the inner JS `Greeting` component renders.
 impl Render for GreetingViaJs {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
         use dodrio::builder::*;
-        p(bump)
+        p(cx.bump)
             .children([
                 text("JavaScript says: "),
-                self.js.render(bump),
+                self.js.render(cx),
             ])
             .finish()
     }
@@ -119,11 +115,7 @@ impl Render for GreetingViaJs {
  */
 #![deny(missing_docs, missing_debug_implementations)]
 
-use dodrio::{
-    builder,
-    bumpalo::{self, Bump},
-    Node, Render,
-};
+use dodrio::{builder, bumpalo, Node, Render, RenderContext};
 use futures::prelude::*;
 use js_sys::{Object, Promise, Reflect};
 use wasm_bindgen::prelude::*;
@@ -222,8 +214,8 @@ impl JsRender {
 }
 
 impl Render for JsRender {
-    fn render<'bump>(&self, bump: &'bump Bump) -> Node<'bump> {
-        create(bump, self.render())
+    fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
+        create(cx, self.render())
     }
 }
 
@@ -231,9 +223,9 @@ fn has_property(obj: &Object, property: &str) -> bool {
     Reflect::has(obj, &property.into()).unwrap_or_default()
 }
 
-fn create(bump: &Bump, val: JsValue) -> Node {
+fn create<'bump>(cx: &mut RenderContext<'bump>, val: JsValue) -> Node<'bump> {
     if let Some(txt) = val.as_string() {
-        let text = bumpalo::collections::String::from_str_in(&txt, bump);
+        let text = bumpalo::collections::String::from_str_in(&txt, cx.bump);
         return builder::text(text.into_bump_str());
     }
 
@@ -248,12 +240,12 @@ fn create(bump: &Bump, val: JsValue) -> Node {
     );
 
     let tag_name = elem.tag_name();
-    let tag_name = bumpalo::collections::String::from_str_in(&tag_name, bump);
+    let tag_name = bumpalo::collections::String::from_str_in(&tag_name, cx.bump);
 
-    builder::ElementBuilder::new(bump, tag_name.into_bump_str())
+    builder::ElementBuilder::new(cx.bump, tag_name.into_bump_str())
         .listeners({
             let mut listeners =
-                bumpalo::collections::Vec::new_in(bump);
+                bumpalo::collections::Vec::new_in(cx.bump);
             if has_property(&elem, "listeners") {
                 let js_listeners = elem.listeners();
                 listeners.reserve(js_listeners.length() as usize);
@@ -272,10 +264,10 @@ fn create(bump: &Bump, val: JsValue) -> Node {
                         "listener objects returned by JS render methods must have an `callback` property"
                     );
                     let on = listener.on();
-                    let on = bumpalo::collections::String::from_str_in(&on, bump);
+                    let on = bumpalo::collections::String::from_str_in(&on, cx.bump);
                     let callback = listener.callback();
                     let elem = elem.clone();
-                    listeners.push(builder::on(bump, on.into_bump_str(), move |_root, vdom, event| {
+                    listeners.push(builder::on(cx.bump, on.into_bump_str(), move |_root, vdom, event| {
                         let vdom = VdomWeak::new(vdom);
                         let vdom: JsValue = vdom.into();
                         if let Err(e) = callback.call2(&elem, &vdom, &event) {
@@ -287,7 +279,7 @@ fn create(bump: &Bump, val: JsValue) -> Node {
             listeners
         })
         .attributes({
-            let mut attributes = bumpalo::collections::Vec::new_in(bump);
+            let mut attributes = bumpalo::collections::Vec::new_in(cx.bump);
             if has_property(&elem, "attributes") {
                 let js_attributes = elem.attributes();
                 attributes.reserve(js_attributes.length() as usize);
@@ -306,21 +298,21 @@ fn create(bump: &Bump, val: JsValue) -> Node {
                         "attribute objects returned by JS render methods must have a `value` property"
                     );
                     let name = attribute.name();
-                    let name = bumpalo::collections::String::from_str_in(&name, bump);
+                    let name = bumpalo::collections::String::from_str_in(&name, cx.bump);
                     let value = attribute.value();
-                    let value = bumpalo::collections::String::from_str_in(&value, bump);
+                    let value = bumpalo::collections::String::from_str_in(&value, cx.bump);
                     attributes.push(builder::attr(name.into_bump_str(), value.into_bump_str()));
                 });
             }
             attributes
         })
         .children({
-            let mut children = bumpalo::collections::Vec::new_in(bump);
+            let mut children = bumpalo::collections::Vec::new_in(cx.bump);
             if has_property(&elem, "children") {
                 let js_children = elem.children();
                 children.reserve(js_children.length() as usize);
                 js_children.for_each(&mut |child, _index, _array| {
-                    children.push(create(bump, child));
+                    children.push(create(cx, child));
                 });
             }
             children

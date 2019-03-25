@@ -6,7 +6,7 @@ use wasm_bindgen_test::*;
 
 #[wasm_bindgen_test]
 fn render_initial_text() {
-    let hello = Rc::new(RenderFn(|_bump| text("hello")));
+    let hello = Rc::new(RenderFn(|_cx| text("hello")));
 
     let container = create_element("div");
     let _vdom = Vdom::new(&container, hello.clone());
@@ -15,10 +15,10 @@ fn render_initial_text() {
 
 #[wasm_bindgen_test]
 fn render_initial_node() {
-    let hello = Rc::new(RenderFn(|bump| {
-        div(bump)
+    let hello = Rc::new(RenderFn(|cx| {
+        div(cx.bump)
             .attr("id", "hello-world")
-            .children([text("Hello "), span(bump).child(text("World!")).finish()])
+            .children([text("Hello "), span(cx.bump).child(text("World!")).finish()])
             .finish()
     }));
 
@@ -30,96 +30,96 @@ fn render_initial_node() {
 #[wasm_bindgen_test]
 fn container_is_emptied_upon_drop() {
     let container = create_element("div");
-    let vdom = Vdom::new(&container, RenderFn(|_bump| text("blah")));
+    let vdom = Vdom::new(&container, RenderFn(|_cx| text("blah")));
     drop(vdom);
     assert!(container.first_child().is_none());
 }
 
 before_after! {
     same_text {
-        before(_bump) {
+        before(_cx) {
             text("hello")
         }
-        after(_bump) {
+        after(_cx) {
             text("hello")
         }
     }
 
     update_text {
-        before(_bump) {
+        before(_cx) {
             text("before")
         }
-        after(_bump) {
+        after(_cx) {
             text("after")
         }
     }
 
     replace_text_with_elem {
-        before(_bump) {
+        before(_cx) {
             text("before")
         }
-        after(bump) {
-            div(bump).finish()
+        after(cx) {
+            div(cx.bump).finish()
         }
     }
 
     replace_elem_with_text {
-        before(bump) {
-            div(bump).finish()
+        before(cx) {
+            div(cx.bump).finish()
         }
-        after(_bump) {
+        after(_cx) {
             text("before")
         }
     }
 
     same_elem {
-        before(bump) {
-            div(bump).finish()
+        before(cx) {
+            div(cx.bump).finish()
         }
-        after(bump) {
-            div(bump).finish()
+        after(cx) {
+            div(cx.bump).finish()
         }
     }
 
     elems_with_different_tag_names {
-        before(bump) {
-            span(bump).finish()
+        before(cx) {
+            span(cx.bump).finish()
         }
-        after(bump) {
-            div(bump).finish()
+        after(cx) {
+            div(cx.bump).finish()
         }
     }
 
     same_tag_name_update_attribute {
-        before(bump) {
-            div(bump).attr("value", "1").finish()
+        before(cx) {
+            div(cx.bump).attr("value", "1").finish()
         }
-        after(bump) {
-            div(bump).attr("value", "2").finish()
+        after(cx) {
+            div(cx.bump).attr("value", "2").finish()
         }
     }
 
     same_tag_name_remove_attribute {
-        before(bump) {
-            div(bump).attr("value", "1").finish()
+        before(cx) {
+            div(cx.bump).attr("value", "1").finish()
         }
-        after(bump) {
-            div(bump).finish()
+        after(cx) {
+            div(cx.bump).finish()
         }
     }
 
     same_tag_name_add_attribute {
-        before(bump) {
-            div(bump).finish()
+        before(cx) {
+            div(cx.bump).finish()
         }
-        after(bump) {
-            div(bump).attr("value", "2").finish()
+        after(cx) {
+            div(cx.bump).attr("value", "2").finish()
         }
     }
 
     same_tag_name_many_attributes {
-        before(bump) {
-            div(bump)
+        before(cx) {
+            div(cx.bump)
                 .attr("before-1", "1")
                 .attr("shared-1", "1")
                 .attr("modified-1", "1")
@@ -131,8 +131,8 @@ before_after! {
                 .attr("modified-3", "3")
                 .finish()
         }
-        after(bump) {
-            div(bump)
+        after(cx) {
+            div(cx.bump)
                 .attr("after-1", "1")
                 .attr("shared-1", "1")
                 .attr("modified-1", "100")
@@ -147,108 +147,108 @@ before_after! {
     }
 
     same_tag_same_children {
-        before(bump) {
-            div(bump).child(text("child")).finish()
+        before(cx) {
+            div(cx.bump).child(text("child")).finish()
         }
-        after(bump) {
-            div(bump).child(text("child")).finish()
+        after(cx) {
+            div(cx.bump).child(text("child")).finish()
         }
     }
 
     same_tag_update_child {
-        before(bump) {
-            div(bump).child(text("before")).finish()
+        before(cx) {
+            div(cx.bump).child(text("before")).finish()
         }
-        after(bump) {
-            div(bump).child(text("after")).finish()
+        after(cx) {
+            div(cx.bump).child(text("after")).finish()
         }
     }
 
     same_tag_add_child {
-        before(bump) {
-            div(bump).finish()
+        before(cx) {
+            div(cx.bump).finish()
         }
-        after(bump) {
-            div(bump).child(text("child")).finish()
+        after(cx) {
+            div(cx.bump).child(text("child")).finish()
         }
     }
 
     same_tag_remove_child {
-        before(bump) {
-            div(bump).child(text("child")).finish()
+        before(cx) {
+            div(cx.bump).child(text("child")).finish()
         }
-        after(bump) {
-            div(bump).finish()
+        after(cx) {
+            div(cx.bump).finish()
         }
     }
 
     same_tag_update_many_children {
-        before(bump) {
-            div(bump)
+        before(cx) {
+            div(cx.bump)
                 .children([
-                    div(bump).finish(),
-                    span(bump).finish(),
-                    p(bump).finish(),
+                    div(cx.bump).finish(),
+                    span(cx.bump).finish(),
+                    p(cx.bump).finish(),
                 ])
                 .finish()
         }
-        after(bump) {
-            div(bump)
+        after(cx) {
+            div(cx.bump)
                 .children([
-                    span(bump).finish(),
-                    p(bump).finish(),
-                    div(bump).finish(),
+                    span(cx.bump).finish(),
+                    p(cx.bump).finish(),
+                    div(cx.bump).finish(),
                 ])
                 .finish()
         }
     }
 
     same_tag_remove_many_children {
-        before(bump) {
-            div(bump)
+        before(cx) {
+            div(cx.bump)
                 .children([
-                    div(bump).finish(),
-                    span(bump).finish(),
-                    p(bump).finish(),
+                    div(cx.bump).finish(),
+                    span(cx.bump).finish(),
+                    p(cx.bump).finish(),
                 ])
                 .finish()
         }
-        after(bump) {
-            div(bump)
+        after(cx) {
+            div(cx.bump)
                 .children([
-                    div(bump).finish(),
+                    div(cx.bump).finish(),
                 ])
                 .finish()
         }
     }
 
     same_tag_add_many_children {
-        before(bump) {
-            div(bump)
+        before(cx) {
+            div(cx.bump)
                 .children([
-                    div(bump).finish(),
+                    div(cx.bump).finish(),
                 ])
                 .finish()
         }
-        after(bump) {
-            div(bump)
+        after(cx) {
+            div(cx.bump)
                 .children([
-                    div(bump).finish(),
-                    span(bump).finish(),
-                    p(bump).finish(),
+                    div(cx.bump).finish(),
+                    span(cx.bump).finish(),
+                    p(cx.bump).finish(),
                 ])
                 .finish()
         }
     }
 
     same_tag_different_namespace {
-        before(bump) {
-            div(bump)
+        before(cx) {
+            div(cx.bump)
                 .namespace(Some("http://example.com"))
                 .finish()
         }
-        after(bump) {
-            div(bump)
+        after(cx) {
+            div(cx.bump)
                 .namespace(Some("http://example.net"))
                 .finish()
         }

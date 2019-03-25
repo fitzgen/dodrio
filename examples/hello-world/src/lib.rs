@@ -1,8 +1,5 @@
-use dodrio::{
-    builder::*,
-    bumpalo::{self, Bump},
-};
-use dodrio::{Node, Render, Vdom};
+use dodrio::{builder::*, bumpalo};
+use dodrio::{Node, Render, RenderContext, Vdom};
 use wasm_bindgen::prelude::*;
 
 /// A rendering component that displays a greeting.
@@ -14,10 +11,10 @@ struct Hello {
 // The `Render` implementation describes how to render a `Hello` component into
 // HTML.
 impl Render for Hello {
-    fn render<'bump>(&self, bump: &'bump Bump) -> Node<'bump> {
-        let msg = bumpalo::format!(in bump, "Hello, {}!", self.who);
+    fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
+        let msg = bumpalo::format!(in cx.bump, "Hello, {}!", self.who);
         let msg = msg.into_bump_str();
-        p(bump).children([text(msg)]).finish()
+        p(cx.bump).children([text(msg)]).finish()
     }
 }
 

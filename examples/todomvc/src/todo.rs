@@ -1,7 +1,7 @@
 //! Type definition and `dodrio::Render` implementation for a single todo item.
 
 use crate::keys;
-use dodrio::{bumpalo::Bump, Node, Render, RootRender, VdomWeak};
+use dodrio::{Node, Render, RenderContext, RootRender, VdomWeak};
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
 use wasm_bindgen::{prelude::*, JsCast};
@@ -93,7 +93,7 @@ impl<C> Todo<C> {
 }
 
 impl<C: TodoActions> Render for Todo<C> {
-    fn render<'bump>(&self, bump: &'bump Bump) -> Node<'bump> {
+    fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
         use dodrio::{
             builder::*,
             bumpalo::{self, collections::String},
@@ -101,11 +101,11 @@ impl<C: TodoActions> Render for Todo<C> {
 
         let id = self.id;
         let title = self.edits.as_ref().unwrap_or(&self.title);
-        let title = bumpalo::format!(in bump, "{}", title).into_bump_str();
+        let title = bumpalo::format!(in cx.bump, "{}", title).into_bump_str();
 
-        li(bump)
+        li(cx.bump)
             .attr("class", {
-                let mut class = String::new_in(bump);
+                let mut class = String::new_in(cx.bump);
                 if self.completed {
                     class.push_str("completed ");
                 }
@@ -115,10 +115,10 @@ impl<C: TodoActions> Render for Todo<C> {
                 class.into_bump_str()
             })
             .children([
-                div(bump)
+                div(cx.bump)
                     .attr("class", "view")
                     .children([
-                        input(bump)
+                        input(cx.bump)
                             .attr("class", "toggle")
                             .attr("type", "checkbox")
                             .bool_attr("checked", self.completed)
@@ -126,13 +126,13 @@ impl<C: TodoActions> Render for Todo<C> {
                                 C::toggle_completed(root, vdom, id);
                             })
                             .finish(),
-                        label(bump)
+                        label(cx.bump)
                             .on("dblclick", move |root, vdom, _event| {
                                 C::begin_editing(root, vdom, id);
                             })
                             .children([text(title)])
                             .finish(),
-                        button(bump)
+                        button(cx.bump)
                             .attr("class", "destroy")
                             .on("click", move |root, vdom, _event| {
                                 C::delete(root, vdom, id);
@@ -140,13 +140,13 @@ impl<C: TodoActions> Render for Todo<C> {
                             .finish(),
                     ])
                     .finish(),
-                input(bump)
+                input(cx.bump)
                     .attr("class", "edit")
                     .attr("value", title)
                     .attr("name", "title")
                     .attr(
                         "id",
-                        bumpalo::format!(in bump, "todo-{}", id).into_bump_str(),
+                        bumpalo::format!(in cx.bump, "todo-{}", id).into_bump_str(),
                     )
                     .on("input", move |root, vdom, event| {
                         let input = event

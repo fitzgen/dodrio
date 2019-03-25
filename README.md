@@ -31,11 +31,11 @@ struct Hello {
 }
 
 impl Render for Hello {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
+    fn render<'a, 'bump>(&'a self, cx: &mut RenderContext<'bump>) -> Node<'bump>
     where
         'a: 'bump,
     {
-        span(bump)
+        span(cx.bump)
             .children([text("Hello, "), text(&self.who), text("!")])
             .finish()
     }

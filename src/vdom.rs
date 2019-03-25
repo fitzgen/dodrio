@@ -2,6 +2,7 @@ use super::change_list::ChangeList;
 use super::node::{Attribute, ElementNode, Listener, Node, TextNode};
 use super::RootRender;
 use crate::events::EventsRegistry;
+use crate::RenderContext;
 use bumpalo::Bump;
 use futures::future::Future;
 use std::cell::Cell;
@@ -265,11 +266,8 @@ impl VdomInnerExclusive {
                 self.dom_buffers[1].reset();
 
                 // Render the new current contents into the inactive bump arena.
-                let new_contents = self
-                    .component
-                    .as_ref()
-                    .unwrap_throw()
-                    .render(&self.dom_buffers[1]);
+                let mut cx = RenderContext::new(&self.dom_buffers[1]);
+                let new_contents = self.component.as_ref().unwrap_throw().render(&mut cx);
                 let new_contents = extend_node_lifetime(new_contents);
 
                 // Diff the old contents with the new contents.

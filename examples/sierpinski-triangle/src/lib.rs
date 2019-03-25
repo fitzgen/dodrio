@@ -1,5 +1,4 @@
-use dodrio::bumpalo::{self, Bump};
-use dodrio::{Node, Render, Vdom};
+use dodrio::{bumpalo, Node, Render, RenderContext, Vdom};
 use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
@@ -18,11 +17,15 @@ impl Container {
     }
 
     // Generate the container style to fluctuate triangle width.
-    fn container_transform<'bump>(&self, bump: &'bump Bump, elapsed: f64) -> &'bump str {
+    fn container_transform<'bump>(
+        &self,
+        cx: &mut RenderContext<'bump>,
+        elapsed: f64,
+    ) -> &'bump str {
         let t = elapsed % 10.0;
         let scale = 0.45 + (if t > 5.0 { 10.0 - t } else { t }) / 40.0;
         let transform = bumpalo::format!(
-            in bump,
+            in cx.bump,
             "transform: scaleX({}) scaleY(0.7) translateZ(0.1px)",
             scale
         );
@@ -30,11 +33,11 @@ impl Container {
     }
 
     // Generate the dot's position on the grid.
-    fn dot_style<'bump>(&self, bump: &'bump Bump, x: f64, y: f64) -> &'bump str {
+    fn dot_style<'bump>(&self, cx: &mut RenderContext<'bump>, x: f64, y: f64) -> &'bump str {
         let s = self.size * 1.3;
         let radius = s / 2.0;
         let styles = bumpalo::format!(
-            in bump,
+            in cx.bump,
             r#"
                 width: {}px;
                 height: {}px;
@@ -49,14 +52,20 @@ impl Container {
     }
 
     // Create a dot node.
-    fn dot<'bump>(&self, bump: &'bump Bump, x: f64, y: f64, content: u32) -> Node<'bump> {
+    fn dot<'bump>(
+        &self,
+        cx: &mut RenderContext<'bump>,
+        x: f64,
+        y: f64,
+        content: u32,
+    ) -> Node<'bump> {
         use dodrio::builder::{div, text};
 
-        div(bump)
+        div(cx.bump)
             .attr("class", "dot")
-            .attr("style", self.dot_style(bump, x, y))
+            .attr("style", self.dot_style(cx, x, y))
             .child(text(
-                bumpalo::format!(in bump, "{}", content).into_bump_str(),
+                bumpalo::format!(in cx.bump, "{}", content).into_bump_str(),
             ))
             .finish()
     }
@@ -64,7 +73,7 @@ impl Container {
     // Create a flattened vector of dot nodes (arranged in recursive triangles)
     fn triangle<'bump>(
         &self,
-        bump: &'bump Bump,
+        cx: &mut RenderContext<'bump>,
         x: f64,
         y: f64,
         s: f64,
@@ -72,23 +81,23 @@ impl Container {
         children: &mut bumpalo::collections::Vec<Node<'bump>>,
     ) {
         if s <= self.size {
-            children.push(self.dot(bump, x, y, content));
+            children.push(self.dot(cx, x, y, content));
             return;
         }
 
         let s = s / 2.0;
 
         // Top of triangle
-        self.triangle(bump, x, y - (s / 2.0), s, content, children);
+        self.triangle(cx, x, y - (s / 2.0), s, content, children);
         // Bottom-left of triangle
-        self.triangle(bump, x - s, y + (s / 2.0), s, content, children);
+        self.triangle(cx, x - s, y + (s / 2.0), s, content, children);
         // Bottom-right of triangle
-        self.triangle(bump, x + s, y + (s / 2.0), s, content, children);
+        self.triangle(cx, x + s, y + (s / 2.0), s, content, children);
     }
 }
 
 impl Render for Container {
-    fn render<'bump>(&self, bump: &'bump Bump) -> Node<'bump> {
+    fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
         use dodrio::builder::div;
 
         let elapsed = web_sys::window()
@@ -100,12 +109,12 @@ impl Render for Container {
 
         let modulus = elapsed as u32 % 10;
 
-        let mut children = bumpalo::collections::Vec::new_in(bump);
-        self.triangle(bump, 0.0, 0.0, 1000.0, modulus, &mut children);
+        let mut children = bumpalo::collections::Vec::new_in(cx.bump);
+        self.triangle(cx, 0.0, 0.0, 1000.0, modulus, &mut children);
 
-        div(bump)
+        div(cx.bump)
             .attr("class", "container")
-            .attr("style", self.container_transform(bump, elapsed))
+            .attr("style", self.container_transform(cx, elapsed))
             .children(children)
             .finish()
     }

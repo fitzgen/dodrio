@@ -1,5 +1,5 @@
 use super::{assert_rendered, create_element, RenderFn};
-use dodrio::{builder::*, bumpalo::Bump, Node, Render, Vdom};
+use dodrio::{builder::*, Node, Render, RenderContext, Vdom};
 use dodrio_js_api::JsRender;
 use futures::prelude::*;
 use futures::sync::oneshot;
@@ -37,10 +37,10 @@ impl WrapJs {
 }
 
 impl Render for WrapJs {
-    fn render<'bump>(&self, bump: &'bump Bump) -> Node<'bump> {
-        div(bump)
+    fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
+        div(cx.bump)
             .attr("class", "wrap-js")
-            .children([self.inner.render(bump)])
+            .children([self.inner.render(cx)])
             .finish()
     }
 }
@@ -106,14 +106,14 @@ fn can_use_js_rendering_components() -> impl Future<Item = (), Error = JsValue> 
     let vdom = Rc::new(Vdom::new(&container, component));
     assert_rendered(
         &container,
-        &RenderFn(|bump| {
-            div(bump)
+        &RenderFn(|cx| {
+            div(cx.bump)
                 .attr("class", "wrap-js")
-                .children([span(bump)
+                .children([span(cx.bump)
                     .attr("class", "js-component")
                     .children([
                         text("Here is some plain text"),
-                        b(bump)
+                        b(cx.bump)
                             .children([text("...and here is some bold text")])
                             .finish(),
                         text("0"),
@@ -135,14 +135,14 @@ fn can_use_js_rendering_components() -> impl Future<Item = (), Error = JsValue> 
         .map(move |_| {
             assert_rendered(
                 &container,
-                &RenderFn(|bump| {
-                    div(bump)
+                &RenderFn(|cx| {
+                    div(cx.bump)
                         .attr("class", "wrap-js")
-                        .children([span(bump)
+                        .children([span(cx.bump)
                             .attr("class", "js-component")
                             .children([
                                 text("Here is some plain text"),
-                                b(bump)
+                                b(cx.bump)
                                     .children([text("...and here is some bold text")])
                                     .finish(),
                                 text("1"),

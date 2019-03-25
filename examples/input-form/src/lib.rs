@@ -1,5 +1,4 @@
-use dodrio::bumpalo::{self, Bump};
-use dodrio::{Node, Render};
+use dodrio::{bumpalo, Node, Render, RenderContext};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
@@ -25,16 +24,16 @@ impl SayHelloTo {
 // The `Render` implementation has a text `<input>` and a `<div>` that shows a
 // greeting to the `<input>`'s value.
 impl Render for SayHelloTo {
-    fn render<'bump>(&self, bump: &'bump Bump) -> Node<'bump> {
+    fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
         use dodrio::builder::*;
 
-        div(bump)
+        div(cx.bump)
             .children([
-                input(bump)
+                input(cx.bump)
                     .attr("type", "text")
                     .attr(
                         "value",
-                        bumpalo::format!(in bump, "{}", self.who).into_bump_str(),
+                        bumpalo::format!(in cx.bump, "{}", self.who).into_bump_str(),
                     )
                     .on("input", |root, vdom, event| {
                         // If the event's target is our input...
@@ -55,7 +54,7 @@ impl Render for SayHelloTo {
                         vdom.schedule_render();
                     })
                     .finish(),
-                text(bumpalo::format!(in bump, "Hello, {}!", self.who).into_bump_str()),
+                text(bumpalo::format!(in cx.bump, "Hello, {}!", self.who).into_bump_str()),
             ])
             .finish()
     }

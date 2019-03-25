@@ -1,6 +1,5 @@
 use super::create_element;
-use bumpalo::Bump;
-use dodrio::{Node, Render, Vdom};
+use dodrio::{Node, Render, RenderContext, Vdom};
 use futures::Future;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -26,9 +25,9 @@ impl EventContainer {
 }
 
 impl Render for EventContainer {
-    fn render<'bump>(&self, bump: &'bump Bump) -> Node<'bump> {
+    fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
         use dodrio::builder::*;
-        div(bump)
+        div(cx.bump)
             .attr("id", "target")
             .on(self.event, |root, _scheduler, _event| {
                 (root.unwrap_mut::<EventContainer>().on_event)();
@@ -135,13 +134,13 @@ impl ListensOnlyOnFirstRender {
 }
 
 impl Render for ListensOnlyOnFirstRender {
-    fn render<'bump>(&self, bump: &'bump Bump) -> Node<'bump> {
+    fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
         use dodrio::builder::*;
 
         let count = self.count.get();
         self.count.set(count + 1);
 
-        let mut elem = div(bump).attr("id", "target");
+        let mut elem = div(cx.bump).attr("id", "target");
         if count == 0 {
             elem = elem.on("click", |root, _scheduler, _event| {
                 (root.unwrap_mut::<ListensOnlyOnFirstRender>().callback)();

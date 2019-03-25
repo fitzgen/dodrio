@@ -3,7 +3,7 @@
 #![cfg(target_arch = "wasm32")]
 
 use bumpalo::Bump;
-use dodrio::{Attribute, Node, Render, Vdom};
+use dodrio::{Attribute, Node, Render, RenderContext, Vdom};
 use futures::prelude::*;
 use log::*;
 use std::rc::Rc;
@@ -49,7 +49,8 @@ pub fn assert_rendered<R: Render>(container: &web_sys::Element, r: &R) {
     init_logging();
 
     let bump = &Bump::new();
-    let node = r.render(bump);
+    let cx = &mut RenderContext::new(bump);
+    let node = r.render(cx);
     let child = container
         .first_child()
         .expect("container does not have anything rendered into it?");
@@ -133,14 +134,14 @@ pub fn assert_rendered<R: Render>(container: &web_sys::Element, r: &R) {
 /// Use the function `F` to render.
 pub struct RenderFn<F>(F)
 where
-    F: for<'bump> Fn(&'bump Bump) -> Node<'bump>;
+    F: for<'bump> Fn(&mut RenderContext<'bump>) -> Node<'bump>;
 
 impl<F> Render for RenderFn<F>
 where
-    F: for<'bump> Fn(&'bump Bump) -> Node<'bump>,
+    F: for<'bump> Fn(&mut RenderContext<'bump>) -> Node<'bump>,
 {
-    fn render<'bump>(&self, bump: &'bump Bump) -> Node<'bump> {
-        (self.0)(bump)
+    fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
+        (self.0)(cx)
     }
 }
 
