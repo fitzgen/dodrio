@@ -19,7 +19,7 @@ cfg_if::cfg_if! {
         }
     } else {
         use crate::{node::ListenerCallback, vdom::VdomWeak};
-        use std::collections::HashMap;
+        use fxhash::FxHashMap;
         use std::fmt;
         use std::mem;
         use wasm_bindgen::closure::Closure;
@@ -31,7 +31,7 @@ cfg_if::cfg_if! {
         /// buffering.
         pub(crate) struct EventsRegistry {
             vdom: Weak<VdomInner>,
-            active: HashMap<(u32, u32), ListenerCallback<'static>>,
+            active: FxHashMap<(u32, u32), ListenerCallback<'static>>,
         }
 
         impl fmt::Debug for EventsRegistry {
@@ -54,7 +54,7 @@ cfg_if::cfg_if! {
             ) {
                 let registry = Rc::new(RefCell::new(EventsRegistry {
                     vdom,
-                    active: HashMap::new(),
+                    active: FxHashMap::default(),
                 }));
 
                 let weak_registry = Rc::downgrade(&registry);
