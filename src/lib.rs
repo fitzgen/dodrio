@@ -85,6 +85,9 @@ cfg_if::cfg_if! {
 #[doc(hidden)]
 pub mod change_list;
 
+mod cached;
+mod cached_set;
+mod diff;
 mod events;
 mod node;
 mod render;
@@ -94,10 +97,19 @@ mod vdom;
 pub mod builder;
 
 // Re-export items at the top level.
+pub use self::cached::Cached;
 pub use self::node::{Attribute, Listener, Node};
 pub use self::render::{Render, RootRender};
 pub use self::render_context::RenderContext;
 pub use self::vdom::{Vdom, VdomWeak};
+
+cfg_if::cfg_if! {
+    if #[cfg(all(target_arch = "wasm32", not(feature = "xxx-unstable-internal-use-only")))] {
+        use wasm_bindgen::__rt::WasmRefCell as RefCell;
+    } else {
+        use std::cell::RefCell;
+    }
+}
 
 // Polyfill some Web stuff for benchmarking...
 cfg_if::cfg_if! {
@@ -116,6 +128,7 @@ cfg_if::cfg_if! {
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "xxx-unstable-internal-use-only")] {
+        pub use self::cached_set::{CachedSet};
         pub use self::node::{ElementNode, NodeKind, TextNode};
     }
 }

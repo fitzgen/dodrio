@@ -1,5 +1,4 @@
-use crate::vdom::VdomInner;
-use crate::Listener;
+use crate::{node::Node, vdom::VdomInner, Listener};
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
@@ -14,11 +13,17 @@ cfg_if::cfg_if! {
             ) {
                 (Rc::new(RefCell::new(EventsRegistry {})), ())
             }
+            pub(crate) fn remove(&mut self, _listener: &Listener) {}
+            pub(crate) fn remove_subtree(&mut self, _node: &Node) {}
             pub(crate) unsafe fn add<'a>(&mut self, _listener: &'a Listener<'a>) {}
             pub(crate) fn clear_active_listeners(&mut self) {}
         }
     } else {
-        use crate::{node::ListenerCallback, vdom::VdomWeak};
+        use bumpalo::Bump;
+        use crate::{
+            node::{ElementNode, ListenerCallback, NodeKind},
+            vdom::VdomWeak,
+        };
         use fxhash::FxHashMap;
         use std::fmt;
         use std::mem;
@@ -88,14 +93,39 @@ cfg_if::cfg_if! {
                 (registry, closure)
             }
 
+            pub(crate) fn remove(&mut self, listener: &Listener) {
+                let id = listener.get_callback_parts();
+                debug!("EventsRegistry::remove(0x{:x}, 0x{:x})", id.0, id.1);
+                debug_assert!(id.0 != 0);
+                self.active.remove(&id);
+            }
+
+            pub(crate) fn remove_subtree(&mut self, node: &Node) {
+                let bump = Bump::new();
+                let mut stack = bumpalo::collections::Vec::with_capacity_in(64, &bump);
+                stack.push(node);
+
+                while let Some(node) = stack.pop() {
+                    match node.kind {
+                        NodeKind::Cached(_) | NodeKind::Text(_) => continue,
+                        NodeKind::Element(ElementNode {listeners, children, ..}) => {
+                            for l in listeners {
+                                self.remove(l);
+                            }
+                            stack.extend(children);
+                        }
+                    }
+                }
+            }
+
             /// Add an event listener to the registry, exposing to JS.
             ///
             /// # Unsafety
             ///
-            /// The listener's lifetime is extended to `'static` and it is the caller's
-            /// responsibility to ensure that the listener is not kept in the registry
-            /// after it is dropped. This is typically done via clearing the whole
-            /// registry on each render and repopulating it during diffing.
+            /// The listener's lifetime is extended to `'static` and it is the
+            /// caller's responsibility to ensure that the listener is not kept
+            /// in the registry after it is dropped. This is maintained during
+            /// diffing.
             pub(crate) unsafe fn add<'a>(&mut self, listener: &'a Listener<'a>) {
                 let id = listener.get_callback_parts();
                 debug!("EventsRegistry::add(0x{:x}, 0x{:x})", id.0, id.1);

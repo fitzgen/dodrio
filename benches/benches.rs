@@ -10,8 +10,9 @@ use criterion::{
 use dodrio::{
     builder::*,
     bumpalo::{self, Bump},
-    Node, Render, RenderContext, Vdom,
+    CachedSet, Node, Render, RenderContext, Vdom,
 };
+use std::cell::RefCell;
 
 /// The simplest thing we can render: `<div/>`.
 struct Empty;
@@ -44,9 +45,10 @@ fn criterion_benchmark(c: &mut Criterion) {
         "render",
         Benchmark::new("empty", {
             let mut bump = Bump::new();
+            let cached_set = RefCell::new(CachedSet::default());
             move |b| {
                 bump.reset();
-                let mut cx = RenderContext::new(&bump);
+                let mut cx = RenderContext::new(&bump, &cached_set);
                 b.iter(|| {
                     black_box(Empty.render(&mut cx));
                 })
@@ -60,9 +62,10 @@ fn criterion_benchmark(c: &mut Criterion) {
             "list",
             {
                 let mut bump = Bump::new();
+                let cached_set = RefCell::new(CachedSet::default());
                 move |b, n| {
                     bump.reset();
-                    let mut cx = RenderContext::new(&bump);
+                    let mut cx = RenderContext::new(&bump, &cached_set);
                     b.iter(|| {
                         black_box(SimpleList(*n).render(&mut cx));
                     })

@@ -1,7 +1,8 @@
-use crate::{RootRender, VdomWeak};
+use crate::{cached_set::CacheId, RootRender, VdomWeak};
 use bumpalo::Bump;
 use std::fmt;
 use std::iter;
+use std::marker::PhantomData;
 use std::mem;
 
 /// A virtual DOM node.
@@ -24,6 +25,10 @@ pub_unstable_internal! {
 
         /// An element potentially with attributes and children.
         Element(ElementNode<'a>),
+
+        /// A node in the vdom's `CachedSet`. This allows us to avoid
+        /// re-rendering and re-diffing subtrees.
+        Cached(CachedNode<'a>),
     }
 }
 
@@ -46,6 +51,18 @@ pub_unstable_internal! {
         pub attributes: &'a [Attribute<'a>],
         pub children: &'a [Node<'a>],
         pub namespace: Option<&'a str>,
+    }
+}
+
+pub_unstable_internal! {
+    /// A cached node exists in an arena that is internal to the `Vdom`. It
+    /// allows us to avoid both re-rendering a sub-tree and re-diffing
+    /// it. `CachedNode`s cannot contain cycles, since they can only contain
+    /// other `CachedNode`s that already exist when they are being constructed.
+    #[derive(Debug, Clone)]
+    pub(crate) struct CachedNode<'a> {
+        pub id: CacheId,
+        pub _phantom: PhantomData<&'a Node<'a>>,
     }
 }
 
@@ -154,6 +171,17 @@ impl<'a> Node<'a> {
     pub(crate) fn text(text: &'a str) -> Node<'a> {
         Node {
             kind: NodeKind::Text(TextNode { text }),
+        }
+    }
+
+    /// Construct a new cached node with the given id.
+    #[inline]
+    pub(crate) fn cached(id: CacheId) -> Node<'a> {
+        Node {
+            kind: NodeKind::Cached(CachedNode {
+                id,
+                _phantom: PhantomData,
+            }),
         }
     }
 }
