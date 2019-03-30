@@ -133,7 +133,7 @@ impl<C> Todos<C> {
 
 /// Rendering helpers.
 impl<C: TodosActions> Todos<C> {
-    fn header<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
+    fn header<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         use dodrio::builder::*;
 
         header(&cx)
@@ -166,7 +166,7 @@ impl<C: TodosActions> Todos<C> {
             .finish()
     }
 
-    fn todos_list<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
+    fn todos_list<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         use dodrio::{builder::*, bumpalo::collections::Vec};
 
         let mut todos = Vec::with_capacity_in(self.todos.len(), cx.bump);
@@ -211,7 +211,7 @@ impl<C: TodosActions> Todos<C> {
             .finish()
     }
 
-    fn footer<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
+    fn footer<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         use dodrio::builder::*;
 
         let completed_count = self.todos.iter().filter(|t| t.is_complete()).count();
@@ -262,12 +262,12 @@ impl<C: TodosActions> Todos<C> {
             .finish()
     }
 
-    fn visibility_swap<'bump>(
+    fn visibility_swap<'a>(
         &self,
-        cx: &mut RenderContext<'bump>,
+        cx: &mut RenderContext<'a>,
         url: &'static str,
         target_vis: Visibility,
-    ) -> Node<'bump> {
+    ) -> Node<'a> {
         use dodrio::builder::*;
 
         li(&cx)
@@ -291,7 +291,7 @@ impl<C: TodosActions> Todos<C> {
 }
 
 impl<C: TodosActions> Render for Todos<C> {
-    fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
+    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         use dodrio::builder::*;
 
         div(&cx)

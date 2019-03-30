@@ -19,7 +19,7 @@
 //! }
 //!
 //! impl<'who> Render for Hello<'who> {
-//!     fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
+//!     fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
 //!         use dodrio::builder::*;
 //!
 //!         let id = bumpalo::format!(in cx.bump, "hello-{}", self.who);

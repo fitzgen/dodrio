@@ -17,7 +17,7 @@ use std::cell::RefCell;
 /// The simplest thing we can render: `<div/>`.
 struct Empty;
 impl Render for Empty {
-    fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
+    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         div(&cx).finish()
     }
 }
@@ -25,7 +25,7 @@ impl Render for Empty {
 /// Render a list that is `self.0` items long, has attributes and listeners.
 struct SimpleList(usize);
 impl Render for SimpleList {
-    fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
+    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         let mut children = bumpalo::collections::Vec::with_capacity_in(self.0, cx.bump);
         children.extend((0..self.0).map(|_| {
             li(&cx)

@@ -100,7 +100,7 @@ impl GreetingViaJs {
 /// And finally the `Render` implementation! This adds a `<p>` element and some
 /// text around whatever the inner JS `Greeting` component renders.
 impl Render for GreetingViaJs {
-    fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
+    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         use dodrio::builder::*;
         p(&cx)
             .children([
@@ -214,7 +214,7 @@ impl JsRender {
 }
 
 impl Render for JsRender {
-    fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
+    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         create(cx, self.render())
     }
 }
@@ -223,7 +223,7 @@ fn has_property(obj: &Object, property: &str) -> bool {
     Reflect::has(obj, &property.into()).unwrap_or_default()
 }
 
-fn create<'bump>(cx: &mut RenderContext<'bump>, val: JsValue) -> Node<'bump> {
+fn create<'a>(cx: &mut RenderContext<'a>, val: JsValue) -> Node<'a> {
     if let Some(txt) = val.as_string() {
         let text = bumpalo::collections::String::from_str_in(&txt, cx.bump);
         return builder::text(text.into_bump_str());

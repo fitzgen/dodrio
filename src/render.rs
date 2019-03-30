@@ -22,7 +22,7 @@ use wasm_bindgen::UnwrapThrowExt;
 /// pub struct MyComponent;
 ///
 /// impl Render for MyComponent {
-///     fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
+///     fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
 ///         use dodrio::builder::*;
 ///
 ///         p(&cx)
@@ -38,14 +38,14 @@ use wasm_bindgen::UnwrapThrowExt;
 pub trait Render {
     /// Render `self` as a virtual DOM. Use the given context's `Bump` for
     /// temporary allocations.
-    fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump>;
+    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a>;
 }
 
 impl<'r, R> Render for &'r R
 where
     R: Render,
 {
-    fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
+    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         (**self).render(cx)
     }
 }
@@ -54,7 +54,7 @@ impl<R> Render for Rc<R>
 where
     R: Render,
 {
-    fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
+    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         (**self).render(cx)
     }
 }

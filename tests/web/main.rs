@@ -151,13 +151,13 @@ pub fn assert_rendered<R: Render>(container: &web_sys::Element, r: &R) {
 /// Use the function `F` to render.
 pub struct RenderFn<F>(F)
 where
-    F: for<'bump> Fn(&mut RenderContext<'bump>) -> Node<'bump>;
+    F: for<'a> Fn(&mut RenderContext<'a>) -> Node<'a>;
 
 impl<F> Render for RenderFn<F>
 where
-    F: for<'bump> Fn(&mut RenderContext<'bump>) -> Node<'bump>,
+    F: for<'a> Fn(&mut RenderContext<'a>) -> Node<'a>,
 {
-    fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
+    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         (self.0)(cx)
     }
 }

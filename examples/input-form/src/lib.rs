@@ -24,7 +24,7 @@ impl SayHelloTo {
 // The `Render` implementation has a text `<input>` and a `<div>` that shows a
 // greeting to the `<input>`'s value.
 impl Render for SayHelloTo {
-    fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
+    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         use dodrio::builder::*;
 
         div(&cx)

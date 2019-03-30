@@ -17,11 +17,7 @@ impl Container {
     }
 
     // Generate the container style to fluctuate triangle width.
-    fn container_transform<'bump>(
-        &self,
-        cx: &mut RenderContext<'bump>,
-        elapsed: f64,
-    ) -> &'bump str {
+    fn container_transform<'a>(&self, cx: &mut RenderContext<'a>, elapsed: f64) -> &'a str {
         let t = elapsed % 10.0;
         let scale = 0.45 + (if t > 5.0 { 10.0 - t } else { t }) / 40.0;
         let transform = bumpalo::format!(
@@ -33,7 +29,7 @@ impl Container {
     }
 
     // Generate the dot's position on the grid.
-    fn dot_style<'bump>(&self, cx: &mut RenderContext<'bump>, x: f64, y: f64) -> &'bump str {
+    fn dot_style<'a>(&self, cx: &mut RenderContext<'a>, x: f64, y: f64) -> &'a str {
         let s = self.size * 1.3;
         let radius = s / 2.0;
         let styles = bumpalo::format!(
@@ -52,13 +48,7 @@ impl Container {
     }
 
     // Create a dot node.
-    fn dot<'bump>(
-        &self,
-        cx: &mut RenderContext<'bump>,
-        x: f64,
-        y: f64,
-        content: u32,
-    ) -> Node<'bump> {
+    fn dot<'a>(&self, cx: &mut RenderContext<'a>, x: f64, y: f64, content: u32) -> Node<'a> {
         use dodrio::builder::{div, text};
 
         div(&cx)
@@ -71,14 +61,14 @@ impl Container {
     }
 
     // Create a flattened vector of dot nodes (arranged in recursive triangles)
-    fn triangle<'bump>(
+    fn triangle<'a>(
         &self,
-        cx: &mut RenderContext<'bump>,
+        cx: &mut RenderContext<'a>,
         x: f64,
         y: f64,
         s: f64,
         content: u32,
-        children: &mut bumpalo::collections::Vec<Node<'bump>>,
+        children: &mut bumpalo::collections::Vec<Node<'a>>,
     ) {
         if s <= self.size {
             children.push(self.dot(cx, x, y, content));
@@ -97,7 +87,7 @@ impl Container {
 }
 
 impl Render for Container {
-    fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
+    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         use dodrio::builder::div;
 
         let elapsed = web_sys::window()

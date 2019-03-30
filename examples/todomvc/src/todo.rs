@@ -93,7 +93,7 @@ impl<C> Todo<C> {
 }
 
 impl<C: TodoActions> Render for Todo<C> {
-    fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
+    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         use dodrio::{
             builder::*,
             bumpalo::{self, collections::String},

@@ -158,10 +158,7 @@ impl Vdom {
 
     /// Construct a `Vdom` with the already-boxed-as-a-trait-object root
     /// rendering component.
-    pub fn with_boxed_root_render<'a, 'bump>(
-        container: &crate::Element,
-        component: Box<RootRender>,
-    ) -> Vdom {
+    pub fn with_boxed_root_render(container: &crate::Element, component: Box<RootRender>) -> Vdom {
         let dom_buffers = [Bump::new(), Bump::new()];
         let change_list = ManuallyDrop::new(ChangeList::new(container));
 

@@ -11,7 +11,7 @@ struct Hello {
 // The `Render` implementation describes how to render a `Hello` component into
 // HTML.
 impl Render for Hello {
-    fn render<'bump>(&self, cx: &mut RenderContext<'bump>) -> Node<'bump> {
+    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         let msg = bumpalo::format!(in cx.bump, "Hello, {}!", self.who);
         let msg = msg.into_bump_str();
         p(&cx).children([text(msg)]).finish()
