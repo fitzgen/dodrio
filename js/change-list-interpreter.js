@@ -259,6 +259,22 @@ const OP_TABLE = [
     const className = interpreter.getCachedString(classId);
     top(interpreter.stack).className = className;
     return i;
+  },
+
+  // 24
+  function saveTemplate(interpreter, mem8, mem32, i) {
+    const id = mem32[i++];
+    const template = top(interpreter.stack);
+    interpreter.saveTemplate(id, template.cloneNode(true));
+    return i;
+  },
+
+  // 25
+  function pushTemplate(interpreter, mem8, mem32, i) {
+    const id = mem32[i++];
+    const template = interpreter.getTemplate(id);
+    interpreter.stack.push(template.cloneNode(true));
+    return i;
   }
 ];
 
@@ -270,6 +286,7 @@ export class ChangeListInterpreter {
     this.stack = [];
     this.strings = new Map();
     this.temporaries = [];
+    this.templates = new Map();
   }
 
   unmount() {
@@ -283,6 +300,7 @@ export class ChangeListInterpreter {
     this.stack = null;
     this.strings = null;
     this.temporaries = null;
+    this.templates = null;
   }
 
   addChangeListRange(start, len) {
@@ -328,6 +346,14 @@ export class ChangeListInterpreter {
 
   getCachedString(id) {
     return this.strings.get(id);
+  }
+
+  saveTemplate(id, template) {
+    this.templates.set(id, template);
+  }
+
+  getTemplate(id) {
+    return this.templates.get(id);
   }
 
   initEventsTrampoline(trampoline) {

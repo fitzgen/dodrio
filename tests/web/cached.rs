@@ -1,11 +1,12 @@
 use super::{assert_rendered, before_after, create_element, RenderFn};
-use dodrio::{builder::*, bumpalo, Cached, Node, Render, RenderContext, Vdom};
+use dodrio::{builder::*, bumpalo, Cached, Node, Render, RenderContext, RootRender, Vdom};
 use futures::prelude::*;
 use std::cell::Cell;
 use std::rc::Rc;
-use wasm_bindgen::*;
+use wasm_bindgen::prelude::*;
 use wasm_bindgen_test::*;
 
+#[derive(Default)]
 pub struct CountRenders {
     render_count: Cell<usize>,
 }
@@ -97,7 +98,53 @@ fn uses_cached_render() -> impl Future<Item = (), Error = JsValue> {
         .map_err(|e| JsValue::from(e.to_string()))
 }
 
+#[wasm_bindgen(module = "/tests/web/cached.js")]
+extern "C" {
+    #[wasm_bindgen(js_name = getCloneNodeCount)]
+    fn get_clone_node_count() -> u32;
+}
+
+#[wasm_bindgen_test(async)]
+fn creating_cached_nodes_uses_clone_node() -> impl Future<Item = (), Error = JsValue> {
+    use dodrio::builder::*;
+
+    let container = create_element("div");
+
+    // The initial vdom render should populate the cache and save a template.
+    let vdom0 = Rc::new(Vdom::new(&container, Cached::new(CountRenders::new())));
+    let vdom1 = vdom0.clone();
+    let vdom2 = vdom0.clone();
+
+    let clone_node_count_before = get_clone_node_count();
+
+    vdom0
+        .weak()
+        // Render something entirely different...
+        .set_component(Box::new(RenderFn(|_| text("hi"))) as Box<RootRender>)
+        .and_then(move |_| {
+            // Re-render our cached node. Since we are creating it from scratch,
+            // and already have a template from the earlier render, we should
+            // call `cloneNode` here.
+            vdom1
+                .weak()
+                .set_component(Box::new(Cached::new(CountRenders::new())) as Box<RootRender>)
+        })
+        .map(move |_| {
+            let clone_node_count_after = get_clone_node_count();
+            assert_eq!(clone_node_count_after, clone_node_count_before + 1);
+            drop(vdom2);
+        })
+        .map_err(|e| JsValue::from(e.to_string()))
+}
+
 struct Id(&'static str);
+
+impl Default for Id {
+    fn default() -> Id {
+        Id("")
+    }
+}
+
 impl Render for Id {
     fn render<'a>(&self, _cx: &mut RenderContext<'a>) -> Node<'a> {
         text(self.0)

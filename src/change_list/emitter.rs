@@ -272,4 +272,20 @@ define_change_list_instructions! {
     /// node.className = class
     /// ```
     set_class(class) = 23,
+
+    /// Stack: `[... Node] -> [... Node]`
+    ///
+    /// ```text
+    /// template = stack.top()
+    /// saveTemplate(id, template)
+    /// ```
+    save_template(id) = 24,
+
+    /// Stack: `[...] -> [... Node]`
+    ///
+    /// ```text
+    /// template = getTemplate(id)
+    /// stack.push(template.cloneNode(true))
+    /// ```
+    push_template(id) = 25,
 }

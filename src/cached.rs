@@ -3,18 +3,30 @@ use crate::{
     node::{CachedNode, NodeKey},
     Node, Render, RenderContext,
 };
+use std::any::TypeId;
 use std::cell::Cell;
 use std::ops::{Deref, DerefMut};
 
 /// A renderable that supports caching for when rendering is expensive but can
 /// generate the same DOM tree.
-#[derive(Clone, Debug)]
-pub struct Cached<R> {
+#[derive(Clone, Debug, Default)]
+pub struct Cached<R>
+where
+    R: Default,
+{
     inner: R,
     cached: Cell<Option<CachedNode>>,
 }
 
-impl<R> Cached<R> {
+pub_unstable_internal! {
+    #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+    pub(crate) struct TemplateId(TypeId);
+}
+
+impl<R> Cached<R>
+where
+    R: Default,
+{
     /// Construct a new `Cached<R>` of an inner `R`.
     ///
     /// # Example
@@ -22,6 +34,7 @@ impl<R> Cached<R> {
     /// ```
     /// use dodrio::{Cached, Node, Render, RenderContext};
     ///
+    /// #[derive(Default)]
     /// pub struct Counter {
     ///     count: u32,
     /// }
@@ -61,6 +74,7 @@ impl<R> Cached<R> {
     /// use dodrio::{bumpalo, Cached, Node, Render, RenderContext};
     ///
     /// /// A component that renders to "<p>Hello, {who}!</p>"
+    /// #[derive(Default)]
     /// pub struct Hello {
     ///     who: String
     /// }
@@ -94,7 +108,19 @@ impl<R> Cached<R> {
     }
 }
 
-impl<R> Deref for Cached<R> {
+impl<R> Cached<R>
+where
+    R: 'static + Default,
+{
+    pub(crate) fn template_id() -> TemplateId {
+        TemplateId(TypeId::of::<R>())
+    }
+}
+
+impl<R> Deref for Cached<R>
+where
+    R: Default,
+{
     type Target = R;
 
     fn deref(&self) -> &R {
@@ -102,7 +128,10 @@ impl<R> Deref for Cached<R> {
     }
 }
 
-impl<R> DerefMut for Cached<R> {
+impl<R> DerefMut for Cached<R>
+where
+    R: Default,
+{
     fn deref_mut(&mut self) -> &mut R {
         &mut self.inner
     }
@@ -110,9 +139,10 @@ impl<R> DerefMut for Cached<R> {
 
 impl<R> Render for Cached<R>
 where
-    R: Render,
+    R: 'static + Default + Render,
 {
     fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
+        let template = cx.template::<R>();
         let cached = match self.cached.get() {
             // This does-the-cache-contain-this-id check is necessary because
             // the same `Cached<R>` instance can be rendered into vdom A, which
@@ -151,7 +181,7 @@ where
             }
             _ => {
                 let mut key = NodeKey::NONE;
-                let id = CachedSet::insert(cx, |nested_cx| {
+                let id = CachedSet::insert(cx, false, template, |nested_cx| {
                     let node = self.inner.render(nested_cx);
                     key = node.key();
                     node
