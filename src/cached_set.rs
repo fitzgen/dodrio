@@ -6,6 +6,7 @@ use crate::{
 use bumpalo::Bump;
 use fxhash::{FxHashMap, FxHashSet};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::u32;
 use wasm_bindgen::prelude::*;
 
 static ID_COUNTER: AtomicUsize = AtomicUsize::new(0);
@@ -101,7 +102,9 @@ impl CachedSet {
     }
 
     fn next_id(&mut self) -> CacheId {
-        CacheId(ID_COUNTER.fetch_add(1, Ordering::AcqRel) as u32)
+        let next = ID_COUNTER.fetch_add(1, Ordering::AcqRel) as u32;
+        let next = if next == u32::MAX { None } else { Some(next) };
+        CacheId(next.expect_throw("ID_COUNTER overflowed"))
     }
 
     pub(crate) fn insert<F>(cx: &mut RenderContext, f: F) -> CacheId
