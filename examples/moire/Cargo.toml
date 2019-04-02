@@ -10,7 +10,7 @@ crate-type = ["cdylib"]
 [dependencies]
 cfg-if = "0.1.7"
 dodrio = { path = "../.." }
-futures = "0.1.25"
+futures = "0.1.26"
 log = "0.4.6"
 wasm-bindgen = "0.2.39"
 wasm-bindgen-futures = "0.3.16"
