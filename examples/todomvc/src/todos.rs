@@ -5,10 +5,7 @@ use crate::controller::Controller;
 use crate::todo::{Todo, TodoActions};
 use crate::visibility::Visibility;
 use crate::{keys, utils};
-use dodrio::{
-    bumpalo::{self, Bump},
-    Node, Render, RootRender, VdomWeak,
-};
+use dodrio::{bumpalo, Node, Render, RenderContext, RootRender, VdomWeak};
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
 use std::mem;
@@ -136,17 +133,14 @@ impl<C> Todos<C> {
 
 /// Rendering helpers.
 impl<C: TodosActions> Todos<C> {
-    fn header<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn header<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         use dodrio::builder::*;
 
-        header(bump)
+        header(&cx)
             .attr("class", "header")
             .children([
-                h1(bump).children([text("todos")]).finish(),
-                input(bump)
+                h1(&cx).children([text("todos")]).finish(),
+                input(&cx)
                     .on("input", |root, vdom, event| {
                         let input = event
                             .target()
@@ -163,19 +157,19 @@ impl<C: TodosActions> Todos<C> {
                     .attr("class", "new-todo")
                     .attr("placeholder", "What needs to be done?")
                     .attr("autofocus", "")
-                    .attr("value", &self.draft)
+                    .attr(
+                        "value",
+                        bumpalo::format!(in cx.bump, "{}", self.draft).into_bump_str(),
+                    )
                     .finish(),
             ])
             .finish()
     }
 
-    fn todos_list<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn todos_list<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         use dodrio::{builder::*, bumpalo::collections::Vec};
 
-        let mut todos = Vec::with_capacity_in(self.todos.len(), bump);
+        let mut todos = Vec::with_capacity_in(self.todos.len(), cx.bump);
         todos.extend(
             self.todos
                 .iter()
@@ -184,10 +178,10 @@ impl<C: TodosActions> Todos<C> {
                     Visibility::Active => !t.is_complete(),
                     Visibility::Completed => t.is_complete(),
                 })
-                .map(|t| t.render(bump)),
+                .map(|t| t.render(cx)),
         );
 
-        section(bump)
+        section(&cx)
             .attr("class", "main")
             .attr(
                 "visibility",
@@ -198,7 +192,7 @@ impl<C: TodosActions> Todos<C> {
                 },
             )
             .children([
-                input(bump)
+                input(&cx)
                     .attr("class", "toggle-all")
                     .attr("id", "toggle-all")
                     .attr("type", "checkbox")
@@ -208,19 +202,16 @@ impl<C: TodosActions> Todos<C> {
                         C::toggle_all(root, vdom);
                     })
                     .finish(),
-                label(bump)
+                label(&cx)
                     .attr("for", "toggle-all")
                     .children([text("Mark all as complete")])
                     .finish(),
-                ul(bump).attr("class", "todo-list").children(todos).finish(),
+                ul(&cx).attr("class", "todo-list").children(todos).finish(),
             ])
             .finish()
     }
 
-    fn footer<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn footer<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         use dodrio::builder::*;
 
         let completed_count = self.todos.iter().filter(|t| t.is_complete()).count();
@@ -230,36 +221,36 @@ impl<C: TodosActions> Todos<C> {
         } else {
             " items left"
         };
-        let incomplete_count = bumpalo::format!(in bump, "{}", incomplete_count);
+        let incomplete_count = bumpalo::format!(in cx.bump, "{}", incomplete_count);
 
         let clear_completed_text = bumpalo::format!(
-            in bump,
+            in cx.bump,
             "Clear completed ({})",
             self.todos.iter().filter(|t| t.is_complete()).count()
         );
 
-        footer(bump)
+        footer(&cx)
             .attr("class", "footer")
             .bool_attr("hidden", self.todos.is_empty())
             .children([
-                span(bump)
+                span(&cx)
                     .attr("class", "todo-count")
                     .children([
-                        strong(bump)
+                        strong(&cx)
                             .children([text(incomplete_count.into_bump_str())])
                             .finish(),
                         text(items_left),
                     ])
                     .finish(),
-                ul(bump)
+                ul(&cx)
                     .attr("class", "filters")
                     .children([
-                        self.visibility_swap(bump, "#/", Visibility::All),
-                        self.visibility_swap(bump, "#/active", Visibility::Active),
-                        self.visibility_swap(bump, "#/completed", Visibility::Completed),
+                        self.visibility_swap(cx, "#/", Visibility::All),
+                        self.visibility_swap(cx, "#/active", Visibility::Active),
+                        self.visibility_swap(cx, "#/completed", Visibility::Completed),
                     ])
                     .finish(),
-                button(bump)
+                button(&cx)
                     .on("click", |root, vdom, _event| {
                         C::delete_completed(root, vdom);
                     })
@@ -271,22 +262,19 @@ impl<C: TodosActions> Todos<C> {
             .finish()
     }
 
-    fn visibility_swap<'a, 'bump>(
-        &'a self,
-        bump: &'bump Bump,
+    fn visibility_swap<'a>(
+        &self,
+        cx: &mut RenderContext<'a>,
         url: &'static str,
         target_vis: Visibility,
-    ) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    ) -> Node<'a> {
         use dodrio::builder::*;
 
-        li(bump)
+        li(&cx)
             .on("click", move |root, vdom, _event| {
                 C::change_visibility(root, vdom, target_vis);
             })
-            .children([a(bump)
+            .children([a(&cx)
                 .attr("href", url)
                 .attr(
                     "class",
@@ -303,14 +291,11 @@ impl<C: TodosActions> Todos<C> {
 }
 
 impl<C: TodosActions> Render for Todos<C> {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         use dodrio::builder::*;
 
-        div(bump)
-            .children([self.header(bump), self.todos_list(bump), self.footer(bump)])
+        div(&cx)
+            .children([self.header(cx), self.todos_list(cx), self.footer(cx)])
             .finish()
     }
 }

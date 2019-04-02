@@ -1,5 +1,5 @@
-use super::{assert_rendered, create_element, RenderFn};
-use dodrio::{builder::*, bumpalo::Bump, Cached, Node, Render, Vdom};
+use super::{assert_rendered, before_after, create_element, RenderFn};
+use dodrio::{builder::*, bumpalo, Cached, Node, Render, RenderContext, Vdom};
 use futures::prelude::*;
 use std::cell::Cell;
 use std::rc::Rc;
@@ -19,14 +19,11 @@ impl CountRenders {
 }
 
 impl Render for CountRenders {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         let count = self.render_count.get() + 1;
         self.render_count.set(count);
 
-        let s = bumpalo::format!(in bump, "{}", count);
+        let s = bumpalo::format!(in cx.bump, "{}", count);
         text(s.into_bump_str())
     }
 }
@@ -98,4 +95,140 @@ fn uses_cached_render() -> impl Future<Item = (), Error = JsValue> {
             })
         })
         .map_err(|e| JsValue::from(e.to_string()))
+}
+
+struct Id(&'static str);
+impl Render for Id {
+    fn render<'a>(&self, _cx: &mut RenderContext<'a>) -> Node<'a> {
+        text(self.0)
+    }
+}
+
+thread_local! {
+    static WARM_CHEESE: Rc<Cached<Id>> = Rc::new(Cached::new(Id("cheese")));
+    static WARM_CHEESIER: Rc<Cached<Id>> = Rc::new(Cached::new(Id("cheesier")));
+}
+
+fn warm_cheese<'a>(cx: &mut RenderContext<'a>) -> Node<'a> {
+    WARM_CHEESE.with(|c| {
+        let _ = c.render(cx);
+        c.render(cx)
+    })
+}
+
+fn warm_cheesier<'a>(cx: &mut RenderContext<'a>) -> Node<'a> {
+    WARM_CHEESIER.with(|c| {
+        let _ = c.render(cx);
+        c.render(cx)
+    })
+}
+
+before_after! {
+    cold_cache_and_not_cached {
+        before(cx) {
+            Cached::new(Id("cheese")).render(cx)
+        }
+        after(cx) {
+            Id("ravioli").render(cx)
+        }
+    }
+
+    not_cached_and_cold_cache {
+        before(cx) {
+            Id("ravioli").render(cx)
+        }
+        after(cx) {
+            Cached::new(Id("cheese")).render(cx)
+        }
+    }
+
+    cold_cache_and_cold_cache_same {
+        before(cx) {
+            Cached::new(Id("cheese")).render(cx)
+        }
+        after(cx) {
+            Cached::new(Id("cheese")).render(cx)
+        }
+    }
+
+    cold_cache_and_cold_cache_different {
+        before(cx) {
+            Cached::new(Id("cheese")).render(cx)
+        }
+        after(cx) {
+            Cached::new(Id("ravioli")).render(cx)
+        }
+    }
+
+    warm_cache_and_not_cached {
+        before(cx) {
+            warm_cheese(cx)
+        }
+        after(cx) {
+            Id("ravioli").render(cx)
+        }
+    }
+
+    not_cached_and_warm_cache {
+        before(cx) {
+            Id("ravioli").render(cx)
+        }
+        after(cx) {
+            warm_cheese(cx)
+        }
+    }
+
+    warm_cache_and_warm_cache_same {
+        before(cx) {
+            warm_cheese(cx)
+        }
+        after(cx) {
+            warm_cheese(cx)
+        }
+    }
+
+    warm_cache_and_warm_cache_different {
+        before(cx) {
+            warm_cheese(cx)
+        }
+        after(cx) {
+            warm_cheesier(cx)
+        }
+    }
+
+    cold_cache_and_warm_cache_same {
+        before(cx) {
+            Cached::new(Id("cheese")).render(cx)
+        }
+        after(cx) {
+            warm_cheese(cx)
+        }
+    }
+
+    cold_cache_and_warm_cache_different {
+        before(cx) {
+            Cached::new(Id("cheese")).render(cx)
+        }
+        after(cx) {
+            warm_cheesier(cx)
+        }
+    }
+
+    warm_cache_and_cold_cache_same {
+        before(cx) {
+            warm_cheese(cx)
+        }
+        after(cx) {
+            Cached::new(Id("cheese")).render(cx)
+        }
+    }
+
+    warm_cache_and_cold_cache_different {
+        before(cx) {
+            warm_cheesier(cx)
+        }
+        after(cx) {
+            Cached::new(Id("cheese")).render(cx)
+        }
+    }
 }

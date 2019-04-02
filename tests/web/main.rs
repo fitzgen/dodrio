@@ -1,11 +1,14 @@
 //! Test suite for the Web and headless browsers.
 
-#![cfg(target_arch = "wasm32")]
+#![cfg(all(feature = "xxx-unstable-internal-use-only", target_arch = "wasm32"))]
 
 use bumpalo::Bump;
-use dodrio::{Attribute, Node, Render, Vdom};
+use dodrio::{
+    Attribute, CachedSet, ElementNode, Node, NodeKind, Render, RenderContext, TextNode, Vdom,
+};
 use futures::prelude::*;
 use log::*;
+use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
@@ -49,12 +52,16 @@ pub fn init_logging() {
 pub fn assert_rendered<R: Render>(container: &web_sys::Element, r: &R) {
     init_logging();
 
+    let cached_set = &RefCell::new(CachedSet::default());
     let bump = &Bump::new();
-    let node = r.render(bump);
+    let cx = &mut RenderContext::new(bump, cached_set);
+    let node = r.render(cx);
     let child = container
         .first_child()
         .expect("container does not have anything rendered into it?");
-    check_node(&child, &node);
+
+    let cached_set = cached_set.borrow();
+    check_node(&cached_set, &child, &node);
 
     fn stringify_actual_node(n: &web_sys::Node) -> String {
         if let Some(el) = n.dyn_ref::<web_sys::Element>() {
@@ -64,12 +71,12 @@ pub fn assert_rendered<R: Render>(container: &web_sys::Element, r: &R) {
         }
     }
 
-    fn check_node(actual: &web_sys::Node, expected: &Node) {
+    fn check_node(cached_set: &CachedSet, actual: &web_sys::Node, expected: &Node) {
         debug!("check_render:");
         debug!("    actual = {}", stringify_actual_node(&actual));
         debug!("    expected = {:#?}", expected);
-        match expected {
-            Node::Text(text_node) => {
+        match expected.kind {
+            NodeKind::Text(TextNode { text }) => {
                 assert_eq!(
                     actual.node_name().to_uppercase(),
                     "#TEXT",
@@ -77,24 +84,34 @@ pub fn assert_rendered<R: Render>(container: &web_sys::Element, r: &R) {
                 );
                 assert_eq!(
                     actual.text_content().unwrap_or_default(),
-                    text_node.text(),
+                    text,
                     "actual.text_content() == expected.text()"
                 );
             }
-            Node::Element(elem) => {
+            NodeKind::Element(ElementNode {
+                tag_name,
+                attributes,
+                children,
+                namespace,
+                ..
+            }) => {
                 assert_eq!(
                     actual.node_name().to_uppercase(),
-                    elem.tag_name().to_uppercase(),
+                    tag_name.to_uppercase(),
                     "actual.node_name() == expected.tag_name()"
                 );
                 let actual = actual
                     .dyn_ref::<web_sys::Element>()
                     .expect("`actual` should be an `Element`");
-                check_attributes(actual.attributes(), elem.attributes());
-                check_children(actual.child_nodes(), elem.children());
-                if let Some(namespace) = elem.namespace() {
+                check_attributes(actual.attributes(), attributes);
+                check_children(cached_set, actual.child_nodes(), children);
+                if let Some(namespace) = namespace {
                     assert_eq!(actual.namespace_uri(), Some(namespace.into()))
                 }
+            }
+            NodeKind::Cached(ref c) => {
+                let expected = cached_set.get(c.id);
+                check_node(cached_set, actual, &expected);
             }
         }
     }
@@ -118,7 +135,7 @@ pub fn assert_rendered<R: Render>(container: &web_sys::Element, r: &R) {
         }
     }
 
-    fn check_children(actual: web_sys::NodeList, expected: &[Node]) {
+    fn check_children(cached_set: &CachedSet, actual: web_sys::NodeList, expected: &[Node]) {
         assert_eq!(
             actual.length(),
             expected.len() as u32,
@@ -126,7 +143,7 @@ pub fn assert_rendered<R: Render>(container: &web_sys::Element, r: &R) {
         );
         for (i, child) in expected.iter().enumerate() {
             let actual_child = actual.item(i as u32).unwrap();
-            check_node(&actual_child, child);
+            check_node(cached_set, &actual_child, child);
         }
     }
 }
@@ -134,17 +151,14 @@ pub fn assert_rendered<R: Render>(container: &web_sys::Element, r: &R) {
 /// Use the function `F` to render.
 pub struct RenderFn<F>(F)
 where
-    F: for<'bump> Fn(&'bump Bump) -> Node<'bump>;
+    F: for<'a> Fn(&mut RenderContext<'a>) -> Node<'a>;
 
 impl<F> Render for RenderFn<F>
 where
-    F: for<'bump> Fn(&'bump Bump) -> Node<'bump>,
+    F: for<'a> Fn(&mut RenderContext<'a>) -> Node<'a>,
 {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
-        (self.0)(bump)
+    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
+        (self.0)(cx)
     }
 }
 

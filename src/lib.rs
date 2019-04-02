@@ -3,7 +3,7 @@
 //! ## Example
 //!
 //! ```no_run
-//! use dodrio::{bumpalo::Bump, Attribute, Node, Render};
+//! use dodrio::{bumpalo, Attribute, Node, Render, RenderContext};
 //! use wasm_bindgen::UnwrapThrowExt;
 //!
 //! /// A component that greets someone.
@@ -19,15 +19,13 @@
 //! }
 //!
 //! impl<'who> Render for Hello<'who> {
-//!     fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-//!     where
-//!         'a: 'bump,
-//!     {
+//!     fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
 //!         use dodrio::builder::*;
 //!
-//!         let id = bumpalo::format!(in bump, "hello-{}", self.who);
+//!         let id = bumpalo::format!(in cx.bump, "hello-{}", self.who);
+//!         let who = bumpalo::collections::String::from_str_in(self.who, cx.bump).into_bump_str();
 //!
-//!         div(bump)
+//!         div(&cx)
 //!            .attr("id", id.into_bump_str())
 //!            .on("click", |root, _vdom, _event| {
 //!                 let hello = root.unwrap_mut::<Hello>();
@@ -37,9 +35,9 @@
 //!             })
 //!             .children([
 //!                 text("Hello, "),
-//!                 strong(bump)
+//!                 strong(&cx)
 //!                     .children([
-//!                         text(self.who),
+//!                         text(who),
 //!                         text("!"),
 //!                     ])
 //!                     .finish(),
@@ -63,20 +61,74 @@ cfg_if::cfg_if! {
     }
 }
 
+// A macro to expose items unstably, only for internal/testing usage.
+cfg_if::cfg_if! {
+    if #[cfg(feature = "xxx-unstable-internal-use-only")] {
+        macro_rules! pub_unstable_internal {
+            ( $(#[$attr:meta])* pub(crate) $( $thing:tt )* ) => {
+                #[doc(hidden)]
+                $( #[$attr] )*
+                pub $( $thing )*
+            }
+        }
+    } else {
+        macro_rules! pub_unstable_internal {
+            ( $(#[$attr:meta])* pub(crate) $( $thing:tt )* ) => {
+                $( #[$attr] )*
+                pub(crate) $( $thing )*
+            }
+        }
+    }
+}
+
 // Only `pub` so that the wasm-bindgen bindings work.
 #[doc(hidden)]
 pub mod change_list;
 
 mod cached;
+mod cached_set;
+mod diff;
 mod events;
 mod node;
 mod render;
+mod render_context;
 mod vdom;
 
 pub mod builder;
 
 // Re-export items at the top level.
 pub use self::cached::Cached;
-pub use self::node::{Attribute, ElementNode, Listener, ListenerCallback, Node, TextNode};
+pub use self::node::{Attribute, Listener, Node};
 pub use self::render::{Render, RootRender};
+pub use self::render_context::RenderContext;
 pub use self::vdom::{Vdom, VdomWeak};
+
+cfg_if::cfg_if! {
+    if #[cfg(all(target_arch = "wasm32", not(feature = "xxx-unstable-internal-use-only")))] {
+        use wasm_bindgen::__rt::WasmRefCell as RefCell;
+    } else {
+        use std::cell::RefCell;
+    }
+}
+
+// Polyfill some Web stuff for benchmarking...
+cfg_if::cfg_if! {
+    if #[cfg(all(feature = "xxx-unstable-internal-use-only", not(target_arch = "wasm32")))] {
+        /// An element node in the physical DOM.
+        pub type Element = ();
+
+        pub(crate) type EventsTrampoline = ();
+    } else {
+        /// An element node in the physical DOM.
+        pub type Element = web_sys::Element;
+
+        pub(crate) type EventsTrampoline = wasm_bindgen::closure::Closure<Fn(web_sys::Event, u32, u32)>;
+    }
+}
+
+cfg_if::cfg_if! {
+    if #[cfg(feature = "xxx-unstable-internal-use-only")] {
+        pub use self::cached_set::{CachedSet};
+        pub use self::node::{ElementNode, NodeKind, TextNode};
+    }
+}

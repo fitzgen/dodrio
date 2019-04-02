@@ -13,6 +13,26 @@ version = "0.1.0"
 [badges]
 travis-ci = { repository = "fitzgen/dodrio" }
 
+[lib]
+path = "src/lib.rs"
+bench = false
+
+[[test]]
+name = "web"
+path = "tests/web/main.rs"
+required-features = ["xxx-unstable-internal-use-only"]
+
+[[bench]]
+name = "benches"
+path = "benches/benches.rs"
+harness = false
+required-features = ["xxx-unstable-internal-use-only"]
+
+[features]
+# Don't use this feature! It only exists for exposing otherwise-internal APIs
+# for testing and benchmarks.
+xxx-unstable-internal-use-only = []
+
 [dependencies]
 bumpalo = "2.3.0"
 cfg-if = "0.1.7"
@@ -49,6 +69,9 @@ features = [
   "NamedNodeMap",
   "NodeList",
 ]
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+criterion = "0.2.10"
 
 [profile.release]
 incremental = false

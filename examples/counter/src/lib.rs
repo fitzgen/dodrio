@@ -1,5 +1,4 @@
-use dodrio::bumpalo::{self, Bump};
-use dodrio::Render;
+use dodrio::{bumpalo, Render, RenderContext};
 use log::*;
 use wasm_bindgen::prelude::*;
 
@@ -28,18 +27,15 @@ impl Counter {
 // The `Render` implementation for `Counter`s displays the current count and has
 // buttons to increment and decrement the count.
 impl Render for Counter {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> dodrio::Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> dodrio::Node<'a> {
         use dodrio::builder::*;
 
         // Stringify the count as a bump-allocated string.
-        let count = bumpalo::format!(in bump, "{}", self.count);
+        let count = bumpalo::format!(in cx.bump, "{}", self.count);
 
-        div(bump)
+        div(&cx)
             .children([
-                button(bump)
+                button(&cx)
                     .on("click", |root, vdom, _event| {
                         // Cast the root render component to a `Counter`, since
                         // we know that's what it is.
@@ -55,7 +51,7 @@ impl Render for Counter {
                     .children([text("+")])
                     .finish(),
                 text(count.into_bump_str()),
-                button(bump)
+                button(&cx)
                     .on("click", |root, vdom, _event| {
                         // Same as above, but decrementing instead of incrementing.
                         root.unwrap_mut::<Counter>().decrement();

@@ -1,6 +1,5 @@
 use super::create_element;
-use bumpalo::Bump;
-use dodrio::{Node, Render, Vdom};
+use dodrio::{Node, Render, RenderContext, Vdom};
 use futures::Future;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -26,12 +25,9 @@ impl EventContainer {
 }
 
 impl Render for EventContainer {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         use dodrio::builder::*;
-        div(bump)
+        div(&cx)
             .attr("id", "target")
             .on(self.event, |root, _scheduler, _event| {
                 (root.unwrap_mut::<EventContainer>().on_event)();
@@ -138,16 +134,13 @@ impl ListensOnlyOnFirstRender {
 }
 
 impl Render for ListensOnlyOnFirstRender {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         use dodrio::builder::*;
 
         let count = self.count.get();
         self.count.set(count + 1);
 
-        let mut elem = div(bump).attr("id", "target");
+        let mut elem = div(&cx).attr("id", "target");
         if count == 0 {
             elem = elem.on("click", |root, _scheduler, _event| {
                 (root.unwrap_mut::<ListensOnlyOnFirstRender>().callback)();
@@ -271,78 +264,4 @@ fn event_does_not_fire_after_unmounting() -> impl Future<Item = (), Error = JsVa
             drop(outer_listener);
         })
         .map_err(|e| JsValue::from(e.to_string()))
-}
-
-struct CountRendersAndListen {
-    count: Cell<usize>,
-    callback: Box<FnMut(usize)>,
-}
-
-impl CountRendersAndListen {
-    fn new<F>(callback: F) -> CountRendersAndListen
-    where
-        F: 'static + FnMut(usize),
-    {
-        CountRendersAndListen {
-            count: Cell::new(0),
-            callback: Box::new(callback),
-        }
-    }
-}
-
-impl Render for CountRendersAndListen {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
-        use dodrio::builder::*;
-
-        let count = self.count.get() + 1;
-        self.count.set(count);
-
-        button(bump)
-            .attr("id", "target")
-            .on("click", |comp, _vdom, _event| {
-                let comp: &mut _ = comp.unwrap_mut::<dodrio::Cached<CountRendersAndListen>>();
-                let comp: &mut CountRendersAndListen = comp;
-                let n = comp.count.get();
-                (comp.callback)(n);
-            })
-            .finish()
-    }
-}
-
-#[wasm_bindgen_test(async)]
-fn cached_listeners_work_correctly() -> impl Future<Item = (), Error = JsValue> {
-    let container = create_element("div");
-
-    let (sender, receiver) = futures::sync::oneshot::channel();
-    let mut sender = Some(sender);
-    let vdom = Vdom::new(
-        &container,
-        dodrio::Cached::new(CountRendersAndListen::new(move |n| {
-            sender.take().unwrap().send(n).unwrap();
-        })),
-    );
-
-    let weak0 = vdom.weak();
-    let weak1 = vdom.weak();
-    let weak2 = vdom.weak();
-    vdom.weak()
-        // Re-render a few times, so we are using the cached version.
-        .render()
-        .and_then(move |_| weak0.render())
-        .and_then(move |_| weak1.render())
-        .and_then(move |_| weak2.render())
-        .map_err(|e| JsValue::from(e.to_string()))
-        .and_then(move |_| {
-            target(&container).click();
-
-            receiver
-                .map(|n| {
-                    assert_eq!(n, 1);
-                    drop(vdom);
-                })
-                .map_err(|e| JsValue::from(e.to_string()))
-        })
 }

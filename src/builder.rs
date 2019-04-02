@@ -54,7 +54,11 @@ impl<'a>
     /// let my_element_builder = ElementBuilder::new(&b, tag_name);
     /// # fn flip_coin() -> bool { true }
     /// ```
-    pub fn new(bump: &'a Bump, tag_name: &'a str) -> Self {
+    pub fn new<B>(bump: B, tag_name: &'a str) -> Self
+    where
+        B: Into<&'a Bump>,
+    {
+        let bump = bump.into();
         ElementBuilder {
             bump,
             tag_name,
@@ -378,14 +382,17 @@ macro_rules! builder_constructors {
         $(
             $(#[$attr])*
             #[inline]
-            pub fn $name<'a>(
-                bump: &'a Bump,
+            pub fn $name<'a, B>(
+                bump: B,
             ) -> ElementBuilder<
                 'a,
                 bumpalo::collections::Vec<'a, Listener<'a>>,
                 bumpalo::collections::Vec<'a, Attribute<'a>>,
                 bumpalo::collections::Vec<'a, Node<'a>>,
-            > {
+            >
+            where
+                B: Into<&'a Bump>
+            {
                 ElementBuilder::new(bump, stringify!($name))
             }
         )*

@@ -1,8 +1,7 @@
 mod colors;
 
 use cfg_if::cfg_if;
-use dodrio::bumpalo::{self, Bump};
-use dodrio::{Node, Render, Vdom};
+use dodrio::{bumpalo, Node, Render, RenderContext, Vdom};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::str;
@@ -107,10 +106,7 @@ impl Moire {
 }
 
 impl Render for Moire {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         use dodrio::builder::*;
 
         let elapsed = web_sys::window()
@@ -120,18 +116,18 @@ impl Render for Moire {
             .now();
         let elapsed = elapsed / 1600.0;
 
-        main(bump)
-            .attr("style", self.moire_style(bump, elapsed))
+        main(&cx)
+            .attr("style", self.moire_style(cx, elapsed))
             .children([
                 // The `<input>` that lets users control how many circles to
                 // render.
-                input(bump)
+                input(&cx)
                     .attr("id", "circle-count")
                     .attr("type", "range")
                     .attr("min", "30")
                     .attr("max", "500")
                     .attr("value", {
-                        let count = bumpalo::format!(in bump, "{}", self.count);
+                        let count = bumpalo::format!(in cx.bump, "{}", self.count);
                         count.into_bump_str()
                     })
                     .on("change", |root, _vdom, event| {
@@ -144,8 +140,8 @@ impl Render for Moire {
                     })
                     .finish(),
                 // And the actual concentric circles that form the Moire patterns.
-                self.orbiting_objects(bump, elapsed),
-                self.lemniscate_objects(bump, elapsed),
+                self.orbiting_objects(cx, elapsed),
+                self.lemniscate_objects(cx, elapsed),
             ])
             .finish()
     }
@@ -154,14 +150,11 @@ impl Render for Moire {
 /// Rendering helper methods.
 impl Moire {
     /// Generate the main Moire element's inline CSS styles.
-    fn moire_style<'a, 'bump>(&'a self, bump: &'bump Bump, elapsed: f64) -> &'bump str
-    where
-        'a: 'bump,
-    {
+    fn moire_style<'a>(&self, cx: &mut RenderContext<'a>, elapsed: f64) -> &'a str {
         let elapsed = elapsed / 3.0;
         let color = colors::get_interpolated_color(|(_, bg)| bg, elapsed % 1.0);
         let style = bumpalo::format!(
-            in bump,
+            in cx.bump,
             "background-color: rgb({}, {}, {})",
             color.r,
             color.g,
@@ -171,93 +164,75 @@ impl Moire {
     }
 
     /// Generate the orbiting circle objects.
-    fn orbiting_objects<'a, 'bump>(&'a self, bump: &'bump Bump, elapsed: f64) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn orbiting_objects<'a>(&self, cx: &mut RenderContext<'a>, elapsed: f64) -> Node<'a> {
         const D: f64 = 200.0;
         let x = elapsed.sin() * D;
         let y = elapsed.cos() * D;
-        self.moving_object(bump, elapsed, x, y)
+        self.moving_object(cx, elapsed, x, y)
     }
 
     /// Generate the lemniscate circle objects that interact with the orbiting
     /// circle objects to form Moire patterns.
-    fn lemniscate_objects<'a, 'bump>(&'a self, bump: &'bump Bump, elapsed: f64) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn lemniscate_objects<'a>(&self, cx: &mut RenderContext<'a>, elapsed: f64) -> Node<'a> {
         const A: f64 = 150.0;
         let x = elapsed.sin() * A;
         let y = elapsed.sin() * elapsed.cos() * A;
-        self.moving_object(bump, elapsed, x, y)
+        self.moving_object(cx, elapsed, x, y)
     }
 
-    fn moving_object<'a, 'bump>(
-        &'a self,
-        bump: &'bump Bump,
+    fn moving_object<'a>(
+        &self,
+        cx: &mut RenderContext<'a>,
         elapsed: f64,
         x: f64,
         y: f64,
-    ) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    ) -> Node<'a> {
         use dodrio::builder::*;
-        div(bump)
+        div(&cx)
             .attr("class", "object")
-            .attr("style", self.moving_object_style(bump, x, y))
-            .children([self.circle(bump, elapsed, self.count)])
+            .attr("style", self.moving_object_style(cx, x, y))
+            .children([self.circle(cx, elapsed, self.count)])
             .finish()
     }
 
     /// Generate inline CSS styles for a moving object.
-    fn moving_object_style<'a, 'bump>(&'a self, bump: &'bump Bump, x: f64, y: f64) -> &'bump str
-    where
-        'a: 'bump,
-    {
-        bumpalo::format!(in bump, "left: {}px; top: {}px;", x, y).into_bump_str()
+    fn moving_object_style<'a>(&self, cx: &mut RenderContext<'a>, x: f64, y: f64) -> &'a str {
+        bumpalo::format!(in cx.bump, "left: {}px; top: {}px;", x, y).into_bump_str()
     }
 
     /// Recursively generate `self.count` concentric circles.
-    fn circle<'a, 'bump>(&'a self, bump: &'bump Bump, elapsed: f64, n: u32) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn circle<'a>(&self, cx: &mut RenderContext<'a>, elapsed: f64, n: u32) -> Node<'a> {
         use dodrio::builder::*;
 
         let r = n * 16;
 
-        let mut circle = div(bump)
+        let mut circle = div(&cx)
             .attr("class", "circle")
             .attr("data-radius", {
-                let r = bumpalo::format!(in bump, "{}", r);
+                let r = bumpalo::format!(in cx.bump, "{}", r);
                 r.into_bump_str()
             })
-            .attr("style", self.circle_style(bump, elapsed, n, r));
+            .attr("style", self.circle_style(cx, elapsed, n, r));
 
         if n > 0 {
-            circle = circle.child(self.circle(bump, elapsed, n - 1));
+            circle = circle.child(self.circle(cx, elapsed, n - 1));
         }
 
         circle.finish()
     }
 
     /// Generate inline CSS styles for a circle.
-    fn circle_style<'a, 'bump>(
-        &'a self,
-        bump: &'bump Bump,
+    fn circle_style<'a>(
+        &self,
+        cx: &mut RenderContext<'a>,
         elapsed: f64,
         n: u32,
         r: u32,
-    ) -> &'bump str
-    where
-        'a: 'bump,
-    {
+    ) -> &'a str {
         let (border, alpha) = self.circle_color(elapsed, n);
         let margin = r / 2 + 3;
         let style = bumpalo::format!(
-            in bump,
+            in cx.bump,
             "border-color: rgba({}, {}, {}, {});\
              margin-left: -{}px;\
              margin-top: -{}px;\

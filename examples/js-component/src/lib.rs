@@ -1,5 +1,4 @@
-use dodrio::bumpalo::Bump;
-use dodrio::{Node, Render, Vdom};
+use dodrio::{Node, Render, RenderContext, Vdom};
 use dodrio_js_api::JsRender;
 use js_sys::Object;
 use wasm_bindgen::prelude::*;
@@ -33,13 +32,10 @@ impl GreetingViaJs {
 /// Here's the `Render` implementation! This adds a `<p>` element and some text
 /// around whatever the inner JS `Greeting` component renders.
 impl Render for GreetingViaJs {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         use dodrio::builder::*;
-        p(bump)
-            .children([text("JavaScript says: "), self.js.render(bump)])
+        p(&cx)
+            .children([text("JavaScript says: "), self.js.render(cx)])
             .finish()
     }
 }

@@ -1,26 +1,16 @@
-use crate::{Node, Render};
-use bumpalo::Bump;
-use std::cell::RefCell;
-use std::mem;
+use crate::{
+    cached_set::{CacheId, CachedSet},
+    Node, Render, RenderContext,
+};
+use std::cell::Cell;
 use std::ops::{Deref, DerefMut};
-
-// TODO: This implementation will only cache the rendering (generation of the
-// virtual DOM) but not the diffing of the cached subtree. We could skip diffing
-// for cached tree by adding `fn is_cached(&self) -> bool` to `Node` that we can
-// check during diffing. This comes at the cost of bloating `Node`'s size (since
-// we don't have any padding to sneak an extra `bool` field into). We should
-// investigate whether it is worth adding this or not.
 
 /// A renderable that supports caching for when rendering is expensive but can
 /// generate the same DOM tree.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Cached<R> {
     inner: R,
-    bump: bumpalo::Bump,
-    // Actually a self-reference into `self.bump`. Safe because we ensure that
-    // whenever we hand out a cached node, we use a lifetime that cannot outlive
-    // its owning `Cached<R>`.
-    cached: RefCell<Option<Node<'static>>>,
+    cached: Cell<Option<CacheId>>,
 }
 
 impl<R> Cached<R> {
@@ -29,18 +19,14 @@ impl<R> Cached<R> {
     /// # Example
     ///
     /// ```
-    /// use bumpalo::Bump;
-    /// use dodrio::{Cached, Node, Render};
+    /// use dodrio::{Cached, Node, Render, RenderContext};
     ///
     /// pub struct Counter {
     ///     count: u32,
     /// }
     ///
     /// impl Render for Counter {
-    ///     fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    ///     where
-    ///         'a: 'bump
-    ///     {
+    ///     fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
     ///         // ...
     /// #       unimplemented!()
     ///     }
@@ -54,13 +40,8 @@ impl<R> Cached<R> {
     /// ```
     #[inline]
     pub fn new(inner: R) -> Cached<R> {
-        let bump = Bump::new();
-        let cached = RefCell::new(None);
-        Cached {
-            inner,
-            bump,
-            cached,
-        }
+        let cached = Cell::new(None);
+        Cached { inner, cached }
     }
 
     /// Invalidate the cached rendering.
@@ -76,8 +57,7 @@ impl<R> Cached<R> {
     /// displaying greetings to old `who`s.
     ///
     /// ```
-    /// use bumpalo::Bump;
-    /// use dodrio::{Cached, Node, Render};
+    /// use dodrio::{bumpalo, Cached, Node, Render, RenderContext};
     ///
     /// /// A component that renders to "<p>Hello, {who}!</p>"
     /// pub struct Hello {
@@ -85,13 +65,11 @@ impl<R> Cached<R> {
     /// }
     ///
     /// impl Render for Hello {
-    ///     fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    ///     where
-    ///         'a: 'bump,
-    ///     {
+    ///     fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
     ///         use dodrio::builder::*;
-    ///         p(bump)
-    ///             .children([text("Hello, "), text(&self.who), text("!")])
+    ///         let greeting = bumpalo::format!(in cx.bump, "Hello, {}!", self.who);
+    ///         p(&cx)
+    ///             .children([text(greeting.into_bump_str())])
     ///             .finish()
     ///     }
     /// }
@@ -104,13 +82,13 @@ impl<R> Cached<R> {
     /// }
     /// ```
     #[inline]
-    pub fn invalidate(cached: &mut Self) {
-        *cached.cached.borrow_mut() = None;
+    pub fn invalidate(cached: &Self) {
+        cached.cached.set(None);
     }
 
     /// Convert a `Cached<R>` back into a plain `R`.
     #[inline]
-    pub fn into_inner(cached: Cached<R>) -> R {
+    pub fn into_inner(cached: Self) -> R {
         cached.inner
     }
 }
@@ -129,35 +107,54 @@ impl<R> DerefMut for Cached<R> {
     }
 }
 
-unsafe fn extend_node_lifetime<'a>(node: Node<'a>) -> Node<'static> {
-    mem::transmute(node)
-}
+impl<R> Render for Cached<R>
+where
+    R: Render,
+{
+    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
+        let id = match self.cached.get() {
+            // This does-the-cache-contain-this-id check is necessary because
+            // the same `Cached<R>` instance can be rendered into vdom A, which
+            // will save the results into A's cached set and yield id X. Then,
+            // it can be rendered *again* into a second vdom B, and B's cached
+            // set does not have the saved results for id X. If we didn't have
+            // this check, instead of a cache miss, we would have a panic.
+            //
+            // This scenario should basically never happen in the real world,
+            // however. If we ever find that it is worth sharing a cached render
+            // component between multiple vdoms, and want to avoid these
+            // "unnecessary" cache misses, we can do this:
+            //
+            // * Make each `Cached<R>` have an instance id and generation
+            //   counter.
+            //
+            // * On invalidation, bump the generation counter.
+            //
+            // * Add a generation member to the `CacheEntry`.
+            //
+            // * Each vdom maintains a map from `Cached<R>` instance id to
+            // `CacheEntry`s.
+            //
+            // * We only re-use the cached results if the `Cached<R>`'s
+            //   generation counter matches the entry in the vdom's cached set.
+            //
+            // This is all do-able but is a bit more book keeping than we really
+            // want to do unless it is well motivated.
+            Some(id)
+                if {
+                    let cached_set = cx.cached_set.borrow();
+                    cached_set.contains(id)
+                } =>
+            {
+                id
+            }
+            _ => {
+                let id = CachedSet::insert(cx, |nested_cx| self.inner.render(nested_cx));
+                self.cached.set(Some(id));
+                id
+            }
+        };
 
-impl<R: Render> Render for Cached<R> {
-    fn render<'a, 'bump>(&'a self, _: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
-        let mut cached = self.cached.borrow_mut();
-
-        if let Some(cached) = cached.as_ref() {
-            // The cached node is actually a self-reference, so it has the `'a`
-            // lifetime.
-            let cached: Node<'a> = cached.clone();
-
-            // But the `'a` lifetime outlives `'bump`, so we can safely convert
-            // it to the narrower `'bump` lifetime.
-            let cached: Node<'bump> = cached;
-
-            // Return the cached rendering!
-            return cached;
-        }
-
-        // We don't have a cached node. Render into our own `Bump`, cache it for
-        // future renders, and return it. Same lifetimes as above.
-        let node: Node<'a> = self.inner.render(&self.bump);
-        *cached = Some(unsafe { extend_node_lifetime(node.clone()) });
-        let node: Node<'bump> = node;
-        node
+        Node::cached(id)
     }
 }

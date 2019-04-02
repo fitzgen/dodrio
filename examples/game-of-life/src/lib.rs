@@ -1,5 +1,4 @@
-use dodrio::bumpalo::{self, Bump};
-use dodrio::{Node, Render, Vdom};
+use dodrio::{bumpalo, Node, Render, RenderContext, Vdom};
 use futures::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -129,20 +128,18 @@ impl Universe {
 
 /// The rendering implementation for our Game of Life.
 impl Render for Universe {
-    fn render<'a, 'bump>(&'a self, bump: &'bump Bump) -> Node<'bump>
-    where
-        'a: 'bump,
-    {
+    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         use dodrio::builder::*;
 
-        let mut rows = bumpalo::collections::Vec::with_capacity_in(self.height as usize, bump);
+        let mut rows = bumpalo::collections::Vec::with_capacity_in(self.height as usize, cx.bump);
 
         for row in self.cells.chunks(self.width as usize) {
-            let mut cells = bumpalo::collections::Vec::with_capacity_in(self.width as usize, bump);
+            let mut cells =
+                bumpalo::collections::Vec::with_capacity_in(self.width as usize, cx.bump);
 
             for cell in row {
                 cells.push(
-                    span(bump)
+                    span(&cx)
                         .attr("class", "cell")
                         .attr(
                             "style",
@@ -155,10 +152,10 @@ impl Render for Universe {
                 );
             }
 
-            rows.push(div(bump).attr("class", "row").children(cells).finish());
+            rows.push(div(&cx).attr("class", "row").children(cells).finish());
         }
 
-        div(bump).attr("class", "universe").children(rows).finish()
+        div(&cx).attr("class", "universe").children(rows).finish()
     }
 }
 
