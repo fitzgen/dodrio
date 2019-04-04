@@ -73,6 +73,9 @@ features = [
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 criterion = "0.2.10"
 
+[profile.bench]
+debug = true
+
 [profile.release]
 incremental = false
 lto = true
