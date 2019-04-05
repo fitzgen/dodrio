@@ -11,17 +11,17 @@ function string(mem, pointer, length) {
 
 const OP_TABLE = [
   // 0
-  function setText(changeList, mem8, mem32, i) {
+  function setText(interpreter, mem8, mem32, i) {
     const pointer = mem32[i++];
     const length = mem32[i++];
     const str = string(mem8, pointer, length);
-    top(changeList.stack).textContent = str;
+    top(interpreter.stack).textContent = str;
     return i;
   },
 
   // 1
-  function removeSelfAndNextSiblings(changeList, mem8, mem32, i) {
-    const node = changeList.stack.pop();
+  function removeSelfAndNextSiblings(interpreter, mem8, mem32, i) {
+    const node = interpreter.stack.pop();
     let sibling = node.nextSibling;
     while (sibling) {
       const temp = sibling.nextSibling;
@@ -33,21 +33,21 @@ const OP_TABLE = [
   },
 
   // 2
-  function replaceWith(changeList, mem8, mem32, i) {
-    const newNode = changeList.stack.pop();
-    const oldNode = changeList.stack.pop();
+  function replaceWith(interpreter, mem8, mem32, i) {
+    const newNode = interpreter.stack.pop();
+    const oldNode = interpreter.stack.pop();
     oldNode.replaceWith(newNode);
-    changeList.stack.push(newNode);
+    interpreter.stack.push(newNode);
     return i;
   },
 
   // 3
-  function setAttribute(changeList, mem8, mem32, i) {
+  function setAttribute(interpreter, mem8, mem32, i) {
     const nameId = mem32[i++];
     const valueId = mem32[i++];
-    const name = changeList.getString(nameId);
-    const value = changeList.getString(valueId);
-    const node = top(changeList.stack);
+    const name = interpreter.getString(nameId);
+    const value = interpreter.getString(valueId);
+    const node = top(interpreter.stack);
     node.setAttribute(name, value);
 
     // Some attributes are "volatile" and don't work through `setAttribute`.
@@ -65,10 +65,10 @@ const OP_TABLE = [
   },
 
   // 4
-  function removeAttribute(changeList, mem8, mem32, i) {
+  function removeAttribute(interpreter, mem8, mem32, i) {
     const nameId = mem32[i++];
-    const name = changeList.getString(nameId);
-    const node = top(changeList.stack);
+    const name = interpreter.getString(nameId);
+    const node = top(interpreter.stack);
     node.removeAttribute(name);
 
     // Some attributes are "volatile" and don't work through `removeAttribute`.
@@ -86,120 +86,120 @@ const OP_TABLE = [
   },
 
   // 5
-  function pushFirstChild(changeList, mem8, mem32, i) {
-    changeList.stack.push(top(changeList.stack).firstChild);
+  function pushFirstChild(interpreter, mem8, mem32, i) {
+    interpreter.stack.push(top(interpreter.stack).firstChild);
     return i;
   },
 
   // 6
-  function popPushNextSibling(changeList, mem8, mem32, i) {
-    const node = changeList.stack.pop();
-    changeList.stack.push(node.nextSibling);
+  function popPushNextSibling(interpreter, mem8, mem32, i) {
+    const node = interpreter.stack.pop();
+    interpreter.stack.push(node.nextSibling);
     return i;
   },
 
   // 7
-  function pop(changeList, mem8, mem32, i) {
-    changeList.stack.pop();
+  function pop(interpreter, mem8, mem32, i) {
+    interpreter.stack.pop();
     return i;
   },
 
   // 8
-  function appendChild(changeList, mem8, mem32, i) {
-    const child = changeList.stack.pop();
-    top(changeList.stack).appendChild(child);
+  function appendChild(interpreter, mem8, mem32, i) {
+    const child = interpreter.stack.pop();
+    top(interpreter.stack).appendChild(child);
     return i;
   },
 
   // 9
-  function createTextNode(changeList, mem8, mem32, i) {
+  function createTextNode(interpreter, mem8, mem32, i) {
     const pointer = mem32[i++];
     const length = mem32[i++];
     const text = string(mem8, pointer, length);
-    changeList.stack.push(document.createTextNode(text));
+    interpreter.stack.push(document.createTextNode(text));
     return i;
   },
 
   // 10
-  function createElement(changeList, mem8, mem32, i) {
+  function createElement(interpreter, mem8, mem32, i) {
     const tagNameId = mem32[i++];
-    const tagName = changeList.getString(tagNameId);
-    changeList.stack.push(document.createElement(tagName));
+    const tagName = interpreter.getString(tagNameId);
+    interpreter.stack.push(document.createElement(tagName));
     return i;
   },
 
   // 11
-  function newEventListener(changeList, mem8, mem32, i) {
+  function newEventListener(interpreter, mem8, mem32, i) {
     const eventId = mem32[i++];
-    const eventType = changeList.getString(eventId);
+    const eventType = interpreter.getString(eventId);
     const a = mem32[i++];
     const b = mem32[i++];
-    const el = top(changeList.stack);
-    el.addEventListener(eventType, changeList.eventHandler);
+    const el = top(interpreter.stack);
+    el.addEventListener(eventType, interpreter.eventHandler);
     el[`dodrio-a-${eventType}`] = a;
     el[`dodrio-b-${eventType}`] = b;
     return i;
   },
 
   // 12
-  function updateEventListener(changeList, mem8, mem32, i) {
+  function updateEventListener(interpreter, mem8, mem32, i) {
     const eventId = mem32[i++];
-    const eventType = changeList.getString(eventId);
-    const el = top(changeList.stack);
+    const eventType = interpreter.getString(eventId);
+    const el = top(interpreter.stack);
     el[`dodrio-a-${eventType}`] = mem32[i++];
     el[`dodrio-b-${eventType}`] = mem32[i++];
     return i;
   },
 
   // 13
-  function removeEventListener(changeList, mem8, mem32, i) {
+  function removeEventListener(interpreter, mem8, mem32, i) {
     const eventId = mem32[i++];
-    const eventType = changeList.getString(eventId);
-    const el = top(changeList.stack);
-    el.removeEventListener(eventType, changeList.eventHandler);
+    const eventType = interpreter.getString(eventId);
+    const el = top(interpreter.stack);
+    el.removeEventListener(eventType, interpreter.eventHandler);
     return i;
   },
 
   // 14
-  function addString(changeList, mem8, mem32, i) {
+  function addString(interpreter, mem8, mem32, i) {
     const pointer = mem32[i++];
     const length = mem32[i++];
     const id = mem32[i++];
     const str = string(mem8, pointer, length);
-    changeList.addString(str, id);
+    interpreter.addString(str, id);
     return i;
   },
 
   // 15
-  function dropString(changeList, mem8, mem32, i) {
+  function dropString(interpreter, mem8, mem32, i) {
     const id = mem32[i++];
-    changeList.dropString(id);
+    interpreter.dropString(id);
     return i;
   },
 
   // 16
-  function createElementNS(changeList, mem8, mem32, i) {
+  function createElementNS(interpreter, mem8, mem32, i) {
     const tagNameId = mem32[i++];
-    const tagName = changeList.getString(tagNameId);
+    const tagName = interpreter.getString(tagNameId);
     const nsId = mem32[i++];
-    const ns = changeList.getString(nsId);
-    changeList.stack.push(document.createElementNS(ns, tagName));
+    const ns = interpreter.getString(nsId);
+    interpreter.stack.push(document.createElementNS(ns, tagName));
     return i;
   },
 
   // 17
-  function setAttributeNS(changeList, mem8, mem32, i) {
+  function setAttributeNS(interpreter, mem8, mem32, i) {
     const nameId = mem32[i++];
     const valueId = mem32[i++];
-    const name = changeList.getString(nameId);
-    const value = changeList.getString(valueId);
-    const node = top(changeList.stack);
+    const name = interpreter.getString(nameId);
+    const value = interpreter.getString(valueId);
+    const node = top(interpreter.stack);
     node.setAttributeNS(null, name, value);
     return i;
   }
 ];
 
-export class ChangeList {
+export class ChangeListInterpreter {
   constructor(container) {
     this.trampoline = null;
     this.container = container;

@@ -7,10 +7,10 @@ pub mod js {
     cfg_if::cfg_if! {
         if #[cfg(all(feature = "xxx-unstable-internal-use-only", not(target_arch = "wasm32")))] {
             #[derive(Clone, Debug)]
-            pub struct ChangeList {}
-            impl ChangeList {
-                pub fn new(_container: &crate::Element) -> ChangeList {
-                    ChangeList {}
+            pub struct ChangeListInterpreter {}
+            impl ChangeListInterpreter {
+                pub fn new(_container: &crate::Element) -> ChangeListInterpreter {
+                    ChangeListInterpreter {}
                 }
                 pub fn unmount(&self) {}
                 pub fn add_change_list_range(&self, _start: usize, _len: usize) {}
@@ -19,26 +19,26 @@ pub mod js {
         } else {
             use wasm_bindgen::prelude::*;
 
-            #[wasm_bindgen(module = "/js/change-list.js")]
+            #[wasm_bindgen(module = "/js/change-list-interpreter.js")]
             extern "C" {
                 #[derive(Clone, Debug)]
-                pub type ChangeList;
+                pub type ChangeListInterpreter;
 
                 #[wasm_bindgen(constructor)]
-                pub fn new(container: &web_sys::Element) -> ChangeList;
+                pub fn new(container: &web_sys::Element) -> ChangeListInterpreter;
 
                 #[wasm_bindgen(structural, method)]
-                pub fn unmount(this: &ChangeList);
+                pub fn unmount(this: &ChangeListInterpreter);
 
                 #[wasm_bindgen(structural, method, js_name = addChangeListRange)]
-                pub fn add_change_list_range(this: &ChangeList, start: usize, len: usize);
+                pub fn add_change_list_range(this: &ChangeListInterpreter, start: usize, len: usize);
 
                 #[wasm_bindgen(structural, method, js_name = applyChanges)]
-                pub fn apply_changes(this: &ChangeList, memory: JsValue);
+                pub fn apply_changes(this: &ChangeListInterpreter, memory: JsValue);
 
                 #[wasm_bindgen(structural, method, js_name = initEventsTrampoline)]
                 pub fn init_events_trampoline(
-                    this: &ChangeList,
+                    this: &ChangeListInterpreter,
                     trampoline: &crate::EventsTrampoline,
                 );
             }
@@ -55,14 +55,14 @@ pub(crate) struct ChangeList {
     bump: Bump,
     strings_cache: FxHashMap<String, StringsCacheEntry>,
     next_string_key: u32,
-    js: js::ChangeList,
+    interpreter: js::ChangeListInterpreter,
     events_trampoline: Option<crate::EventsTrampoline>,
 }
 
 impl Drop for ChangeList {
     fn drop(&mut self) {
         debug!("Dropping ChangeList");
-        self.js.unmount();
+        self.interpreter.unmount();
     }
 }
 
@@ -70,7 +70,7 @@ impl fmt::Debug for ChangeList {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("ChangeList")
             .field("bump", &self.bump)
-            .field("js", &self.js)
+            .field("interpreter", &self.interpreter)
             .field("events_trampoline", &"..")
             .finish()
     }
@@ -80,19 +80,19 @@ impl ChangeList {
     pub(crate) fn new(container: &crate::Element) -> ChangeList {
         let bump = Bump::new();
         let strings_cache = FxHashMap::default();
-        let js = js::ChangeList::new(container);
+        let interpreter = js::ChangeListInterpreter::new(container);
         ChangeList {
             bump,
             strings_cache,
             next_string_key: 0,
-            js,
+            interpreter,
             events_trampoline: None,
         }
     }
 
     pub(crate) fn init_events_trampoline(&mut self, trampoline: crate::EventsTrampoline) {
         debug_assert!(self.events_trampoline.is_none());
-        self.js.init_events_trampoline(&trampoline);
+        self.interpreter.init_events_trampoline(&trampoline);
         self.events_trampoline = Some(trampoline);
     }
 }
@@ -107,13 +107,13 @@ cfg_if::cfg_if! {
     } else {
         impl ChangeList {
             pub(crate) fn apply_changes(&mut self) {
-                let js = &self.js;
+                let interpreter = &self.interpreter;
                 unsafe {
                     self.bump.each_allocated_chunk(|ch| {
-                        js.add_change_list_range(ch.as_ptr() as usize, ch.len());
+                        interpreter.add_change_list_range(ch.as_ptr() as usize, ch.len());
                     });
                 }
-                js.apply_changes(wasm_bindgen::memory());
+                interpreter.apply_changes(wasm_bindgen::memory());
                 self.bump.reset();
             }
         }
