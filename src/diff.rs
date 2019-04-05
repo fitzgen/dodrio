@@ -1,6 +1,6 @@
 use crate::{
     cached_set::{CacheId, CachedSet},
-    change_list::ChangeList,
+    change_list::ChangeListBuilder,
     events::EventsRegistry,
     node::{Attribute, ElementNode, Listener, Node, NodeKind, TextNode},
 };
@@ -8,7 +8,7 @@ use std::cmp;
 
 pub(crate) fn diff(
     cached_set: &CachedSet,
-    change_list: &mut ChangeList,
+    change_list: &mut ChangeListBuilder,
     registry: &mut EventsRegistry,
     old: Node,
     new: Node,
@@ -22,7 +22,7 @@ pub(crate) fn diff(
             debug!("  both are text nodes");
             if new_text != old_text {
                 debug!("  text needs updating");
-                change_list.emit_set_text(new_text);
+                change_list.set_text(new_text);
             }
         }
 
@@ -30,7 +30,7 @@ pub(crate) fn diff(
             debug!("  replacing a text node with an element");
             create(cached_set, change_list, registry, new, cached_roots);
             registry.remove_subtree(&old);
-            change_list.emit_replace_with();
+            change_list.replace_with();
         }
 
         (&NodeKind::Element(_), &NodeKind::Text(_)) => {
@@ -38,7 +38,7 @@ pub(crate) fn diff(
             create(cached_set, change_list, registry, new, cached_roots);
             // Note: text nodes cannot have event listeners, so we don't need to
             // remove the old node's listeners from our registry her.
-            change_list.emit_replace_with();
+            change_list.replace_with();
         }
 
         (
@@ -62,7 +62,7 @@ pub(crate) fn diff(
                 debug!("  different tag names or namespaces; creating new element and replacing old element");
                 create(cached_set, change_list, registry, new, cached_roots);
                 registry.remove_subtree(&old);
-                change_list.emit_replace_with();
+                change_list.replace_with();
                 return;
             }
             diff_listeners(change_list, registry, old_listeners, new_listeners);
@@ -99,7 +99,7 @@ pub(crate) fn diff(
             let new = cached_set.get(c.id);
             create(cached_set, change_list, registry, new, cached_roots);
             registry.remove_subtree(&old);
-            change_list.emit_replace_with();
+            change_list.replace_with();
         }
 
         // Old cached node and new non-cached node. Again, assume that they are
@@ -107,13 +107,13 @@ pub(crate) fn diff(
         (_, &NodeKind::Cached(_)) => {
             create(cached_set, change_list, registry, new, cached_roots);
             registry.remove_subtree(&old);
-            change_list.emit_replace_with();
+            change_list.replace_with();
         }
     }
 }
 
 fn diff_listeners(
-    change_list: &mut ChangeList,
+    change_list: &mut ChangeListBuilder,
     registry: &mut EventsRegistry,
     old: &[Listener],
     new: &[Listener],
@@ -130,12 +130,12 @@ fn diff_listeners(
 
         for old_l in old {
             if new_l.event == old_l.event {
-                change_list.emit_update_event_listener(new_l);
+                change_list.update_event_listener(new_l);
                 continue 'outer1;
             }
         }
 
-        change_list.emit_new_event_listener(new_l);
+        change_list.new_event_listener(new_l);
     }
 
     'outer2: for old_l in old {
@@ -146,28 +146,28 @@ fn diff_listeners(
                 continue 'outer2;
             }
         }
-        change_list.emit_remove_event_listener(old_l.event);
+        change_list.remove_event_listener(old_l.event);
     }
 }
 
-fn diff_attributes(change_list: &mut ChangeList, old: &[Attribute], new: &[Attribute]) {
+fn diff_attributes(change_list: &mut ChangeListBuilder, old: &[Attribute], new: &[Attribute]) {
     debug!("  updating attributes");
 
     // Do O(n^2) passes to add/update and remove attributes, since
     // there are almost always very few attributes.
     'outer: for new_attr in new {
         if new_attr.is_volatile() {
-            change_list.emit_set_attribute(new_attr.name, new_attr.value);
+            change_list.set_attribute(new_attr.name, new_attr.value);
         } else {
             for old_attr in old {
                 if old_attr.name == new_attr.name {
                     if old_attr.value != new_attr.value {
-                        change_list.emit_set_attribute(new_attr.name, new_attr.value);
+                        change_list.set_attribute(new_attr.name, new_attr.value);
                     }
                     continue 'outer;
                 }
             }
-            change_list.emit_set_attribute(new_attr.name, new_attr.value);
+            change_list.set_attribute(new_attr.name, new_attr.value);
         }
     }
 
@@ -177,13 +177,13 @@ fn diff_attributes(change_list: &mut ChangeList, old: &[Attribute], new: &[Attri
                 continue 'outer2;
             }
         }
-        change_list.emit_remove_attribute(old_attr.name);
+        change_list.remove_attribute(old_attr.name);
     }
 }
 
 fn diff_children(
     cached_set: &CachedSet,
-    change_list: &mut ChangeList,
+    change_list: &mut ChangeListBuilder,
     registry: &mut EventsRegistry,
     old: &[Node],
     new: &[Node],
@@ -203,11 +203,11 @@ fn diff_children(
         .enumerate()
     {
         if i == 0 {
-            change_list.emit_push_first_child();
+            change_list.push_first_child();
             pushed = true;
         } else {
             debug_assert!(pushed);
-            change_list.emit_pop_push_next_sibling();
+            change_list.pop_push_next_sibling();
         }
 
         diff(
@@ -223,18 +223,18 @@ fn diff_children(
     if old_children.next().is_some() {
         debug!("  removing extra old children");
         debug_assert!(new_children.next().is_none());
-        if !pushed {
-            change_list.emit_push_first_child();
+        if pushed {
+            change_list.pop_push_next_sibling();
         } else {
-            change_list.emit_pop_push_next_sibling();
+            change_list.push_first_child();
         }
-        change_list.emit_remove_self_and_next_siblings();
+        change_list.remove_self_and_next_siblings();
         pushed = false;
     } else {
         debug!("  creating new children");
         for (i, new_child) in new_children.enumerate() {
             if i == 0 && pushed {
-                change_list.emit_pop();
+                change_list.pop();
                 pushed = false;
             }
             create(
@@ -244,26 +244,26 @@ fn diff_children(
                 new_child.clone(),
                 cached_roots,
             );
-            change_list.emit_append_child();
+            change_list.append_child();
         }
     }
 
     debug!("  done updating children");
     if pushed {
-        change_list.emit_pop();
+        change_list.pop();
     }
 }
 
 fn create(
     cached_set: &CachedSet,
-    change_list: &mut ChangeList,
+    change_list: &mut ChangeListBuilder,
     registry: &mut EventsRegistry,
     node: Node,
     cached_roots: &mut bumpalo::collections::Vec<CacheId>,
 ) {
     match node.kind {
         NodeKind::Text(TextNode { text }) => {
-            change_list.emit_create_text_node(text);
+            change_list.create_text_node(text);
         }
         NodeKind::Element(ElementNode {
             tag_name,
@@ -273,22 +273,18 @@ fn create(
             namespace,
         }) => {
             if let Some(namespace) = namespace {
-                change_list.emit_create_element_ns(tag_name, namespace);
+                change_list.create_element_ns(tag_name, namespace);
             } else {
-                change_list.emit_create_element(tag_name);
+                change_list.create_element(tag_name);
             }
             for l in listeners {
                 unsafe {
                     registry.add(l);
                 }
-                change_list.emit_new_event_listener(l);
+                change_list.new_event_listener(l);
             }
             for attr in attributes {
-                if namespace.is_none() || attr.name.starts_with("xmlns") {
-                    change_list.emit_set_attribute(&attr.name, &attr.value);
-                } else {
-                    change_list.emit_set_attribute_ns(&attr.name, &attr.value);
-                }
+                change_list.set_attribute(&attr.name, &attr.value);
             }
             for child in children {
                 create(
@@ -298,7 +294,7 @@ fn create(
                     child.clone(),
                     cached_roots,
                 );
-                change_list.emit_append_child();
+                change_list.append_child();
             }
         }
         NodeKind::Cached(c) => {

@@ -45,8 +45,8 @@ const OP_TABLE = [
   function setAttribute(interpreter, mem8, mem32, i) {
     const nameId = mem32[i++];
     const valueId = mem32[i++];
-    const name = interpreter.getString(nameId);
-    const value = interpreter.getString(valueId);
+    const name = interpreter.getCachedString(nameId);
+    const value = interpreter.getCachedString(valueId);
     const node = top(interpreter.stack);
     node.setAttribute(name, value);
 
@@ -67,7 +67,7 @@ const OP_TABLE = [
   // 4
   function removeAttribute(interpreter, mem8, mem32, i) {
     const nameId = mem32[i++];
-    const name = interpreter.getString(nameId);
+    const name = interpreter.getCachedString(nameId);
     const node = top(interpreter.stack);
     node.removeAttribute(name);
 
@@ -123,7 +123,7 @@ const OP_TABLE = [
   // 10
   function createElement(interpreter, mem8, mem32, i) {
     const tagNameId = mem32[i++];
-    const tagName = interpreter.getString(tagNameId);
+    const tagName = interpreter.getCachedString(tagNameId);
     interpreter.stack.push(document.createElement(tagName));
     return i;
   },
@@ -131,7 +131,7 @@ const OP_TABLE = [
   // 11
   function newEventListener(interpreter, mem8, mem32, i) {
     const eventId = mem32[i++];
-    const eventType = interpreter.getString(eventId);
+    const eventType = interpreter.getCachedString(eventId);
     const a = mem32[i++];
     const b = mem32[i++];
     const el = top(interpreter.stack);
@@ -144,7 +144,7 @@ const OP_TABLE = [
   // 12
   function updateEventListener(interpreter, mem8, mem32, i) {
     const eventId = mem32[i++];
-    const eventType = interpreter.getString(eventId);
+    const eventType = interpreter.getCachedString(eventId);
     const el = top(interpreter.stack);
     el[`dodrio-a-${eventType}`] = mem32[i++];
     el[`dodrio-b-${eventType}`] = mem32[i++];
@@ -154,35 +154,35 @@ const OP_TABLE = [
   // 13
   function removeEventListener(interpreter, mem8, mem32, i) {
     const eventId = mem32[i++];
-    const eventType = interpreter.getString(eventId);
+    const eventType = interpreter.getCachedString(eventId);
     const el = top(interpreter.stack);
     el.removeEventListener(eventType, interpreter.eventHandler);
     return i;
   },
 
   // 14
-  function addString(interpreter, mem8, mem32, i) {
+  function addCachedString(interpreter, mem8, mem32, i) {
     const pointer = mem32[i++];
     const length = mem32[i++];
     const id = mem32[i++];
     const str = string(mem8, pointer, length);
-    interpreter.addString(str, id);
+    interpreter.addCachedString(str, id);
     return i;
   },
 
   // 15
-  function dropString(interpreter, mem8, mem32, i) {
+  function dropCachedString(interpreter, mem8, mem32, i) {
     const id = mem32[i++];
-    interpreter.dropString(id);
+    interpreter.dropCachedString(id);
     return i;
   },
 
   // 16
   function createElementNS(interpreter, mem8, mem32, i) {
     const tagNameId = mem32[i++];
-    const tagName = interpreter.getString(tagNameId);
+    const tagName = interpreter.getCachedString(tagNameId);
     const nsId = mem32[i++];
-    const ns = interpreter.getString(nsId);
+    const ns = interpreter.getCachedString(nsId);
     interpreter.stack.push(document.createElementNS(ns, tagName));
     return i;
   },
@@ -191,8 +191,8 @@ const OP_TABLE = [
   function setAttributeNS(interpreter, mem8, mem32, i) {
     const nameId = mem32[i++];
     const valueId = mem32[i++];
-    const name = interpreter.getString(nameId);
-    const value = interpreter.getString(valueId);
+    const name = interpreter.getCachedString(nameId);
+    const value = interpreter.getCachedString(valueId);
     const node = top(interpreter.stack);
     node.setAttributeNS(null, name, value);
     return i;
@@ -252,15 +252,15 @@ export class ChangeListInterpreter {
     }
   }
 
-  addString(str, id) {
+  addCachedString(str, id) {
     this.strings.set(id, str);
   }
 
-  dropString(id) {
+  dropCachedString(id) {
     this.strings.delete(id);
   }
 
-  getString(id) {
+  getCachedString(id) {
     return this.strings.get(id);
   }
 
