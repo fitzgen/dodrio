@@ -1,6 +1,6 @@
 use crate::{
     cached_set::{CacheId, CachedSet},
-    change_list::ChangeList,
+    change_list::ChangeListEmitter,
     events::EventsRegistry,
     node::{Attribute, ElementNode, Listener, Node, NodeKind, TextNode},
 };
@@ -8,7 +8,7 @@ use std::cmp;
 
 pub(crate) fn diff(
     cached_set: &CachedSet,
-    change_list: &mut ChangeList,
+    change_list: &mut ChangeListEmitter,
     registry: &mut EventsRegistry,
     old: Node,
     new: Node,
@@ -113,7 +113,7 @@ pub(crate) fn diff(
 }
 
 fn diff_listeners(
-    change_list: &mut ChangeList,
+    change_list: &mut ChangeListEmitter,
     registry: &mut EventsRegistry,
     old: &[Listener],
     new: &[Listener],
@@ -150,7 +150,7 @@ fn diff_listeners(
     }
 }
 
-fn diff_attributes(change_list: &mut ChangeList, old: &[Attribute], new: &[Attribute]) {
+fn diff_attributes(change_list: &mut ChangeListEmitter, old: &[Attribute], new: &[Attribute]) {
     debug!("  updating attributes");
 
     // Do O(n^2) passes to add/update and remove attributes, since
@@ -183,7 +183,7 @@ fn diff_attributes(change_list: &mut ChangeList, old: &[Attribute], new: &[Attri
 
 fn diff_children(
     cached_set: &CachedSet,
-    change_list: &mut ChangeList,
+    change_list: &mut ChangeListEmitter,
     registry: &mut EventsRegistry,
     old: &[Node],
     new: &[Node],
@@ -256,7 +256,7 @@ fn diff_children(
 
 fn create(
     cached_set: &CachedSet,
-    change_list: &mut ChangeList,
+    change_list: &mut ChangeListEmitter,
     registry: &mut EventsRegistry,
     node: Node,
     cached_roots: &mut bumpalo::collections::Vec<CacheId>,

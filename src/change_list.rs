@@ -51,7 +51,7 @@ struct StringsCacheEntry {
     used: bool,
 }
 
-pub(crate) struct ChangeList {
+pub(crate) struct ChangeListEmitter {
     bump: Bump,
     strings_cache: FxHashMap<String, StringsCacheEntry>,
     next_string_key: u32,
@@ -59,16 +59,16 @@ pub(crate) struct ChangeList {
     events_trampoline: Option<crate::EventsTrampoline>,
 }
 
-impl Drop for ChangeList {
+impl Drop for ChangeListEmitter {
     fn drop(&mut self) {
-        debug!("Dropping ChangeList");
+        debug!("Dropping ChangeListEmitter");
         self.interpreter.unmount();
     }
 }
 
-impl fmt::Debug for ChangeList {
+impl fmt::Debug for ChangeListEmitter {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("ChangeList")
+        f.debug_struct("ChangeListEmitter")
             .field("bump", &self.bump)
             .field("interpreter", &self.interpreter)
             .field("events_trampoline", &"..")
@@ -76,12 +76,12 @@ impl fmt::Debug for ChangeList {
     }
 }
 
-impl ChangeList {
-    pub(crate) fn new(container: &crate::Element) -> ChangeList {
+impl ChangeListEmitter {
+    pub(crate) fn new(container: &crate::Element) -> ChangeListEmitter {
         let bump = Bump::new();
         let strings_cache = FxHashMap::default();
         let interpreter = js::ChangeListInterpreter::new(container);
-        ChangeList {
+        ChangeListEmitter {
             bump,
             strings_cache,
             next_string_key: 0,
@@ -99,13 +99,13 @@ impl ChangeList {
 
 cfg_if::cfg_if! {
     if #[cfg(all(feature = "xxx-unstable-internal-use-only", not(target_arch = "wasm32")))] {
-        impl ChangeList {
+        impl ChangeListEmitter {
             pub(crate) fn apply_changes(&mut self) {
                 // Do nothing...
             }
         }
     } else {
-        impl ChangeList {
+        impl ChangeListEmitter {
             pub(crate) fn apply_changes(&mut self) {
                 let interpreter = &self.interpreter;
                 unsafe {
@@ -301,7 +301,7 @@ enum ChangeDiscriminant {
 // Allocation utilities to ensure that we only allocation sequences of `u32`s
 // into the change list's bump arena without any padding. This helps maintain
 // the invariants required for `Bump::each_allocated_chunk`'s safety.
-impl ChangeList {
+impl ChangeListEmitter {
     // Allocate an opcode with zero immediates.
     fn op0(&self, discriminant: ChangeDiscriminant) {
         self.bump.alloc(discriminant as u32);
@@ -325,7 +325,7 @@ impl ChangeList {
     // Note: no 4-immediate opcodes at this time.
 }
 
-impl ChangeList {
+impl ChangeListEmitter {
     fn ensure_string(&mut self, string: &str) -> u32 {
         if let Some(entry) = self.strings_cache.get_mut(string) {
             entry.used = true;

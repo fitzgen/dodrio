@@ -1,4 +1,4 @@
-use super::change_list::ChangeList;
+use super::change_list::ChangeListEmitter;
 use super::RootRender;
 use crate::cached_set::CachedSet;
 use crate::events::EventsRegistry;
@@ -56,7 +56,7 @@ pub(crate) struct VdomInnerExclusive {
     component: Option<Box<RootRender>>,
 
     dom_buffers: Option<[Bump; 2]>,
-    change_list: ManuallyDrop<ChangeList>,
+    change_list: ManuallyDrop<ChangeListEmitter>,
     container: crate::Element,
     events_registry: Option<Rc<RefCell<EventsRegistry>>>,
     cached_set: crate::RefCell<CachedSet>,
@@ -160,7 +160,7 @@ impl Vdom {
     /// rendering component.
     pub fn with_boxed_root_render(container: &crate::Element, component: Box<RootRender>) -> Vdom {
         let dom_buffers = [Bump::new(), Bump::new()];
-        let change_list = ManuallyDrop::new(ChangeList::new(container));
+        let change_list = ManuallyDrop::new(ChangeListEmitter::new(container));
 
         // Create a dummy `<div/>` in our container.
         initialize_container(container);
