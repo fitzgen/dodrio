@@ -42,9 +42,9 @@
   <body>
     <code>FPS: <output id="fps"></code></code>
     <div id="scene"></div>
-    <script src="pkg/dodrio_moire.js"></script>
-    <script>
-     wasm_bindgen("pkg/dodrio_moire_bg.wasm");
+    <script type="module">
+     import init from "./pkg/dodrio_moire.js";
+     init("./pkg/dodrio_moire_bg.wasm");
     </script>
     <script>
      let lastTime = 0

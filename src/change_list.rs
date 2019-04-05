@@ -16,12 +16,10 @@ pub mod js {
                 pub fn add_change_list_range(&self, _start: usize, _len: usize) {}
                 pub fn init_events_trampoline(&self, _trampoline: &crate::EventsTrampoline) {}
             }
-
-            pub fn eval_change_list() {}
         } else {
             use wasm_bindgen::prelude::*;
 
-            #[wasm_bindgen]
+            #[wasm_bindgen(module = "/js/change-list.js")]
             extern "C" {
                 #[derive(Clone, Debug)]
                 pub type ChangeList;
@@ -43,20 +41,6 @@ pub mod js {
                     this: &ChangeList,
                     trampoline: &crate::EventsTrampoline,
                 );
-            }
-
-            pub fn eval_change_list() {
-                use std::sync::Once;
-                // XXX: Because wasm-bindgen-test doesn't support third party JS
-                // dependencies, we can't use `wasm_bindgen(module = "...")` for our
-                // `ChangeList` JS import. Instead, this *should* be a local JS snippet,
-                // but that isn't implemented yet:
-                // https://github.com/rustwasm/rfcs/pull/6
-                static EVAL: Once = Once::new();
-                EVAL.call_once(|| {
-                    js_sys::eval(include_str!("../js/change-list.js"))
-                        .expect_throw("should eval change-list.js OK");
-                });
             }
         }
     }
@@ -94,7 +78,6 @@ impl fmt::Debug for ChangeList {
 
 impl ChangeList {
     pub(crate) fn new(container: &crate::Element) -> ChangeList {
-        js::eval_change_list();
         let bump = Bump::new();
         let strings_cache = FxHashMap::default();
         let js = js::ChangeList::new(container);

@@ -5,9 +5,9 @@
     <title>Input Form</title>
   </head>
   <body>
-    <script src="pkg/dodrio_input_form.js"></script>
-    <script>
-     wasm_bindgen("pkg/dodrio_input_form_bg.wasm");
+    <script type="module">
+     import init from "./pkg/dodrio_input_form.js";
+     init("./pkg/dodrio_input_form_bg.wasm");
     </script>
   </body>
 </html>

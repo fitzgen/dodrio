@@ -9,7 +9,7 @@ See `src/lib.rs`.
 ## Build
 
 ```
-wasm-pack build --target no-modules
+wasm-pack build --target web
 ```
 
 ## Serve
