@@ -1,5 +1,4 @@
 use dodrio::{bumpalo, Node, Render, RenderContext, Vdom};
-use futures::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::{prelude::*, JsCast};
@@ -128,6 +127,10 @@ impl Universe {
 
 /// The rendering implementation for our Game of Life.
 impl Render for Universe {
+    fn pre_render(&mut self, _time: f64) {
+        self.tick();
+    }
+
     fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         use dodrio::builder::*;
 
@@ -184,14 +187,6 @@ pub fn run() {
     let weak = vdom.weak();
     let f = Closure::wrap(Box::new(move || {
         weak.schedule_render();
-
-        wasm_bindgen_futures::spawn_local(
-            weak.with_component(|root| {
-                let universe = root.unwrap_mut::<Universe>();
-                universe.tick();
-            })
-            .map_err(|_| wasm_bindgen::throw_str("impossible, we always keep the vdom alive")),
-        );
 
         window
             .request_animation_frame(

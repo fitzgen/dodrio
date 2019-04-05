@@ -39,6 +39,9 @@ pub trait Render {
     /// Render `self` as a virtual DOM. Use the given context's `Bump` for
     /// temporary allocations.
     fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a>;
+
+    /// Will be invoked before render during animation frame
+    fn pre_render(&mut self, _time: f64) {}
 }
 
 impl<'r, R> Render for &'r R

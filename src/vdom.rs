@@ -311,7 +311,7 @@ impl VdomInnerExclusive {
     }
 }
 
-fn request_animation_frame(f: &Closure<FnMut()>) {
+fn request_animation_frame(f: &Closure<FnMut(f64)>) {
     web_sys::window()
         .expect_throw("should have a window")
         .request_animation_frame(f.as_ref().unchecked_ref())
@@ -320,15 +320,15 @@ fn request_animation_frame(f: &Closure<FnMut()>) {
 
 fn with_animation_frame<F>(mut f: F)
 where
-    F: 'static + FnMut(),
+    F: 'static + FnMut(f64),
 {
     let g = Rc::new(RefCell::new(None));
     let h = g.clone();
 
-    let f = Closure::wrap(Box::new(move || {
+    let f = Closure::wrap(Box::new(move |time| {
         *g.borrow_mut() = None;
-        f();
-    }) as Box<FnMut()>);
+        f(time);
+    }) as Box<FnMut(f64)>);
     request_animation_frame(&f);
 
     *h.borrow_mut() = Some(f);
@@ -430,7 +430,7 @@ impl VdomWeak {
                         let vdom = VdomWeak {
                             inner: Rc::downgrade(&inner),
                         };
-                        with_animation_frame(move || match vdom.inner.upgrade() {
+                        with_animation_frame(move |time| match vdom.inner.upgrade() {
                             None => {
                                 warn!("VdomWeak::render: vdom unmounted before we could render");
                                 let r = reject.call0(&JsValue::null());
@@ -438,6 +438,7 @@ impl VdomWeak {
                             }
                             Some(inner) => {
                                 let mut exclusive = inner.exclusive.borrow_mut();
+                                exclusive.component_raw_mut().pre_render(time);
                                 exclusive.render();
 
                                 // We did the render, so take the promise away
