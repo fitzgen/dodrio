@@ -56,7 +56,6 @@ pub(crate) struct ChangeListEmitter {
     strings_cache: FxHashMap<String, StringsCacheEntry>,
     next_string_key: u32,
     interpreter: js::ChangeListInterpreter,
-    events_trampoline: Option<crate::EventsTrampoline>,
 }
 
 impl Drop for ChangeListEmitter {
@@ -71,7 +70,6 @@ impl fmt::Debug for ChangeListEmitter {
         f.debug_struct("ChangeListEmitter")
             .field("bump", &self.bump)
             .field("interpreter", &self.interpreter)
-            .field("events_trampoline", &"..")
             .finish()
     }
 }
@@ -86,14 +84,11 @@ impl ChangeListEmitter {
             strings_cache,
             next_string_key: 0,
             interpreter,
-            events_trampoline: None,
         }
     }
 
-    pub(crate) fn init_events_trampoline(&mut self, trampoline: crate::EventsTrampoline) {
-        debug_assert!(self.events_trampoline.is_none());
-        self.interpreter.init_events_trampoline(&trampoline);
-        self.events_trampoline = Some(trampoline);
+    pub(crate) fn init_events_trampoline(&mut self, trampoline: &crate::EventsTrampoline) {
+        self.interpreter.init_events_trampoline(trampoline);
     }
 }
 
