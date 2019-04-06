@@ -7,5 +7,5 @@ cargo fmt --all || true
 cargo check --all --target wasm32-unknown-unknown
 
 for x in ./examples/*; do
-    wasm-pack build --target no-modules "$x"
+    wasm-pack build --target web "$x"
 done
