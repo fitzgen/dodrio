@@ -222,6 +222,32 @@ impl Vdom {
         VdomWeak::new(&self.inner)
     }
 
+    /// Begin an infinite loop of animation frame renders
+    pub fn animate_loop(&self) {
+        let rc: Rc<RefCell<Option<Closure<FnMut()>>>> = Rc::new(RefCell::new(None));
+        let rc2 = rc.clone();
+        let window = web_sys::window().unwrap_throw();
+        let window2 = window.clone();
+        let weak = self.weak();
+        let f = Closure::wrap(Box::new(move || {
+            weak.schedule_render();
+
+            window
+                .request_animation_frame(
+                    rc.borrow()
+                        .as_ref()
+                        .unwrap_throw()
+                        .as_ref()
+                        .unchecked_ref::<js_sys::Function>(),
+                )
+                .unwrap_throw();
+        }) as Box<FnMut()>);
+        window2
+            .request_animation_frame(f.as_ref().unchecked_ref::<js_sys::Function>())
+            .unwrap_throw();
+        *rc2.borrow_mut() = Some(f);
+    }
+
     /// Unmount this virtual DOM, unregister its event listeners, and return its
     /// root render component.
     #[inline]

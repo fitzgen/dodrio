@@ -1,7 +1,5 @@
 use dodrio::{bumpalo, Node, Render, RenderContext, Vdom};
-use std::cell::RefCell;
-use std::rc::Rc;
-use wasm_bindgen::{prelude::*, JsCast};
+use wasm_bindgen::prelude::*;
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -179,29 +177,7 @@ pub fn run() {
     // `<body>`.
     let vdom = Vdom::new(body.as_ref(), universe);
 
-    // Kick off a loop that keeps computing a tick of the universe and then
-    // re-rendering on every animation frame.
-    let rc: Rc<RefCell<Option<Closure<FnMut()>>>> = Rc::new(RefCell::new(None));
-    let rc2 = rc.clone();
-    let window2 = window.clone();
-    let weak = vdom.weak();
-    let f = Closure::wrap(Box::new(move || {
-        weak.schedule_render();
-
-        window
-            .request_animation_frame(
-                rc.borrow()
-                    .as_ref()
-                    .unwrap_throw()
-                    .as_ref()
-                    .unchecked_ref::<js_sys::Function>(),
-            )
-            .unwrap_throw();
-    }) as Box<FnMut()>);
-    window2
-        .request_animation_frame(f.as_ref().unchecked_ref::<js_sys::Function>())
-        .unwrap_throw();
-    *rc2.borrow_mut() = Some(f);
+    vdom.animate_loop();
 
     // Run the virtual DOM forever and don't unmount it.
     vdom.forget();
