@@ -39,9 +39,9 @@
     </style>
   </head>
   <body>
-    <script src="pkg/dodrio_game_of_life.js"></script>
-    <script>
-     wasm_bindgen("pkg/dodrio_game_of_life_bg.wasm");
+    <script type="module">
+     import init from "./pkg/dodrio_game_of_life.js";
+     init("./pkg/dodrio_game_of_life_bg.wasm");
     </script>
   </body>
 </html>

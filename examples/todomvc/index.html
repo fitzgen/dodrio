@@ -13,9 +13,9 @@
         <footer class="info">
             <p>Double-click to edit a todo</p>
         </footer>
-        <script src="pkg/dodrio_todomvc.js"></script>
-        <script>
-         wasm_bindgen("pkg/dodrio_todomvc_bg.wasm");
+        <script type="module">
+         import init from "./pkg/dodrio_todomvc.js";
+         init("./pkg/dodrio_todomvc_bg.wasm");
         </script>
     </body>
 </html>

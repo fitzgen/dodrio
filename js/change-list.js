@@ -199,8 +199,7 @@ const OP_TABLE = [
   }
 ];
 
-// export
-class ChangeList {
+export class ChangeList {
   constructor(container) {
     this.trampoline = null;
     this.container = container;
@@ -284,6 +283,3 @@ class ChangeList {
     }
   }
 }
-window.ChangeList = ChangeList;
-
-//# sourceURL=dodrio/change-list.js
