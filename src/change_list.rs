@@ -1,88 +1,42 @@
+pub(crate) mod emitter;
+pub(crate) mod strings;
+
+// Note: has to be `pub` because of `wasm-bindgen` visibility restrictions.
+pub mod js;
+
+use self::emitter::InstructionEmitter;
+use self::strings::{StringKey, StringsCache};
+use crate::traversal::{MoveTo, Traversal};
 use crate::Listener;
 use bumpalo::Bump;
-use fxhash::FxHashMap;
-use std::fmt;
 
-pub mod js {
-    cfg_if::cfg_if! {
-        if #[cfg(all(feature = "xxx-unstable-internal-use-only", not(target_arch = "wasm32")))] {
-            #[derive(Clone, Debug)]
-            pub struct ChangeListInterpreter {}
-            impl ChangeListInterpreter {
-                pub fn new(_container: &crate::Element) -> ChangeListInterpreter {
-                    ChangeListInterpreter {}
-                }
-                pub fn unmount(&self) {}
-                pub fn add_change_list_range(&self, _start: usize, _len: usize) {}
-                pub fn init_events_trampoline(&self, _trampoline: &crate::EventsTrampoline) {}
-            }
-        } else {
-            use wasm_bindgen::prelude::*;
-
-            #[wasm_bindgen(module = "/js/change-list-interpreter.js")]
-            extern "C" {
-                #[derive(Clone, Debug)]
-                pub type ChangeListInterpreter;
-
-                #[wasm_bindgen(constructor)]
-                pub fn new(container: &web_sys::Element) -> ChangeListInterpreter;
-
-                #[wasm_bindgen(structural, method)]
-                pub fn unmount(this: &ChangeListInterpreter);
-
-                #[wasm_bindgen(structural, method, js_name = addChangeListRange)]
-                pub fn add_change_list_range(this: &ChangeListInterpreter, start: usize, len: usize);
-
-                #[wasm_bindgen(structural, method, js_name = applyChanges)]
-                pub fn apply_changes(this: &ChangeListInterpreter, memory: JsValue);
-
-                #[wasm_bindgen(structural, method, js_name = initEventsTrampoline)]
-                pub fn init_events_trampoline(
-                    this: &ChangeListInterpreter,
-                    trampoline: &crate::EventsTrampoline,
-                );
-            }
-        }
-    }
-}
-
-struct StringsCacheEntry {
-    key: u32,
-    used: bool,
-}
-
-pub(crate) struct ChangeListEmitter {
-    bump: Bump,
-    strings_cache: FxHashMap<String, StringsCacheEntry>,
-    next_string_key: u32,
+#[derive(Debug)]
+pub(crate) struct ChangeListPersistentState {
+    strings: StringsCache,
+    emitter: InstructionEmitter,
     interpreter: js::ChangeListInterpreter,
 }
 
-impl Drop for ChangeListEmitter {
+pub(crate) struct ChangeListBuilder<'a> {
+    state: &'a mut ChangeListPersistentState,
+    traversal: Traversal<'a>,
+}
+
+impl Drop for ChangeListPersistentState {
     fn drop(&mut self) {
-        debug!("Dropping ChangeListEmitter");
+        debug!("Dropping ChangeListPersistentState");
         self.interpreter.unmount();
     }
 }
 
-impl fmt::Debug for ChangeListEmitter {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("ChangeListEmitter")
-            .field("bump", &self.bump)
-            .field("interpreter", &self.interpreter)
-            .finish()
-    }
-}
-
-impl ChangeListEmitter {
-    pub(crate) fn new(container: &crate::Element) -> ChangeListEmitter {
-        let bump = Bump::new();
-        let strings_cache = FxHashMap::default();
+impl ChangeListPersistentState {
+    pub(crate) fn new(container: &crate::Element) -> ChangeListPersistentState {
+        let strings = StringsCache::new();
+        let emitter = InstructionEmitter::new();
         let interpreter = js::ChangeListInterpreter::new(container);
-        ChangeListEmitter {
-            bump,
-            strings_cache,
-            next_string_key: 0,
+        ChangeListPersistentState {
+            strings,
+            emitter,
             interpreter,
         }
     }
@@ -90,375 +44,202 @@ impl ChangeListEmitter {
     pub(crate) fn init_events_trampoline(&mut self, trampoline: &crate::EventsTrampoline) {
         self.interpreter.init_events_trampoline(trampoline);
     }
+
+    pub(crate) fn builder<'a>(&'a mut self, bump: &'a Bump) -> ChangeListBuilder<'a> {
+        ChangeListBuilder {
+            state: self,
+            traversal: Traversal::new(bump),
+        }
+    }
 }
 
 cfg_if::cfg_if! {
     if #[cfg(all(feature = "xxx-unstable-internal-use-only", not(target_arch = "wasm32")))] {
-        impl ChangeListEmitter {
-            pub(crate) fn apply_changes(&mut self) {
-                // Do nothing...
+        impl ChangeListBuilder<'_> {
+            pub(crate) fn finish(self) {
+                self.state.strings.drop_unused_strings(&self.state.emitter);
+
+                // Nothing to actually apply the changes to.
+
+                self.state.emitter.reset();
             }
         }
     } else {
-        impl ChangeListEmitter {
-            pub(crate) fn apply_changes(&mut self) {
-                let interpreter = &self.interpreter;
-                unsafe {
-                    self.bump.each_allocated_chunk(|ch| {
-                        interpreter.add_change_list_range(ch.as_ptr() as usize, ch.len());
-                    });
-                }
+        impl ChangeListBuilder<'_> {
+            pub(crate) fn finish(self) {
+                self.state.strings.drop_unused_strings(&self.state.emitter);
+
+                // Apply the changes.
+                let interpreter = &self.state.interpreter;
+                self.state.emitter.each_instruction_sequence(|seq| {
+                    interpreter.add_change_list_range(seq.as_ptr() as usize, seq.len());
+                });
                 interpreter.apply_changes(wasm_bindgen::memory());
-                self.bump.reset();
+
+                self.state.emitter.reset();
             }
         }
     }
 }
 
-#[repr(u32)]
-#[derive(Clone, Copy, Debug)]
-enum ChangeDiscriminant {
-    /// Immediates: `(pointer, length)`
-    ///
-    /// Stack: `[... TextNode] -> [... TextNode]`
-    ///
-    /// ```text
-    /// stack.top().textContent = String(pointer, length)
-    /// ```
-    SetText = 0,
-
-    /// Immediates: `()`
-    ///
-    /// Stack: `[... Node] -> [...]`
-    ///
-    /// ```text
-    /// node = stack.pop()
-    /// while (node.nextSibling) {
-    ///   node.nextSibling.remove();
-    /// }
-    /// node.remove()
-    /// ```
-    RemoveSelfAndNextSiblings = 1,
-
-    /// Immediates: `()`
-    ///
-    /// Stack: `[... Node Node] -> [... Node]`
-    ///
-    /// ```text
-    /// new = stack.pop()
-    /// old = stack.pop()
-    /// old.replaceWith(new)
-    /// stack.push(new)
-    /// ```
-    ReplaceWith = 2,
-
-    /// Immediates: `(id1, id2)`
-    ///
-    /// Stack: `[... Node] -> [... Node]`
-    ///
-    /// ```text
-    /// stack.top().setAttribute(String(id1), String(id2))
-    /// ```
-    SetAttribute = 3,
-
-    /// Immediates: (id)
-    ///
-    /// Stack: `[... Node] -> [... Node]`
-    ///
-    /// ```text
-    /// stack.top().removeAttribute(String(id))
-    /// ```
-    RemoveAttribute = 4,
-
-    /// Immediates: `()`
-    ///
-    /// Stack: `[... Node] -> [... Node node]`
-    ///
-    /// ```text
-    /// stack.push(stack.top().firstChild)
-    /// ```
-    PushFirstChild = 5,
-
-    /// Immediates: `()`
-    ///
-    /// Stack: `[... Node] -> [... Node]`
-    ///
-    /// ```text
-    /// stack.push(stack.pop().nextSibling)
-    /// ```
-    PopPushNextSibling = 6,
-
-    /// Immediates: `()`
-    ///
-    /// Stack: `[... T] -> [...]`
-    ///
-    /// ```text
-    /// stack.pop()
-    /// ```
-    Pop = 7,
-
-    /// Immediates: `()`
-    ///
-    /// Stack: `[... Node Node] -> [... Node]`
-    ///
-    /// ```text
-    /// child = stack.pop()
-    /// stack.top().appendChild(child)
-    /// ```
-    AppendChild = 8,
-
-    /// Immediates: `(pointer, length)`
-    ///
-    /// Stack: `[...] -> [... Node]`
-    ///
-    /// ```text
-    /// stack.push(createTextNode(String(pointer, length)))
-    /// ```
-    CreateTextNode = 9,
-
-    /// Immediates: `(id)`
-    ///
-    /// Stack: `[...] -> [... Node]`
-    ///
-    /// ```text
-    /// stack.push(createElement(String(id))
-    /// ```
-    CreateElement = 10,
-
-    /// Immediates: `(id, A, B)`
-    ///
-    /// Stack: `[... Node] -> [... Node]`
-    ///
-    /// ```text
-    /// event = String(id)
-    /// callback = ProxyToRustCallback(A, B)
-    /// stack.top().addEventListener(event, callback)
-    /// ```
-    NewEventListener = 11,
-
-    /// Immediates: `(id, A, B)`
-    ///
-    /// Stack: `[... Node] -> [... Node]`
-    ///
-    /// ```text
-    /// event = String(id)
-    /// new_callback = ProxyToRustCallback(A, B);
-    /// stack.top().updateEventlistener(new_callback)
-    /// ```
-    UpdateEventListener = 12,
-
-    /// Immediates: `(id)`
-    ///
-    /// Stack: `[... Node] -> [... Node]`
-    ///
-    /// ```text
-    /// stack.top().removeEventListener(String(id));
-    /// ```
-    RemoveEventListener = 13,
-
-    /// Immediates: `(pointer, length, id)`
-    ///
-    /// Stack: `[...] -> [...]`
-    ///
-    /// ```text
-    /// addString(String(pointer, length), id);
-    /// ```
-    AddString = 14,
-
-    /// Immediates: `(id)`
-    ///
-    /// Stack: `[...] -> [...]`
-    ///
-    /// ```text
-    /// dropString(id);
-    /// ```
-    DropString = 15,
-
-    /// Immediates: `(id1, id2)`
-    ///
-    /// Stack: `[...] -> [... Node]`
-    ///
-    /// ```text
-    /// stack.push(createElementNS(String(id1), String(id2))
-    /// ```
-    CreateElementNS = 16,
-
-    /// Immediates: `(id1, id2, id3)`
-    ///
-    /// Stack: `[... Node] -> [... Node]`
-    ///
-    /// ```text
-    /// stack.top().setAttributeNS(String(id1), String(id2), String(id3))
-    /// ```
-    SetAttributeNS = 17,
-}
-
-// Allocation utilities to ensure that we only allocation sequences of `u32`s
-// into the change list's bump arena without any padding. This helps maintain
-// the invariants required for `Bump::each_allocated_chunk`'s safety.
-impl ChangeListEmitter {
-    // Allocate an opcode with zero immediates.
-    fn op0(&self, discriminant: ChangeDiscriminant) {
-        self.bump.alloc(discriminant as u32);
+impl ChangeListBuilder<'_> {
+    #[inline]
+    pub fn up(&mut self) {
+        self.traversal.up();
     }
 
-    // Allocate an opcode with one immediate.
-    fn op1(&self, discriminant: ChangeDiscriminant, a: u32) {
-        self.bump.alloc([discriminant as u32, a]);
+    #[inline]
+    pub fn down(&mut self) {
+        self.traversal.down();
     }
 
-    // Allocate an opcode with two immediates.
-    fn op2(&self, discriminant: ChangeDiscriminant, a: u32, b: u32) {
-        self.bump.alloc([discriminant as u32, a, b]);
+    #[inline]
+    pub fn forward(&mut self) {
+        self.traversal.forward();
     }
 
-    // Allocate an opcode with three immediates.
-    fn op3(&self, discriminant: ChangeDiscriminant, a: u32, b: u32, c: u32) {
-        self.bump.alloc([discriminant as u32, a, b, c]);
+    #[inline]
+    pub fn traversal_is_committed(&self) -> bool {
+        self.traversal.is_committed()
     }
 
-    // Note: no 4-immediate opcodes at this time.
-}
-
-impl ChangeListEmitter {
-    fn ensure_string(&mut self, string: &str) -> u32 {
-        if let Some(entry) = self.strings_cache.get_mut(string) {
-            entry.used = true;
-            entry.key
-        } else {
-            let key = self.next_string_key;
-            self.next_string_key += 1;
-            let entry = StringsCacheEntry { key, used: true };
-            self.strings_cache.insert(string.to_string(), entry);
-            self.op3(
-                ChangeDiscriminant::AddString,
-                string.as_ptr() as u32,
-                string.len() as u32,
-                key,
-            );
-            key
+    #[inline]
+    pub fn commit_traversal(&mut self) {
+        debug!("ChangeListBuilder::commit_traversal");
+        if self.traversal.is_committed() {
+            return;
         }
+
+        self.do_commit_traversal();
     }
 
-    pub(crate) fn drop_unused_strings(&mut self) {
-        debug!("drop_unused_strings()");
-        let mut new_cache = FxHashMap::default();
-        for (key, val) in self.strings_cache.iter() {
-            if val.used {
-                new_cache.insert(
-                    key.clone(),
-                    StringsCacheEntry {
-                        key: val.key,
-                        used: false,
-                    },
-                );
-            } else {
-                self.op1(ChangeDiscriminant::DropString, val.key);
+    fn do_commit_traversal(&mut self) {
+        for mv in self.traversal.commit() {
+            debug!("do_commit_traversal: {:?}", mv);
+            match mv {
+                MoveTo::Parent => {
+                    debug!("emit: pop()");
+                    self.state.emitter.pop();
+                }
+                MoveTo::Child(0) => {
+                    debug!("emit: push_first_child()");
+                    self.state.emitter.push_first_child();
+                }
+                MoveTo::Child(i) => {
+                    debug!("emit: push_child({})", i);
+                    self.state.emitter.push_child(i);
+                }
+                MoveTo::Sibling(1) => {
+                    debug!("emit: pop_push_next_sibling()");
+                    self.state.emitter.pop_push_next_sibling();
+                }
+                MoveTo::Sibling(i) => {
+                    debug_assert_ne!(i, 0);
+                    debug!("emit: pop_push_sibling({})", i);
+                    self.state.emitter.pop_push_sibling(i);
+                }
             }
         }
-        self.strings_cache = new_cache;
     }
 
-    pub(crate) fn emit_set_text(&self, text: &str) {
-        debug!("emit_set_text({:?})", text);
-        self.op2(
-            ChangeDiscriminant::SetText,
-            text.as_ptr() as u32,
-            text.len() as u32,
-        );
+    pub fn ensure_string(&mut self, string: &str) -> StringKey {
+        self.state
+            .strings
+            .ensure_string(string, &self.state.emitter)
     }
 
-    pub(crate) fn emit_remove_self_and_next_siblings(&self) {
-        debug!("emit_remove_self_and_next_siblings()");
-        self.op0(ChangeDiscriminant::RemoveSelfAndNextSiblings);
+    pub fn set_text(&self, text: &str) {
+        debug!("emit: set_text({:?})", text);
+        debug_assert!(self.traversal.is_committed());
+        self.state
+            .emitter
+            .set_text(text.as_ptr() as u32, text.len() as u32);
     }
 
-    pub(crate) fn emit_replace_with(&self) {
-        debug!("emit_replace_with()");
-        self.op0(ChangeDiscriminant::ReplaceWith);
+    pub fn remove_self_and_next_siblings(&self) {
+        debug!("emit: remove_self_and_next_siblings()");
+        debug_assert!(self.traversal.is_committed());
+        self.state.emitter.remove_self_and_next_siblings();
     }
 
-    pub(crate) fn emit_set_attribute(&mut self, name: &str, value: &str) {
-        debug!("emit_set_attribute({:?}, {:?})", name, value);
+    pub fn replace_with(&self) {
+        debug!("emit: replace_with()");
+        debug_assert!(self.traversal.is_committed());
+        self.state.emitter.replace_with();
+    }
+
+    pub fn set_attribute(&mut self, name: &str, value: &str) {
+        debug!("emit: set_attribute({:?}, {:?})", name, value);
+        debug_assert!(self.traversal.is_committed());
         let name_id = self.ensure_string(name);
         let value_id = self.ensure_string(value);
-        self.op2(ChangeDiscriminant::SetAttribute, name_id, value_id);
+        self.state
+            .emitter
+            .set_attribute(name_id.into(), value_id.into());
     }
 
-    pub(crate) fn emit_set_attribute_ns(&mut self, name: &str, value: &str) {
-        debug!("emit_set_attribute_ns({:?}, {:?}", name, value);
+    pub fn remove_attribute(&mut self, name: &str) {
+        debug!("emit: remove_attribute({:?})", name);
+        debug_assert!(self.traversal.is_committed());
         let name_id = self.ensure_string(name);
-        let value_id = self.ensure_string(value);
-        self.op2(ChangeDiscriminant::SetAttributeNS, name_id, value_id);
+        self.state.emitter.remove_attribute(name_id.into());
     }
 
-    pub(crate) fn emit_remove_attribute(&mut self, name: &str) {
-        debug!("emit_remove_attribute({:?})", name);
-        let name_id = self.ensure_string(name);
-        self.op1(ChangeDiscriminant::RemoveAttribute, name_id);
+    pub fn append_child(&self) {
+        debug!("emit: append_child()");
+        debug_assert!(self.traversal.is_committed());
+        self.state.emitter.append_child();
     }
 
-    pub(crate) fn emit_push_first_child(&self) {
-        debug!("emit_push_first_child()");
-        self.op0(ChangeDiscriminant::PushFirstChild);
+    pub fn create_text_node(&self, text: &str) {
+        debug!("emit: create_text_node({:?})", text);
+        debug_assert!(self.traversal.is_committed());
+        self.state
+            .emitter
+            .create_text_node(text.as_ptr() as u32, text.len() as u32);
     }
 
-    pub(crate) fn emit_pop_push_next_sibling(&self) {
-        debug!("emit_pop_push_next_sibling()");
-        self.op0(ChangeDiscriminant::PopPushNextSibling);
-    }
-
-    pub(crate) fn emit_pop(&self) {
-        debug!("emit_pop()");
-        self.op0(ChangeDiscriminant::Pop);
-    }
-
-    pub(crate) fn emit_append_child(&self) {
-        debug!("emit_append_child()");
-        self.op0(ChangeDiscriminant::AppendChild);
-    }
-
-    pub(crate) fn emit_create_text_node(&self, text: &str) {
-        debug!("emit_create_text_node({:?})", text);
-        self.op2(
-            ChangeDiscriminant::CreateTextNode,
-            text.as_ptr() as u32,
-            text.len() as u32,
-        );
-    }
-
-    pub(crate) fn emit_create_element(&mut self, tag_name: &str) {
-        debug!("emit_create_element({:?})", tag_name);
+    pub fn create_element(&mut self, tag_name: &str) {
+        debug!("emit: create_element({:?})", tag_name);
+        debug_assert!(self.traversal.is_committed());
         let tag_name_id = self.ensure_string(tag_name);
-        self.op1(ChangeDiscriminant::CreateElement, tag_name_id);
+        self.state.emitter.create_element(tag_name_id.into());
     }
 
-    pub(crate) fn emit_create_element_ns(&mut self, tag_name: &str, ns: &str) {
-        debug!("emit_create_element_ns({:?}, {:?})", tag_name, ns);
+    pub fn create_element_ns(&mut self, tag_name: &str, ns: &str) {
+        debug!("emit: create_element_ns({:?}, {:?})", tag_name, ns);
+        debug_assert!(self.traversal.is_committed());
         let tag_name_id = self.ensure_string(tag_name);
         let ns_id = self.ensure_string(ns);
-        self.op2(ChangeDiscriminant::CreateElementNS, tag_name_id, ns_id);
+        self.state
+            .emitter
+            .create_element_ns(tag_name_id.into(), ns_id.into());
     }
 
-    pub(crate) fn emit_new_event_listener(&mut self, listener: &Listener) {
-        debug!("emit_new_event_listener({:?})", listener);
+    pub fn new_event_listener(&mut self, listener: &Listener) {
+        debug!("emit: new_event_listener({:?})", listener);
+        debug_assert!(self.traversal.is_committed());
         let (a, b) = listener.get_callback_parts();
         debug_assert!(a != 0);
         let event_id = self.ensure_string(listener.event);
-        self.op3(ChangeDiscriminant::NewEventListener, event_id, a, b);
+        self.state.emitter.new_event_listener(event_id.into(), a, b);
     }
 
-    pub(crate) fn emit_update_event_listener(&mut self, listener: &Listener) {
-        debug!("emit_update_event_listener({:?})", listener);
+    pub fn update_event_listener(&mut self, listener: &Listener) {
+        debug!("emit: update_event_listener({:?})", listener);
+        debug_assert!(self.traversal.is_committed());
         let (a, b) = listener.get_callback_parts();
         debug_assert!(a != 0);
         let event_id = self.ensure_string(listener.event);
-        self.op3(ChangeDiscriminant::UpdateEventListener, event_id, a, b);
+        self.state
+            .emitter
+            .update_event_listener(event_id.into(), a, b);
     }
 
-    pub(crate) fn emit_remove_event_listener(&mut self, event: &str) {
-        debug!("emit_remove_event_listener({:?})", event);
+    pub fn remove_event_listener(&mut self, event: &str) {
+        debug!("emit: remove_event_listener({:?})", event);
+        debug_assert!(self.traversal.is_committed());
         let event_id = self.ensure_string(event);
-        self.op1(ChangeDiscriminant::RemoveEventListener, event_id);
+        self.state.emitter.remove_event_listener(event_id.into());
     }
 }

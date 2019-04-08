@@ -210,6 +210,7 @@ macro_rules! before_after {
             #[wasm_bindgen_test(async)]
             fn $name() -> impl Future<Item = (), Error = wasm_bindgen::JsValue> {
                 use crate::{assert_before_after, RenderFn};
+                log::debug!("############### {} ###############", stringify!($name));
                 assert_before_after(
                     RenderFn(|$before_bump| { $( $before )* }),
                     RenderFn(|$after_bump| { $( $after )* })

@@ -1,9 +1,5 @@
 const decoder = new TextDecoder();
 
-function top(stack) {
-  return stack[stack.length - 1];
-}
-
 function string(mem, pointer, length) {
   const buf = mem.subarray(pointer, pointer + length);
   return decoder.decode(buf);
@@ -15,13 +11,13 @@ const OP_TABLE = [
     const pointer = mem32[i++];
     const length = mem32[i++];
     const str = string(mem8, pointer, length);
-    top(interpreter.stack).textContent = str;
+    interpreter.top().textContent = str;
     return i;
   },
 
   // 1
   function removeSelfAndNextSiblings(interpreter, mem8, mem32, i) {
-    const node = interpreter.stack.pop();
+    const node = interpreter.pop();
     let sibling = node.nextSibling;
     while (sibling) {
       const temp = sibling.nextSibling;
@@ -34,10 +30,11 @@ const OP_TABLE = [
 
   // 2
   function replaceWith(interpreter, mem8, mem32, i) {
-    const newNode = interpreter.stack.pop();
-    const oldNode = interpreter.stack.pop();
+    const newNode = interpreter.pop();
+    const oldSiblingIndex = interpreter.topSiblingIndex();
+    const oldNode = interpreter.pop();
     oldNode.replaceWith(newNode);
-    interpreter.stack.push(newNode);
+    interpreter.push(newNode, oldSiblingIndex);
     return i;
   },
 
@@ -45,9 +42,9 @@ const OP_TABLE = [
   function setAttribute(interpreter, mem8, mem32, i) {
     const nameId = mem32[i++];
     const valueId = mem32[i++];
-    const name = interpreter.getString(nameId);
-    const value = interpreter.getString(valueId);
-    const node = top(interpreter.stack);
+    const name = interpreter.getCachedString(nameId);
+    const value = interpreter.getCachedString(valueId);
+    const node = interpreter.top();
     node.setAttribute(name, value);
 
     // Some attributes are "volatile" and don't work through `setAttribute`.
@@ -67,8 +64,8 @@ const OP_TABLE = [
   // 4
   function removeAttribute(interpreter, mem8, mem32, i) {
     const nameId = mem32[i++];
-    const name = interpreter.getString(nameId);
-    const node = top(interpreter.stack);
+    const name = interpreter.getCachedString(nameId);
+    const node = interpreter.top();
     node.removeAttribute(name);
 
     // Some attributes are "volatile" and don't work through `removeAttribute`.
@@ -87,27 +84,28 @@ const OP_TABLE = [
 
   // 5
   function pushFirstChild(interpreter, mem8, mem32, i) {
-    interpreter.stack.push(top(interpreter.stack).firstChild);
+    interpreter.push(interpreter.top().firstChild, 0);
     return i;
   },
 
   // 6
   function popPushNextSibling(interpreter, mem8, mem32, i) {
-    const node = interpreter.stack.pop();
-    interpreter.stack.push(node.nextSibling);
+    const siblingIndex = interpreter.topSiblingIndex();
+    const node = interpreter.pop();
+    interpreter.push(node.nextSibling, siblingIndex + 1);
     return i;
   },
 
   // 7
   function pop(interpreter, mem8, mem32, i) {
-    interpreter.stack.pop();
+    interpreter.pop();
     return i;
   },
 
   // 8
   function appendChild(interpreter, mem8, mem32, i) {
-    const child = interpreter.stack.pop();
-    top(interpreter.stack).appendChild(child);
+    const child = interpreter.pop();
+    interpreter.top().appendChild(child);
     return i;
   },
 
@@ -116,25 +114,25 @@ const OP_TABLE = [
     const pointer = mem32[i++];
     const length = mem32[i++];
     const text = string(mem8, pointer, length);
-    interpreter.stack.push(document.createTextNode(text));
+    interpreter.push(document.createTextNode(text), -1);
     return i;
   },
 
   // 10
   function createElement(interpreter, mem8, mem32, i) {
     const tagNameId = mem32[i++];
-    const tagName = interpreter.getString(tagNameId);
-    interpreter.stack.push(document.createElement(tagName));
+    const tagName = interpreter.getCachedString(tagNameId);
+    interpreter.push(document.createElement(tagName), -1);
     return i;
   },
 
   // 11
   function newEventListener(interpreter, mem8, mem32, i) {
     const eventId = mem32[i++];
-    const eventType = interpreter.getString(eventId);
+    const eventType = interpreter.getCachedString(eventId);
     const a = mem32[i++];
     const b = mem32[i++];
-    const el = top(interpreter.stack);
+    const el = interpreter.top();
     el.addEventListener(eventType, interpreter.eventHandler);
     el[`dodrio-a-${eventType}`] = a;
     el[`dodrio-b-${eventType}`] = b;
@@ -144,8 +142,8 @@ const OP_TABLE = [
   // 12
   function updateEventListener(interpreter, mem8, mem32, i) {
     const eventId = mem32[i++];
-    const eventType = interpreter.getString(eventId);
-    const el = top(interpreter.stack);
+    const eventType = interpreter.getCachedString(eventId);
+    const el = interpreter.top();
     el[`dodrio-a-${eventType}`] = mem32[i++];
     el[`dodrio-b-${eventType}`] = mem32[i++];
     return i;
@@ -154,47 +152,56 @@ const OP_TABLE = [
   // 13
   function removeEventListener(interpreter, mem8, mem32, i) {
     const eventId = mem32[i++];
-    const eventType = interpreter.getString(eventId);
-    const el = top(interpreter.stack);
+    const eventType = interpreter.getCachedString(eventId);
+    const el = interpreter.top();
     el.removeEventListener(eventType, interpreter.eventHandler);
     return i;
   },
 
   // 14
-  function addString(interpreter, mem8, mem32, i) {
+  function addCachedString(interpreter, mem8, mem32, i) {
     const pointer = mem32[i++];
     const length = mem32[i++];
     const id = mem32[i++];
     const str = string(mem8, pointer, length);
-    interpreter.addString(str, id);
+    interpreter.addCachedString(str, id);
     return i;
   },
 
   // 15
-  function dropString(interpreter, mem8, mem32, i) {
+  function dropCachedString(interpreter, mem8, mem32, i) {
     const id = mem32[i++];
-    interpreter.dropString(id);
+    interpreter.dropCachedString(id);
     return i;
   },
 
   // 16
   function createElementNS(interpreter, mem8, mem32, i) {
     const tagNameId = mem32[i++];
-    const tagName = interpreter.getString(tagNameId);
+    const tagName = interpreter.getCachedString(tagNameId);
     const nsId = mem32[i++];
-    const ns = interpreter.getString(nsId);
-    interpreter.stack.push(document.createElementNS(ns, tagName));
+    const ns = interpreter.getCachedString(nsId);
+    interpreter.push(document.createElementNS(ns, tagName), -1);
     return i;
   },
 
   // 17
-  function setAttributeNS(interpreter, mem8, mem32, i) {
-    const nameId = mem32[i++];
-    const valueId = mem32[i++];
-    const name = interpreter.getString(nameId);
-    const value = interpreter.getString(valueId);
-    const node = top(interpreter.stack);
-    node.setAttributeNS(null, name, value);
+  function pushChild(interpreter, mem8, mem32, i) {
+    const index = mem32[i++];
+    const parent = interpreter.top();
+    const child = parent.childNodes[index];
+    interpreter.push(child, index);
+    return i;
+  },
+
+  // 18
+  function popPushSibling(interpreter, mem8, mem32, i) {
+    const baseIndex = interpreter.topSiblingIndex();
+    const node = interpreter.pop();
+    const relativeIndex = mem32[i++];
+    const absoluteIndex = baseIndex + relativeIndex;
+    const sibling = node.parentNode.childNodes[absoluteIndex];
+    interpreter.push(sibling, absoluteIndex);
     return i;
   }
 ];
@@ -205,6 +212,7 @@ export class ChangeListInterpreter {
     this.container = container;
     this.ranges = [];
     this.stack = [];
+    this.siblingIndices = [];
     this.strings = new Map();
   }
 
@@ -217,6 +225,7 @@ export class ChangeListInterpreter {
     this.container = null;
     this.ranges = null;
     this.stack = null;
+    this.siblingIndices = null;
     this.strings = null;
   }
 
@@ -248,19 +257,38 @@ export class ChangeListInterpreter {
     const end = (start + len) / 4;
     for (let i = start / 4; i < end; ) {
       const op = mem32[i++];
-      i = OP_TABLE[op](this, mem8, mem32, i);
+      const opFunc = OP_TABLE[op];
+      i = opFunc(this, mem8, mem32, i);
     }
   }
 
-  addString(str, id) {
+  push(node, siblingIndex) {
+    this.stack.push(node);
+    this.siblingIndices.push(siblingIndex);
+  }
+
+  pop() {
+    this.siblingIndices.pop();
+    return this.stack.pop();
+  }
+
+  top() {
+    return this.stack[this.stack.length - 1];
+  }
+
+  topSiblingIndex() {
+    return this.siblingIndices[this.siblingIndices.length - 1];
+  }
+
+  addCachedString(str, id) {
     this.strings.set(id, str);
   }
 
-  dropString(id) {
+  dropCachedString(id) {
     this.strings.delete(id);
   }
 
-  getString(id) {
+  getCachedString(id) {
     return this.strings.get(id);
   }
 

@@ -92,6 +92,7 @@ mod events;
 mod node;
 mod render;
 mod render_context;
+mod traversal;
 mod vdom;
 
 pub mod builder;
