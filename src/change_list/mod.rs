@@ -43,9 +43,7 @@ impl ChangeListPersistentState {
     }
 
     pub(crate) fn builder<'a>(&'a mut self) -> ChangeListBuilder<'a> {
-        ChangeListBuilder {
-            state: self,
-        }
+        ChangeListBuilder { state: self }
     }
 }
 

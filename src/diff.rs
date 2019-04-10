@@ -4,6 +4,7 @@ use crate::{
     events::EventsRegistry,
     node::{Attribute, ElementNode, Listener, Node, NodeKind, TextNode},
 };
+use fxhash::FxHashSet;
 use std::cmp;
 
 pub(crate) fn diff(
@@ -12,7 +13,7 @@ pub(crate) fn diff(
     registry: &mut EventsRegistry,
     old: Node,
     new: Node,
-    cached_roots: &mut bumpalo::collections::Vec<CacheId>,
+    cached_roots: &mut FxHashSet<CacheId>,
 ) {
     match (&new.kind, &old.kind) {
         (
@@ -79,7 +80,7 @@ pub(crate) fn diff(
 
         // Both the new and old nodes are cached.
         (&NodeKind::Cached(ref new), &NodeKind::Cached(ref old)) => {
-            cached_roots.push(new.id);
+            cached_roots.insert(new.id);
 
             if new.id == old.id {
                 // This is the same cached node, so nothing has changed!
@@ -95,7 +96,7 @@ pub(crate) fn diff(
         // we assume that they are pretty different, and it isn't worth diffing
         // the subtrees, so we just create the new cached node afresh.
         (&NodeKind::Cached(ref c), _) => {
-            cached_roots.push(c.id);
+            cached_roots.insert(c.id);
             let new = cached_set.get(c.id);
             create(cached_set, change_list, registry, new, cached_roots);
             registry.remove_subtree(&old);
@@ -187,7 +188,7 @@ fn diff_children(
     registry: &mut EventsRegistry,
     old: &[Node],
     new: &[Node],
-    cached_roots: &mut bumpalo::collections::Vec<CacheId>,
+    cached_roots: &mut FxHashSet<CacheId>,
 ) {
     debug!("  updating children shared by old and new");
 
@@ -259,7 +260,7 @@ fn create(
     change_list: &mut ChangeListBuilder,
     registry: &mut EventsRegistry,
     node: Node,
-    cached_roots: &mut bumpalo::collections::Vec<CacheId>,
+    cached_roots: &mut FxHashSet<CacheId>,
 ) {
     match node.kind {
         NodeKind::Text(TextNode { text }) => {
@@ -298,7 +299,7 @@ fn create(
             }
         }
         NodeKind::Cached(c) => {
-            cached_roots.push(c.id);
+            cached_roots.insert(c.id);
             let node = cached_set.get(c.id);
             create(cached_set, change_list, registry, node, cached_roots)
         }

@@ -268,9 +268,10 @@ impl VdomInnerExclusive {
 
                 // Diff the old contents with the new contents.
                 let old_contents = self.current_root.take().unwrap();
-                let mut cache_roots = bumpalo::collections::Vec::new_in(&dom_buffers[1]);
+                let mut cache_roots;
                 {
                     let cached_set = self.cached_set.borrow();
+                    cache_roots = cached_set.new_roots_set();
                     let mut change_list = self.change_list.builder();
                     crate::diff::diff(
                         &cached_set,
@@ -288,7 +289,7 @@ impl VdomInnerExclusive {
                 {
                     // Clean up unused cached renders.
                     let mut cached_set = self.cached_set.borrow_mut();
-                    cached_set.gc(&mut registry, &cache_roots);
+                    cached_set.gc(&mut registry, cache_roots);
                 }
 
                 // Swap the buffers to make the bump arena with the new contents the
