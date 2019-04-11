@@ -190,6 +190,13 @@ fn diff_children(
     new: &[Node],
     cached_roots: &mut FxHashSet<CacheId>,
 ) {
+    if new.is_empty() {
+        if !old.is_empty() {
+            remove_children(change_list, registry, old);
+        }
+        return;
+    }
+
     debug!("  updating children shared by old and new");
 
     let num_children_to_diff = cmp::min(new.len(), old.len());
@@ -253,6 +260,19 @@ fn diff_children(
     if pushed {
         change_list.pop();
     }
+}
+
+fn remove_children(
+    change_list: &mut ChangeListBuilder,
+    registry: &mut EventsRegistry,
+    old: &[Node],
+) {
+    for child in old {
+        registry.remove_subtree(child);
+    }
+    // Fast way to remove all children: set the node's textContent to an empty
+    // string.
+    change_list.set_text("");
 }
 
 fn create(
