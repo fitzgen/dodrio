@@ -38,27 +38,31 @@ pub(crate) struct CacheEntry {
 }
 
 impl CachedSet {
-    pub(crate) fn gc(&mut self, registry: &mut EventsRegistry, roots: &[CacheId]) {
-        // TODO: We need to port a hash set over in `bumpalo::collections` so
-        // that we can use a temporary bump arena for this set.
-        let mut mark_bits = FxHashSet::default();
-        mark_bits.reserve(self.items.len());
+    pub(crate) fn new_roots_set(&self) -> FxHashSet<CacheId> {
+        let mut roots = FxHashSet::default();
+        roots.reserve(self.items.len());
+        roots
+    }
+
+    pub(crate) fn gc(&mut self, registry: &mut EventsRegistry, roots: FxHashSet<CacheId>) {
+        let mut marked = FxHashSet::default();
+        marked.reserve(self.items.len());
 
         for root in roots {
-            if mark_bits.insert(*root) {
+            if marked.insert(root) {
                 let entry = self
                     .items
-                    .get(root)
+                    .get(&root)
                     .expect_throw("CachedSet::gc: should have root in cached set");
 
                 // NB: no need to recurse here because `edges` already contains
                 // transitive edges!
-                mark_bits.extend(entry.edges.iter().cloned());
+                marked.extend(entry.edges.iter().cloned());
             }
         }
 
         self.items.retain(|id, entry| {
-            let keep = mark_bits.contains(id);
+            let keep = marked.contains(id);
             if !keep {
                 debug!("CachedSet::gc: removing {:?}", id);
                 let node: &Node = unsafe { &*entry.node };

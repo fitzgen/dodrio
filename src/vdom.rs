@@ -1,4 +1,4 @@
-use super::change_list::ChangeList;
+use super::change_list::ChangeListPersistentState;
 use super::RootRender;
 use crate::cached_set::CachedSet;
 use crate::events::EventsRegistry;
@@ -56,9 +56,10 @@ pub(crate) struct VdomInnerExclusive {
     component: Option<Box<RootRender>>,
 
     dom_buffers: Option<[Bump; 2]>,
-    change_list: ManuallyDrop<ChangeList>,
+    change_list: ManuallyDrop<ChangeListPersistentState>,
     container: crate::Element,
     events_registry: Option<Rc<RefCell<EventsRegistry>>>,
+    events_trampoline: Option<crate::EventsTrampoline>,
     cached_set: crate::RefCell<CachedSet>,
 
     // Actually a reference into `self.dom_buffers[0]` or if `self.component` is
@@ -92,6 +93,7 @@ impl fmt::Debug for VdomInnerExclusive {
             .field("change_list", &self.change_list)
             .field("container", &self.container)
             .field("events_registry", &self.events_registry)
+            .field("events_trampoline", &"..")
             .field("current_root", &self.current_root)
             .finish()
     }
@@ -160,7 +162,7 @@ impl Vdom {
     /// rendering component.
     pub fn with_boxed_root_render(container: &crate::Element, component: Box<RootRender>) -> Vdom {
         let dom_buffers = [Bump::new(), Bump::new()];
-        let change_list = ManuallyDrop::new(ChangeList::new(container));
+        let change_list = ManuallyDrop::new(ChangeListPersistentState::new(container));
 
         // Create a dummy `<div/>` in our container.
         initialize_container(container);
@@ -179,6 +181,7 @@ impl Vdom {
                 container,
                 current_root,
                 events_registry: None,
+                events_trampoline: None,
                 cached_set: crate::RefCell::new(Default::default()),
             }),
         });
@@ -188,7 +191,9 @@ impl Vdom {
         {
             let mut inner = inner.exclusive.borrow_mut();
             inner.events_registry = Some(events_registry);
-            inner.change_list.init_events_trampoline(events_trampoline);
+            inner.change_list.init_events_trampoline(&events_trampoline);
+            debug_assert!(inner.events_trampoline.is_none());
+            inner.events_trampoline = Some(events_trampoline);
 
             // Diff and apply the `contents` against our dummy `<div/>`.
             inner.render();
@@ -263,23 +268,28 @@ impl VdomInnerExclusive {
 
                 // Diff the old contents with the new contents.
                 let old_contents = self.current_root.take().unwrap();
-                let mut cache_roots = bumpalo::collections::Vec::new_in(&dom_buffers[1]);
+                let mut cache_roots;
                 {
                     let cached_set = self.cached_set.borrow();
+                    cache_roots = cached_set.new_roots_set();
+                    let mut change_list = self.change_list.builder();
                     crate::diff::diff(
                         &cached_set,
-                        &mut self.change_list,
+                        &mut change_list,
                         &mut registry,
                         old_contents,
                         new_contents.clone(),
                         &mut cache_roots,
                     );
+
+                    // Tell JS to apply our diff-generated changes to the physical DOM!
+                    change_list.finish();
                 }
 
                 {
                     // Clean up unused cached renders.
                     let mut cached_set = self.cached_set.borrow_mut();
-                    cached_set.gc(&mut registry, &cache_roots);
+                    cached_set.gc(&mut registry, cache_roots);
                 }
 
                 // Swap the buffers to make the bump arena with the new contents the
@@ -289,12 +299,6 @@ impl VdomInnerExclusive {
             }
 
             self.events_registry = Some(events_registry);
-
-            // Find and drop cached strings that aren't in use anymore.
-            self.change_list.drop_unused_strings();
-
-            // Tell JS to apply our diff-generated changes to the physical DOM!
-            self.change_list.apply_changes();
         }
     }
 
