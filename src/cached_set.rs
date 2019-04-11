@@ -140,7 +140,7 @@ impl CachedSet {
     }
 
     /// Get the node for the given cache id.
-    pub fn get(&self, mut id: CacheId) -> Node {
+    pub fn get(&self, mut id: CacheId) -> &Node {
         debug!("CachedSet::get: id = {:?}", id);
         loop {
             let entry = self
@@ -152,7 +152,7 @@ impl CachedSet {
                 id = c.id;
                 continue;
             } else {
-                return node.clone();
+                return node;
             }
         }
     }

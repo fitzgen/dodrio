@@ -11,8 +11,8 @@ pub(crate) fn diff(
     cached_set: &CachedSet,
     change_list: &mut ChangeListBuilder,
     registry: &mut EventsRegistry,
-    old: Node,
-    new: Node,
+    old: &Node,
+    new: &Node,
     cached_roots: &mut FxHashSet<CacheId>,
 ) {
     match (&new.kind, &old.kind) {
@@ -197,6 +197,11 @@ fn diff_children(
         return;
     }
 
+    if old.is_empty() {
+        create_children(cached_set, change_list, registry, new, cached_roots);
+        return;
+    }
+
     debug!("  updating children shared by old and new");
 
     let num_children_to_diff = cmp::min(new.len(), old.len());
@@ -222,8 +227,8 @@ fn diff_children(
             cached_set,
             change_list,
             registry,
-            old_child.clone(),
-            new_child.clone(),
+            old_child,
+            new_child,
             cached_roots,
         );
     }
@@ -240,25 +245,37 @@ fn diff_children(
         pushed = false;
     } else {
         debug!("  creating new children");
-        for (i, new_child) in new_children.enumerate() {
-            if i == 0 && pushed {
-                change_list.pop();
-                pushed = false;
-            }
-            create(
-                cached_set,
-                change_list,
-                registry,
-                new_child.clone(),
-                cached_roots,
-            );
-            change_list.append_child();
+        if pushed {
+            change_list.pop();
+            pushed = false;
         }
+        create_children(
+            cached_set,
+            change_list,
+            registry,
+            new_children,
+            cached_roots,
+        );
     }
 
     debug!("  done updating children");
     if pushed {
         change_list.pop();
+    }
+}
+
+fn create_children<'a, I>(
+    cached_set: &CachedSet,
+    change_list: &mut ChangeListBuilder,
+    registry: &mut EventsRegistry,
+    new: I,
+    cached_roots: &mut FxHashSet<CacheId>,
+) where
+    I: IntoIterator<Item = &'a Node<'a>>,
+{
+    for child in new {
+        create(cached_set, change_list, registry, child, cached_roots);
+        change_list.append_child();
     }
 }
 
@@ -279,7 +296,7 @@ fn create(
     cached_set: &CachedSet,
     change_list: &mut ChangeListBuilder,
     registry: &mut EventsRegistry,
-    node: Node,
+    node: &Node,
     cached_roots: &mut FxHashSet<CacheId>,
 ) {
     match node.kind {
@@ -308,17 +325,11 @@ fn create(
                 change_list.set_attribute(&attr.name, &attr.value);
             }
             for child in children {
-                create(
-                    cached_set,
-                    change_list,
-                    registry,
-                    child.clone(),
-                    cached_roots,
-                );
+                create(cached_set, change_list, registry, child, cached_roots);
                 change_list.append_child();
             }
         }
-        NodeKind::Cached(c) => {
+        NodeKind::Cached(ref c) => {
             cached_roots.insert(c.id);
             let node = cached_set.get(c.id);
             create(cached_set, change_list, registry, node, cached_roots)

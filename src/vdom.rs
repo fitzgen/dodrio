@@ -277,8 +277,8 @@ impl VdomInnerExclusive {
                         &cached_set,
                         &mut change_list,
                         &mut registry,
-                        old_contents,
-                        new_contents.clone(),
+                        &old_contents,
+                        &new_contents,
                         &mut cache_roots,
                     );
 
