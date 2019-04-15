@@ -45,8 +45,7 @@ impl StringsCache {
     }
 
     pub fn drop_unused_strings(&mut self, emitter: &InstructionEmitter) {
-        debug!("drop_unused_strings()");
-        self.entries.retain(|_string, entry| {
+        self.entries.retain(|string, entry| {
             if entry.used {
                 // Since this entry was used during while rendering this frame,
                 // it is likely going to be used for the next frame as well. So
@@ -57,7 +56,9 @@ impl StringsCache {
                 entry.used = false;
                 true
             } else {
-                emitter.drop_cached_string(entry.key.into());
+                let key = entry.key.into();
+                debug!("emit: drop_cached_string({}) = {:?}", key, string);
+                emitter.drop_cached_string(key);
                 false
             }
         });

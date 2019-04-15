@@ -2,8 +2,8 @@ use crate::{cached_set::CacheId, RootRender, VdomWeak};
 use bumpalo::Bump;
 use std::fmt;
 use std::iter;
-use std::marker::PhantomData;
 use std::mem;
+use std::u32;
 
 /// A virtual DOM node.
 #[derive(Debug, Clone)]
@@ -28,7 +28,7 @@ pub_unstable_internal! {
 
         /// A node in the vdom's `CachedSet`. This allows us to avoid
         /// re-rendering and re-diffing subtrees.
-        Cached(CachedNode<'a>),
+        Cached(CachedNode),
     }
 }
 
@@ -41,11 +41,49 @@ pub_unstable_internal! {
     }
 }
 
+mod flags {
+    bitflags::bitflags! {
+        #[derive(Default)]
+        pub struct ElementNodeFlags: u32 {
+            const HAS_KEYED_CHILDREN = 1 << 31;
+            const KEY_MASK = !(Self::HAS_KEYED_CHILDREN).bits;
+        }
+    }
+
+    impl ElementNodeFlags {
+        #[inline]
+        pub fn has_keyed_children(self) -> bool {
+            self.contains(ElementNodeFlags::HAS_KEYED_CHILDREN)
+        }
+
+        #[inline]
+        pub fn key(self) -> u32 {
+            (self & ElementNodeFlags::KEY_MASK).bits
+        }
+
+        #[inline]
+        pub fn set_key(&mut self, key: u32) {
+            debug_assert_eq!(key & (!ElementNodeFlags::KEY_MASK).bits, 0);
+            self.bits |= key;
+        }
+    }
+}
+
+cfg_if::cfg_if! {
+    if #[cfg(feature = "xxx-unstable-internal-use-only")] {
+        #[doc(hidden)]
+        pub use self::flags::ElementNodeFlags;
+    } else {
+        pub(crate) use self::flags::ElementNodeFlags;
+    }
+}
+
 pub_unstable_internal! {
     /// Elements have a tag name, zero or more attributes, and zero or more
     /// children.
     #[derive(Debug, Clone)]
     pub(crate) struct ElementNode<'a> {
+        pub flags: ElementNodeFlags,
         pub tag_name: &'a str,
         pub listeners: &'a [Listener<'a>],
         pub attributes: &'a [Attribute<'a>],
@@ -59,12 +97,18 @@ pub_unstable_internal! {
     /// allows us to avoid both re-rendering a sub-tree and re-diffing
     /// it. `CachedNode`s cannot contain cycles, since they can only contain
     /// other `CachedNode`s that already exist when they are being constructed.
-    #[derive(Debug, Clone)]
-    pub(crate) struct CachedNode<'a> {
+    #[derive(Debug, Clone, Copy)]
+    pub(crate) struct CachedNode {
         pub id: CacheId,
-        pub _phantom: PhantomData<&'a Node<'a>>,
+        // Always a copy of the inner cached node's flags when the inner node
+        // has flags.
+        pub flags: Option<ElementNodeFlags>,
     }
 }
+
+/// The key for keyed children.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub(crate) struct NodeKey(u32);
 
 /// An event listener callback function.
 ///
@@ -90,6 +134,15 @@ pub struct Listener<'a> {
 pub struct Attribute<'a> {
     pub(crate) name: &'a str,
     pub(crate) value: &'a str,
+}
+
+impl<'a> From<CachedNode> for Node<'a> {
+    #[inline]
+    fn from(c: CachedNode) -> Self {
+        Node {
+            kind: NodeKind::Cached(c),
+        }
+    }
 }
 
 impl fmt::Debug for Listener<'_> {
@@ -135,6 +188,7 @@ impl<'a> Node<'a> {
     #[inline]
     pub(crate) fn element<Listeners, Attributes, Children>(
         bump: &'a Bump,
+        flags: ElementNodeFlags,
         tag_name: &'a str,
         listeners: Listeners,
         attributes: Attributes,
@@ -157,6 +211,7 @@ impl<'a> Node<'a> {
 
         Node {
             kind: NodeKind::Element(ElementNode {
+                flags,
                 tag_name,
                 listeners,
                 attributes,
@@ -174,14 +229,21 @@ impl<'a> Node<'a> {
         }
     }
 
-    /// Construct a new cached node with the given id.
     #[inline]
-    pub(crate) fn cached(id: CacheId) -> Node<'a> {
-        Node {
-            kind: NodeKind::Cached(CachedNode {
-                id,
-                _phantom: PhantomData,
-            }),
+    pub(crate) fn flags(&self) -> Option<ElementNodeFlags> {
+        match &self.kind {
+            NodeKind::Text(_) => None,
+            NodeKind::Element(e) => Some(e.flags),
+            NodeKind::Cached(c) => c.flags,
+        }
+    }
+
+    #[inline]
+    pub(crate) fn key(&self) -> NodeKey {
+        match &self.kind {
+            NodeKind::Text(_) => NodeKey(u32::MAX),
+            NodeKind::Element(e) => NodeKey(e.flags.key()),
+            NodeKind::Cached(c) => NodeKey(c.flags.map_or(u32::MAX, |f| f.key())),
         }
     }
 }

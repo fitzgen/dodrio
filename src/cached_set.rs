@@ -64,7 +64,6 @@ impl CachedSet {
         self.items.retain(|id, entry| {
             let keep = marked.contains(id);
             if !keep {
-                debug!("CachedSet::gc: removing {:?}", id);
                 let node: &Node = unsafe { &*entry.node };
                 registry.remove_subtree(node);
             }
@@ -129,7 +128,6 @@ impl CachedSet {
 
         let mut set = set.borrow_mut();
         let id = set.next_id();
-        debug!("CachedSet::insert: id = {:?}; entry = {:?}", id, entry);
         set.items.insert(id, entry);
         id
     }
@@ -141,7 +139,6 @@ impl CachedSet {
 
     /// Get the node for the given cache id.
     pub fn get(&self, mut id: CacheId) -> &Node {
-        debug!("CachedSet::get: id = {:?}", id);
         loop {
             let entry = self
                 .items

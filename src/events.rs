@@ -64,7 +64,6 @@ cfg_if::cfg_if! {
 
                 let weak_registry = Rc::downgrade(&registry);
                 let closure = Closure::wrap(Box::new(move |event, a, b| {
-                    debug!("Events trampoline invoked with (0x{:x}, 0x{:x})", a, b);
                     debug_assert!(a != 0);
 
                     // if the VdomInnerExclusive is keeping this closure alive, then the
@@ -95,7 +94,6 @@ cfg_if::cfg_if! {
 
             pub(crate) fn remove(&mut self, listener: &Listener) {
                 let id = listener.get_callback_parts();
-                debug!("EventsRegistry::remove(0x{:x}, 0x{:x})", id.0, id.1);
                 debug_assert!(id.0 != 0);
                 self.active.remove(&id);
             }
@@ -128,7 +126,6 @@ cfg_if::cfg_if! {
             /// diffing.
             pub(crate) unsafe fn add<'a>(&mut self, listener: &'a Listener<'a>) {
                 let id = listener.get_callback_parts();
-                debug!("EventsRegistry::add(0x{:x}, 0x{:x})", id.0, id.1);
                 debug_assert!(id.0 != 0);
 
                 let callback =
@@ -139,7 +136,6 @@ cfg_if::cfg_if! {
 
             /// Clear all event listeners from the registry.
             pub(crate) fn clear_active_listeners(&mut self) {
-                debug!("EventsRegistry::clear_active_listeners()");
                 self.active.clear();
             }
         }

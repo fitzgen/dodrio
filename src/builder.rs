@@ -1,6 +1,6 @@
 //! Helpers for building virtual DOM nodes.
 
-use crate::{Attribute, Listener, Node, RootRender, VdomWeak};
+use crate::{node::ElementNodeFlags, Attribute, Listener, Node, RootRender, VdomWeak};
 use bumpalo::Bump;
 
 /// A virtual DOM element builder.
@@ -16,6 +16,7 @@ where
     Children: 'a + AsRef<[Node<'a>]>,
 {
     bump: &'a Bump,
+    flags: ElementNodeFlags,
     tag_name: &'a str,
     listeners: Listeners,
     attributes: Attributes,
@@ -61,6 +62,7 @@ impl<'a>
         let bump = bump.into();
         ElementBuilder {
             bump,
+            flags: Default::default(),
             tag_name,
             listeners: bumpalo::collections::Vec::new_in(bump),
             attributes: bumpalo::collections::Vec::new_in(bump),
@@ -110,6 +112,7 @@ where
     {
         ElementBuilder {
             bump: self.bump,
+            flags: self.flags,
             tag_name: self.tag_name,
             listeners,
             attributes: self.attributes,
@@ -148,6 +151,7 @@ where
     {
         ElementBuilder {
             bump: self.bump,
+            flags: self.flags,
             tag_name: self.tag_name,
             listeners: self.listeners,
             attributes,
@@ -186,6 +190,7 @@ where
     {
         ElementBuilder {
             bump: self.bump,
+            flags: self.flags,
             tag_name: self.tag_name,
             listeners: self.listeners,
             attributes: self.attributes,
@@ -204,7 +209,7 @@ where
     /// let b = Bump::new();
     ///
     /// // Create a `<td>` tag with an xhtml namespace
-    /// let my_div = td(&b)
+    /// let my_td = td(&b)
     ///     .namespace(Some("http://www.w3.org/1999/xhtml"))
     ///     .finish();
     /// ```
@@ -212,12 +217,63 @@ where
     pub fn namespace(self, namespace: Option<&'a str>) -> Self {
         ElementBuilder {
             bump: self.bump,
+            flags: self.flags,
             tag_name: self.tag_name,
             listeners: self.listeners,
             attributes: self.attributes,
             children: self.children,
             namespace,
         }
+    }
+
+    /// Set whether this node has keyed children or not. The default
+    /// configuration is `false`.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use dodrio::{builder::*, bumpalo::Bump};
+    ///
+    /// let b = Bump::new();
+    ///
+    /// // Create a `<ul>` with keyed children.
+    /// let my_ul = ul(&b)
+    ///     .has_keyed_children(true)
+    ///     .children(create_keyed_children())
+    ///     .finish();
+    /// # fn create_keyed_children() -> [dodrio::Node<'static>; 0] { unimplemented!() }
+    /// ```
+    #[inline]
+    pub fn has_keyed_children(mut self, has_keyed_children: bool) -> Self {
+        if has_keyed_children {
+            self.flags |= ElementNodeFlags::HAS_KEYED_CHILDREN;
+        } else {
+            self.flags &= !ElementNodeFlags::HAS_KEYED_CHILDREN;
+        }
+        self
+    }
+
+    /// Set this element's key. The key must be less than or equal to `2^31 -
+    /// 1`.
+    ///
+    /// This element's parent must have `has_keyed_children(true)` set.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use dodrio::{builder::*, bumpalo::Bump};
+    ///
+    /// let b = Bump::new();
+    ///
+    /// let my_li = li(&b)
+    ///     .key(1337)
+    ///     .finish();
+    /// ```
+    #[inline]
+    pub fn key(mut self, key: u32) -> Self {
+        debug_assert_eq!(key & (!ElementNodeFlags::KEY_MASK).bits(), 0);
+        self.flags.set_key(key);
+        self
     }
 
     /// Create the virtual DOM node described by this builder.
@@ -239,6 +295,7 @@ where
     pub fn finish(self) -> Node<'a> {
         Node::element(
             self.bump,
+            self.flags,
             self.tag_name,
             self.listeners,
             self.attributes,

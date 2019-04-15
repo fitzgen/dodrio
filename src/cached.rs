@@ -1,7 +1,4 @@
-use crate::{
-    cached_set::{CacheId, CachedSet},
-    Node, Render, RenderContext,
-};
+use crate::{cached_set::CachedSet, node::CachedNode, Node, Render, RenderContext};
 use std::cell::Cell;
 use std::ops::{Deref, DerefMut};
 
@@ -10,7 +7,7 @@ use std::ops::{Deref, DerefMut};
 #[derive(Clone, Debug)]
 pub struct Cached<R> {
     inner: R,
-    cached: Cell<Option<CacheId>>,
+    cached: Cell<Option<CachedNode>>,
 }
 
 impl<R> Cached<R> {
@@ -112,7 +109,7 @@ where
     R: Render,
 {
     fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
-        let id = match self.cached.get() {
+        let cached = match self.cached.get() {
             // This does-the-cache-contain-this-id check is necessary because
             // the same `Cached<R>` instance can be rendered into vdom A, which
             // will save the results into A's cached set and yield id X. Then,
@@ -140,21 +137,27 @@ where
             //
             // This is all do-able but is a bit more book keeping than we really
             // want to do unless it is well motivated.
-            Some(id)
+            Some(cached)
                 if {
                     let cached_set = cx.cached_set.borrow();
-                    cached_set.contains(id)
+                    cached_set.contains(cached.id)
                 } =>
             {
-                id
+                cached
             }
             _ => {
-                let id = CachedSet::insert(cx, |nested_cx| self.inner.render(nested_cx));
-                self.cached.set(Some(id));
-                id
+                let mut flags = Default::default();
+                let id = CachedSet::insert(cx, |nested_cx| {
+                    let node = self.inner.render(nested_cx);
+                    flags = node.flags();
+                    node
+                });
+                let cached = CachedNode { id, flags };
+                self.cached.set(Some(cached));
+                cached
             }
         };
 
-        Node::cached(id)
+        cached.into()
     }
 }

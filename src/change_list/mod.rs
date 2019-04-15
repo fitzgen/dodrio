@@ -17,11 +17,11 @@ pub(crate) struct ChangeListPersistentState {
 
 pub(crate) struct ChangeListBuilder<'a> {
     state: &'a mut ChangeListPersistentState,
+    next_temporary: u32,
 }
 
 impl Drop for ChangeListPersistentState {
     fn drop(&mut self) {
-        debug!("Dropping ChangeListPersistentState");
         self.interpreter.unmount();
     }
 }
@@ -43,7 +43,10 @@ impl ChangeListPersistentState {
     }
 
     pub(crate) fn builder<'a>(&'a mut self) -> ChangeListBuilder<'a> {
-        ChangeListBuilder { state: self }
+        ChangeListBuilder {
+            state: self,
+            next_temporary: 0,
+        }
     }
 }
 
@@ -77,6 +80,53 @@ cfg_if::cfg_if! {
 }
 
 impl ChangeListBuilder<'_> {
+    pub fn next_temporary(&self) -> u32 {
+        self.next_temporary
+    }
+
+    pub fn set_next_temporary(&mut self, next_temporary: u32) {
+        self.next_temporary = next_temporary;
+    }
+
+    pub fn save_children_to_temporaries(&mut self, start: usize, end: usize) -> u32 {
+        debug_assert!(start < end);
+        let temp_base = self.next_temporary;
+        debug!(
+            "emit: save_children_to_temporaries({}, {}, {})",
+            temp_base, start, end
+        );
+        self.next_temporary = temp_base + (end - start) as u32;
+        self.state
+            .emitter
+            .save_children_to_temporaries(temp_base, start as u32, end as u32);
+        temp_base
+    }
+
+    pub fn push_temporary(&self, temp: u32) {
+        debug!("emit: push_temporary({})", temp);
+        self.state.emitter.push_temporary(temp);
+    }
+
+    pub fn push_child(&self, child: usize) {
+        debug!("emit: push_child({})", child);
+        self.state.emitter.push_child(child as u32);
+    }
+
+    pub fn remove_child(&self, child: usize) {
+        debug!("emit: remove_child({})", child);
+        self.state.emitter.remove_child(child as u32);
+    }
+
+    pub fn push_last_child(&self) {
+        debug!("emit: push_last_child()");
+        self.state.emitter.push_last_child();
+    }
+
+    pub fn insert_before(&self) {
+        debug!("emit: insert_before()");
+        self.state.emitter.insert_before();
+    }
+
     pub fn ensure_string(&mut self, string: &str) -> StringKey {
         self.state
             .strings

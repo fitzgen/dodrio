@@ -201,4 +201,60 @@ define_change_list_instructions! {
     /// stack.push(document.createElementNS(tag_name, namespace))
     /// ```
     create_element_ns(tag_name_key, namespace_key) = 16,
+
+    /// Stack: `[...] -> [...]`
+    ///
+    /// ```text
+    /// parent = stack.top()
+    /// children = parent.childNodes
+    /// temp = temp_base
+    /// for i in start .. end:
+    ///     temporaries[temp] = children[i]
+    ///     temp += 1
+    /// ```
+    save_children_to_temporaries(temp_base, start, end) = 17,
+
+    /// Stack: `[... Node] -> [... Node Node]`
+    ///
+    /// ```text
+    /// parent = stack.top()
+    /// child = parent.childNodes[n]
+    /// stack.push(child)
+    /// ```
+    push_child(n) = 18,
+
+    /// Stack: `[...] -> [... Node]`
+    ///
+    /// ```text
+    /// stack.push(temporaries[temp])
+    /// ```
+    push_temporary(temp) = 19,
+
+    /// Stack: `[... Node Node] -> [... Node]`
+    ///
+    /// ```text
+    /// before = stack.pop()
+    /// after = stack.pop()
+    /// after.insertBefore(before)
+    /// stack.push(before)
+    /// ```
+    insert_before() = 20,
+
+    /// Stack: `[... Node] -> [... Node Node]`
+    ///
+    /// ```text
+    /// parent = stack.top()
+    /// child = parent.lastChild
+    /// stack.push(child)
+    /// ```
+    push_last_child() = 21,
+
+    /// Stack: `[... Node] -> [... Node]`
+    ///
+    /// ```text
+    /// parent = stack.top()
+    /// child = parent.childNodes[n]
+    /// child.remove()
+    /// ```
+    remove_child(n) = 22,
 }
