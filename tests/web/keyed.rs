@@ -23,7 +23,7 @@ fn keyed<'a, Keys>(cx: &mut RenderContext<'a>, keys: Keys) -> Node<'a>
 where
     Keys: AsRef<[u16]>,
 {
-    let mut parent = div(&cx).attr("class", "parent").has_keyed_children(true);
+    let mut parent = div(&cx).attr("class", "parent");
 
     for &k in keys.as_ref() {
         parent = parent.child(Keyed(k).render(cx));
@@ -220,7 +220,6 @@ keyed_tests! {
     nested_keyed_children {
         before(cx) {
             ul(&cx)
-                .has_keyed_children(true)
                 .children([
                     li(&cx)
                         .key(1)
@@ -245,7 +244,6 @@ keyed_tests! {
         }
         after(cx) {
             ul(&cx)
-                .has_keyed_children(true)
                 .children([
                     li(&cx)
                         .key(9)

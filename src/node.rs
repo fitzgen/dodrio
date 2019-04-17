@@ -41,49 +41,12 @@ pub_unstable_internal! {
     }
 }
 
-mod flags {
-    bitflags::bitflags! {
-        #[derive(Default)]
-        pub struct ElementNodeFlags: u32 {
-            const HAS_KEYED_CHILDREN = 1 << 31;
-            const KEY_MASK = !(Self::HAS_KEYED_CHILDREN).bits;
-        }
-    }
-
-    impl ElementNodeFlags {
-        #[inline]
-        pub fn has_keyed_children(self) -> bool {
-            self.contains(ElementNodeFlags::HAS_KEYED_CHILDREN)
-        }
-
-        #[inline]
-        pub fn key(self) -> u32 {
-            (self & ElementNodeFlags::KEY_MASK).bits
-        }
-
-        #[inline]
-        pub fn set_key(&mut self, key: u32) {
-            debug_assert_eq!(key & (!ElementNodeFlags::KEY_MASK).bits, 0);
-            self.bits |= key;
-        }
-    }
-}
-
-cfg_if::cfg_if! {
-    if #[cfg(feature = "xxx-unstable-internal-use-only")] {
-        #[doc(hidden)]
-        pub use self::flags::ElementNodeFlags;
-    } else {
-        pub(crate) use self::flags::ElementNodeFlags;
-    }
-}
-
 pub_unstable_internal! {
     /// Elements have a tag name, zero or more attributes, and zero or more
     /// children.
     #[derive(Debug, Clone)]
     pub(crate) struct ElementNode<'a> {
-        pub flags: ElementNodeFlags,
+        pub key: NodeKey,
         pub tag_name: &'a str,
         pub listeners: &'a [Listener<'a>],
         pub attributes: &'a [Attribute<'a>],
@@ -100,15 +63,30 @@ pub_unstable_internal! {
     #[derive(Debug, Clone, Copy)]
     pub(crate) struct CachedNode {
         pub id: CacheId,
-        // Always a copy of the inner cached node's flags when the inner node
-        // has flags.
-        pub flags: Option<ElementNodeFlags>,
+        // Always a copy of the inner cached node's key.
+        pub key: NodeKey,
     }
 }
 
-/// The key for keyed children.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(crate) struct NodeKey(u32);
+pub_unstable_internal! {
+    /// The key for keyed children.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+    pub(crate) struct NodeKey(pub(crate) u32);
+}
+
+impl NodeKey {
+    pub const NONE: NodeKey = NodeKey(u32::MAX);
+
+    #[inline]
+    pub fn is_none(&self) -> bool {
+        *self == Self::NONE
+    }
+
+    #[inline]
+    pub fn is_some(&self) -> bool {
+        !self.is_none()
+    }
+}
 
 /// An event listener callback function.
 ///
@@ -188,7 +166,7 @@ impl<'a> Node<'a> {
     #[inline]
     pub(crate) fn element<Listeners, Attributes, Children>(
         bump: &'a Bump,
-        flags: ElementNodeFlags,
+        key: NodeKey,
         tag_name: &'a str,
         listeners: Listeners,
         attributes: Attributes,
@@ -211,7 +189,7 @@ impl<'a> Node<'a> {
 
         Node {
             kind: NodeKind::Element(ElementNode {
-                flags,
+                key,
                 tag_name,
                 listeners,
                 attributes,
@@ -230,20 +208,11 @@ impl<'a> Node<'a> {
     }
 
     #[inline]
-    pub(crate) fn flags(&self) -> Option<ElementNodeFlags> {
-        match &self.kind {
-            NodeKind::Text(_) => None,
-            NodeKind::Element(e) => Some(e.flags),
-            NodeKind::Cached(c) => c.flags,
-        }
-    }
-
-    #[inline]
     pub(crate) fn key(&self) -> NodeKey {
         match &self.kind {
-            NodeKind::Text(_) => NodeKey(u32::MAX),
-            NodeKind::Element(e) => NodeKey(e.flags.key()),
-            NodeKind::Cached(c) => NodeKey(c.flags.map_or(u32::MAX, |f| f.key())),
+            NodeKind::Text(_) => NodeKey::NONE,
+            NodeKind::Element(e) => e.key,
+            NodeKind::Cached(c) => c.key,
         }
     }
 }

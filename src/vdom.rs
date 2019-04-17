@@ -2,7 +2,7 @@ use super::change_list::ChangeListPersistentState;
 use super::RootRender;
 use crate::cached_set::CachedSet;
 use crate::events::EventsRegistry;
-use crate::node::Node;
+use crate::node::{Node, NodeKey};
 use crate::RenderContext;
 use bumpalo::Bump;
 use futures::future::Future;
@@ -166,8 +166,7 @@ impl Vdom {
 
         // Create a dummy `<div/>` in our container.
         initialize_container(container);
-        let current_root =
-            Node::element(&dom_buffers[0], Default::default(), "div", [], [], [], None);
+        let current_root = Node::element(&dom_buffers[0], NodeKey::NONE, "div", [], [], [], None);
         let current_root = Some(unsafe { extend_node_lifetime(current_root) });
 
         let container = container.clone();

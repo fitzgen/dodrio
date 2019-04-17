@@ -2,7 +2,7 @@ use crate::{
     cached_set::{CacheId, CachedSet},
     change_list::ChangeListBuilder,
     events::EventsRegistry,
-    node::{Attribute, ElementNode, ElementNodeFlags, Listener, Node, NodeKind, TextNode},
+    node::{Attribute, ElementNode, Listener, Node, NodeKind, TextNode},
 };
 use fxhash::{FxHashMap, FxHashSet};
 use std::cmp::Ordering;
@@ -51,7 +51,7 @@ pub(crate) fn diff(
 
         (
             &NodeKind::Element(ElementNode {
-                flags: new_flags,
+                key: _,
                 tag_name: new_tag_name,
                 listeners: new_listeners,
                 attributes: new_attributes,
@@ -59,7 +59,7 @@ pub(crate) fn diff(
                 namespace: new_namespace,
             }),
             &NodeKind::Element(ElementNode {
-                flags: old_flags,
+                key: _,
                 tag_name: old_tag_name,
                 listeners: old_listeners,
                 attributes: old_attributes,
@@ -79,8 +79,6 @@ pub(crate) fn diff(
                 cached_set,
                 change_list,
                 registry,
-                new_flags,
-                old_flags,
                 old_children,
                 new_children,
                 cached_roots,
@@ -212,8 +210,6 @@ fn diff_children(
     cached_set: &CachedSet,
     change_list: &mut ChangeListBuilder,
     registry: &mut EventsRegistry,
-    new_flags: ElementNodeFlags,
-    old_flags: ElementNodeFlags,
     old: &[Node],
     new: &[Node],
     cached_roots: &mut FxHashSet<CacheId>,
@@ -230,7 +226,19 @@ fn diff_children(
         return;
     }
 
-    if new_flags.has_keyed_children() && old_flags.has_keyed_children() {
+    let new_is_keyed = new[0].key().is_some();
+    let old_is_keyed = old[0].key().is_some();
+
+    debug_assert!(
+        new.iter().all(|n| n.key().is_some() == new_is_keyed),
+        "all siblings must be keyed or all siblings must be non-keyed"
+    );
+    debug_assert!(
+        old.iter().all(|o| o.key().is_some() == old_is_keyed),
+        "all siblings must be keyed or all siblings must be non-keyed"
+    );
+
+    if new_is_keyed && old_is_keyed {
         let t = change_list.next_temporary();
         diff_keyed_children(cached_set, change_list, registry, old, new, cached_roots);
         change_list.set_next_temporary(t);
@@ -877,7 +885,7 @@ fn create(
             change_list.create_text_node(text);
         }
         NodeKind::Element(ElementNode {
-            flags: _,
+            key: _,
             tag_name,
             listeners,
             attributes,

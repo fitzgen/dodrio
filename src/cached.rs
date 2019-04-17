@@ -1,4 +1,8 @@
-use crate::{cached_set::CachedSet, node::CachedNode, Node, Render, RenderContext};
+use crate::{
+    cached_set::CachedSet,
+    node::{CachedNode, NodeKey},
+    Node, Render, RenderContext,
+};
 use std::cell::Cell;
 use std::ops::{Deref, DerefMut};
 
@@ -146,13 +150,13 @@ where
                 cached
             }
             _ => {
-                let mut flags = Default::default();
+                let mut key = NodeKey::NONE;
                 let id = CachedSet::insert(cx, |nested_cx| {
                     let node = self.inner.render(nested_cx);
-                    flags = node.flags();
+                    key = node.key();
                     node
                 });
-                let cached = CachedNode { id, flags };
+                let cached = CachedNode { id, key };
                 self.cached.set(Some(cached));
                 cached
             }

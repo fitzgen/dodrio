@@ -1,6 +1,6 @@
 //! Helpers for building virtual DOM nodes.
 
-use crate::{node::ElementNodeFlags, Attribute, Listener, Node, RootRender, VdomWeak};
+use crate::{node::NodeKey, Attribute, Listener, Node, RootRender, VdomWeak};
 use bumpalo::Bump;
 
 /// A virtual DOM element builder.
@@ -16,7 +16,7 @@ where
     Children: 'a + AsRef<[Node<'a>]>,
 {
     bump: &'a Bump,
-    flags: ElementNodeFlags,
+    key: NodeKey,
     tag_name: &'a str,
     listeners: Listeners,
     attributes: Attributes,
@@ -62,7 +62,7 @@ impl<'a>
         let bump = bump.into();
         ElementBuilder {
             bump,
-            flags: Default::default(),
+            key: NodeKey::NONE,
             tag_name,
             listeners: bumpalo::collections::Vec::new_in(bump),
             attributes: bumpalo::collections::Vec::new_in(bump),
@@ -112,7 +112,7 @@ where
     {
         ElementBuilder {
             bump: self.bump,
-            flags: self.flags,
+            key: self.key,
             tag_name: self.tag_name,
             listeners,
             attributes: self.attributes,
@@ -151,7 +151,7 @@ where
     {
         ElementBuilder {
             bump: self.bump,
-            flags: self.flags,
+            key: self.key,
             tag_name: self.tag_name,
             listeners: self.listeners,
             attributes,
@@ -190,7 +190,7 @@ where
     {
         ElementBuilder {
             bump: self.bump,
-            flags: self.flags,
+            key: self.key,
             tag_name: self.tag_name,
             listeners: self.listeners,
             attributes: self.attributes,
@@ -217,7 +217,7 @@ where
     pub fn namespace(self, namespace: Option<&'a str>) -> Self {
         ElementBuilder {
             bump: self.bump,
-            flags: self.flags,
+            key: self.key,
             tag_name: self.tag_name,
             listeners: self.listeners,
             attributes: self.attributes,
@@ -226,37 +226,25 @@ where
         }
     }
 
-    /// Set whether this node has keyed children or not. The default
-    /// configuration is `false`.
+    /// Set this element's key.
     ///
-    /// # Example
+    /// When diffing sets of siblings, if an old sibling and new sibling share a
+    /// key, then they will always reuse the same physical DOM node. This is
+    /// important when using CSS animations, web components, third party JS, or
+    /// anything else that makes the diffing implementation observable.
     ///
-    /// ```no_run
-    /// use dodrio::{builder::*, bumpalo::Bump};
+    /// Do not use keys if such a scenario does not apply. Keyed diffing is
+    /// generally more expensive than not, since it is putting greater
+    /// constraints on the diffing algorithm.
     ///
-    /// let b = Bump::new();
+    /// # Invariants You Must Uphold
     ///
-    /// // Create a `<ul>` with keyed children.
-    /// let my_ul = ul(&b)
-    ///     .has_keyed_children(true)
-    ///     .children(create_keyed_children())
-    ///     .finish();
-    /// # fn create_keyed_children() -> [dodrio::Node<'static>; 0] { unimplemented!() }
-    /// ```
-    #[inline]
-    pub fn has_keyed_children(mut self, has_keyed_children: bool) -> Self {
-        if has_keyed_children {
-            self.flags |= ElementNodeFlags::HAS_KEYED_CHILDREN;
-        } else {
-            self.flags &= !ElementNodeFlags::HAS_KEYED_CHILDREN;
-        }
-        self
-    }
-
-    /// Set this element's key. The key must be less than or equal to `2^31 -
-    /// 1`.
+    /// The key may not be `u32::MAX`, which is a reserved key value.
     ///
-    /// This element's parent must have `has_keyed_children(true)` set.
+    /// Keys must be unique among siblings.
+    ///
+    /// All sibling nodes must be keyed, or they must all not be keyed. You may
+    /// not mix keyed and unkeyed siblings.
     ///
     /// # Example
     ///
@@ -271,8 +259,9 @@ where
     /// ```
     #[inline]
     pub fn key(mut self, key: u32) -> Self {
-        debug_assert_eq!(key & (!ElementNodeFlags::KEY_MASK).bits(), 0);
-        self.flags.set_key(key);
+        use std::u32;
+        debug_assert!(key != u32::MAX);
+        self.key = NodeKey(key);
         self
     }
 
@@ -295,7 +284,7 @@ where
     pub fn finish(self) -> Node<'a> {
         Node::element(
             self.bump,
-            self.flags,
+            self.key,
             self.tag_name,
             self.listeners,
             self.attributes,
