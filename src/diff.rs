@@ -793,9 +793,13 @@ fn diff_non_keyed_children(
 
     for (i, (new_child, old_child)) in new.iter().zip(old.iter()).enumerate() {
         if i == 0 {
+            // [... parent]
             change_list.push_first_child();
+        // [... parent first_child]
         } else {
+            // [... parent prev_sibling]
             change_list.pop_push_next_sibling();
+            // [... parent next_sibling]
         }
 
         diff(
@@ -808,13 +812,23 @@ fn diff_non_keyed_children(
         );
     }
 
+    // Note that because `new` and `old` are not empty, the previous loop always
+    // executes at least once, so the change list stack is now:
+    //
+    //     [... parent child]
+
     match old.len().cmp(&new.len()) {
         Ordering::Greater => {
+            // [... parent last_shared_child]
             change_list.pop_push_next_sibling();
+            // [... parent first_child_to_remove]
             remove_self_and_next_siblings(change_list, registry, &old[new.len()..]);
+            // [... parent]
         }
         Ordering::Less => {
+            // [... parent last_child]
             change_list.pop();
+            // [... parent]
             create_and_append_children(
                 cached_set,
                 change_list,
@@ -824,7 +838,9 @@ fn diff_non_keyed_children(
             );
         }
         Ordering::Equal => {
+            // [... parent child]
             change_list.pop();
+            // [... parent]
         }
     }
 }
