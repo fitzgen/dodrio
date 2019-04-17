@@ -13,11 +13,11 @@ use std::u32;
 // physical DOM node that reflects `old` into something that reflects `new`.
 //
 // Upon entry to this function, the physical DOM node must be on the top of the
-// stack:
+// change list stack:
 //
 //     [... node]
 //
-// The stack is in the same state when this function exits.
+// The change list stack is in the same state when this function exits.
 pub(crate) fn diff(
     cached_set: &CachedSet,
     change_list: &mut ChangeListBuilder,
@@ -122,11 +122,11 @@ pub(crate) fn diff(
 
 // Diff event listeners between `old` and `new`.
 //
-// The listeners' node must be on top of the stack:
+// The listeners' node must be on top of the change list stack:
 //
 //     [... node]
 //
-// The stack is left unchanged.
+// The change list stack is left unchanged.
 fn diff_listeners(
     change_list: &mut ChangeListBuilder,
     registry: &mut EventsRegistry,
@@ -165,11 +165,11 @@ fn diff_listeners(
 
 // Diff a node's attributes.
 //
-// The attributes' node must be on top of the stack:
+// The attributes' node must be on top of the change list stack:
 //
 //     [... node]
 //
-// The stack is left unchanged.
+// The change list stack is left unchanged.
 fn diff_attributes(change_list: &mut ChangeListBuilder, old: &[Attribute], new: &[Attribute]) {
     // Do O(n^2) passes to add/update and remove attributes, since
     // there are almost always very few attributes.
@@ -201,11 +201,12 @@ fn diff_attributes(change_list: &mut ChangeListBuilder, old: &[Attribute], new: 
 
 // Diff the given set of old and new children.
 //
-// The parent must be on top of the stack when this function is entered:
+// The parent must be on top of the change list stack when this function is
+// entered:
 //
 //     [... parent]
 //
-// The stack is in the same state when this function returns.
+// the change list stack is in the same state when this function returns.
 fn diff_children(
     cached_set: &CachedSet,
     change_list: &mut ChangeListBuilder,
@@ -262,11 +263,12 @@ fn diff_children(
 //
 // https://github.com/infernojs/inferno/blob/36fd96/packages/inferno/src/DOM/patching.ts#L530-L739
 //
-// When entering this function, the parent must be on top of the stack:
+// When entering this function, the parent must be on top of the change list
+// stack:
 //
 //     [... parent]
 //
-// Upon exiting, the stack is in the same state.
+// Upon exiting, the change list stack is in the same state.
 fn diff_keyed_children(
     cached_set: &CachedSet,
     change_list: &mut ChangeListBuilder,
@@ -369,11 +371,11 @@ enum KeyedPrefixResult {
 // Diff the prefix of children in `new` and `old` that share the same keys in
 // the same order.
 //
-// Upon entry of this function, the stack must be:
+// Upon entry of this function, the change list stack must be:
 //
 //     [... parent]
 //
-// Upon exit, the stack is the same.
+// Upon exit, the change list stack is the same.
 fn diff_keyed_prefix(
     cached_set: &CachedSet,
     change_list: &mut ChangeListBuilder,
@@ -402,7 +404,7 @@ fn diff_keyed_prefix(
         diff(cached_set, change_list, registry, old, new, cached_roots);
         shared_prefix_count += 1;
 
-        // At the end of the loop, the stack looks like
+        // At the end of the loop, the change list stack looks like
         //
         //     [... parent child_we_just_diffed]
         debug_assert!(pushed);
@@ -453,7 +455,7 @@ fn diff_keyed_prefix(
 // this subsequence will remain in place, minimizing the number of DOM moves we
 // will have to do.
 //
-// Upon entry to this function, the stack must be:
+// Upon entry to this function, the change list stack must be:
 //
 //     [... parent]
 //
@@ -571,7 +573,7 @@ fn diff_keyed_middle(
         }
     }
 
-    // Whether we have pushed a child onto the stack or not.
+    // Whether we have pushed a child onto the change list stack or not.
     let mut pushed = false;
 
     // Now iterate from the end of the new children back to the beginning,
@@ -660,15 +662,15 @@ fn diff_keyed_middle(
 // segment's nodes must _not_ be members of the LIS (those nodes we will diff in
 // place elsewhere, and we should not move them nor create them afresh).
 //
-// On entering this function, the stack has the parent and optionally the next
-// sibling after this segment of children:
+// On entering this function, the change list stack has the parent and
+// optionally the next sibling after this segment of children:
 //
 //     [... parent next_sibling]     if *pushed == true
 //     [... parent]                  otherwise
 //
 // After exiting, if any children were moved or created, then `pushed` is set to
-// true and the stack has the first child in this segment on top. Otherwise the
-// stack is left as it was on entering.
+// true and the change list stack has the first child in this segment on
+// top. Otherwise the stack is left as it was on entering.
 //
 //     [... parent child]     if *pushed == true
 //     [... parent]           otherwise
@@ -706,7 +708,7 @@ fn diff_and_move_or_create_segment(
             );
         }
 
-        // At this point the stack can have one of two shapes.
+        // At this point the change list stack can have one of two shapes.
         if *pushed {
             // [... parent next_child new_child]
             change_list.insert_before();
@@ -720,7 +722,7 @@ fn diff_and_move_or_create_segment(
             *pushed = true;
         }
 
-        // At the end of each loop iteration, the stack looks like:
+        // At the end of each loop iteration, the change list stack looks like:
         //
         //     [... parent new_child]
         debug_assert!(*pushed);
@@ -729,11 +731,11 @@ fn diff_and_move_or_create_segment(
 
 // Diff the suffix of keyed children that share the same keys in the same order.
 //
-// The parent must be on the stack when we enter this function:
+// The parent must be on the change list stack when we enter this function:
 //
 //     [... parent]
 //
-// When this function exits, the stack remains the same.
+// When this function exits, the change list stack remains the same.
 fn diff_keyed_suffix(
     cached_set: &CachedSet,
     change_list: &mut ChangeListBuilder,
@@ -771,11 +773,12 @@ fn diff_keyed_suffix(
 
 // Diff children that are not keyed.
 //
-// The parent must be on the top of the stack when entering this function:
+// The parent must be on the top of the change list stack when entering this
+// function:
 //
 //     [... parent]
 //
-// The stack is in the same state when this function returns.
+// the change list stack is in the same state when this function returns.
 fn diff_non_keyed_children(
     cached_set: &CachedSet,
     change_list: &mut ChangeListBuilder,
@@ -828,11 +831,11 @@ fn diff_non_keyed_children(
 
 // Create the given children and append them to the parent node.
 //
-// The parent node must currently be on top of the stack:
+// The parent node must currently be on top of the change list stack:
 //
 //     [... parent]
 //
-// When this function returns, the stack is in the same state.
+// When this function returns, the change list stack is in the same state.
 fn create_and_append_children(
     cached_set: &CachedSet,
     change_list: &mut ChangeListBuilder,
@@ -848,11 +851,11 @@ fn create_and_append_children(
 
 // Remove all of a node's children.
 //
-// The stack must have this shape upon entry to this function:
+// The change list stack must have this shape upon entry to this function:
 //
 //     [... parent]
 //
-// When this function returns, the stack is in the same state.
+// When this function returns, the change list stack is in the same state.
 fn remove_all_children(
     change_list: &mut ChangeListBuilder,
     registry: &mut EventsRegistry,
@@ -868,11 +871,11 @@ fn remove_all_children(
 
 // Remove the current child and all of its following siblings.
 //
-// The stack must have this shape upon entry to this function:
+// The change list stack must have this shape upon entry to this function:
 //
 //     [... parent child]
 //
-// After the function returns, the child is no longer on the stack:
+// After the function returns, the child is no longer on the change list stack:
 //
 //     [... parent]
 fn remove_self_and_next_siblings(
@@ -888,11 +891,11 @@ fn remove_self_and_next_siblings(
 
 // Emit instructions to create the given virtual node.
 //
-// The stack may have any shape upon entering this function:
+// The change list stack may have any shape upon entering this function:
 //
 //     [...]
 //
-// When this function returns, the new node is on top of the stack:
+// When this function returns, the new node is on top of the change list stack:
 //
 //     [... node]
 fn create(
