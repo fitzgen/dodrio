@@ -275,6 +275,28 @@ fn diff_keyed_children(
     new: &[Node],
     cached_roots: &mut FxHashSet<CacheId>,
 ) {
+    if cfg!(debug_assertions) {
+        let mut keys = FxHashSet::default();
+        let mut assert_unique_keys = |children: &[Node]| {
+            keys.clear();
+            for child in children {
+                let key = child.key();
+                debug_assert!(
+                    key.is_some(),
+                    "if any sibling is keyed, all siblings must be keyed"
+                );
+                keys.insert(key);
+            }
+            debug_assert_eq!(
+                children.len(),
+                keys.len(),
+                "keyed siblings must each have a unique key"
+            );
+        };
+        assert_unique_keys(old);
+        assert_unique_keys(new);
+    }
+
     // First up, we diff all the nodes with the same key at the beginning of the
     // children.
     //
