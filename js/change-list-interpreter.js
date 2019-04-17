@@ -288,6 +288,7 @@ export class ChangeListInterpreter {
 
     this.ranges.length = 0;
     this.stack.length = 0;
+    this.temporaries.length = 0;
   }
 
   applyChangeRange(mem8, mem32, start, len) {
