@@ -32,17 +32,20 @@ pub(crate) fn diff(
             &NodeKind::Text(TextNode { text: old_text }),
         ) => {
             if new_text != old_text {
+                change_list.commit_traversal();
                 change_list.set_text(new_text);
             }
         }
 
         (&NodeKind::Text(_), &NodeKind::Element(_)) => {
+            change_list.commit_traversal();
             create(cached_set, change_list, registry, new, cached_roots);
             registry.remove_subtree(&old);
             change_list.replace_with();
         }
 
         (&NodeKind::Element(_), &NodeKind::Text(_)) => {
+            change_list.commit_traversal();
             create(cached_set, change_list, registry, new, cached_roots);
             // Note: text nodes cannot have event listeners, so we don't need to
             // remove the old node's listeners from our registry her.
@@ -68,6 +71,7 @@ pub(crate) fn diff(
             }),
         ) => {
             if new_tag_name != old_tag_name || new_namespace != old_namespace {
+                change_list.commit_traversal();
                 create(cached_set, change_list, registry, new, cached_roots);
                 registry.remove_subtree(&old);
                 change_list.replace_with();
@@ -103,6 +107,7 @@ pub(crate) fn diff(
         // we assume that they are pretty different, and it isn't worth diffing
         // the subtrees, so we just create the new cached node afresh.
         (&NodeKind::Cached(ref c), _) => {
+            change_list.commit_traversal();
             cached_roots.insert(c.id);
             let new = cached_set.get(c.id);
             create(cached_set, change_list, registry, new, cached_roots);
@@ -113,6 +118,7 @@ pub(crate) fn diff(
         // Old cached node and new non-cached node. Again, assume that they are
         // probably pretty different and create the new non-cached node afresh.
         (_, &NodeKind::Cached(_)) => {
+            change_list.commit_traversal();
             create(cached_set, change_list, registry, new, cached_roots);
             registry.remove_subtree(&old);
             change_list.replace_with();
@@ -133,6 +139,10 @@ fn diff_listeners(
     old: &[Listener],
     new: &[Listener],
 ) {
+    if !old.is_empty() || !new.is_empty() {
+        change_list.commit_traversal();
+    }
+
     'outer1: for new_l in new {
         unsafe {
             // Safety relies on removing `new_l` from the registry manually at
@@ -175,16 +185,20 @@ fn diff_attributes(change_list: &mut ChangeListBuilder, old: &[Attribute], new: 
     // there are almost always very few attributes.
     'outer: for new_attr in new {
         if new_attr.is_volatile() {
+            change_list.commit_traversal();
             change_list.set_attribute(new_attr.name, new_attr.value);
         } else {
             for old_attr in old {
                 if old_attr.name == new_attr.name {
                     if old_attr.value != new_attr.value {
+                        change_list.commit_traversal();
                         change_list.set_attribute(new_attr.name, new_attr.value);
                     }
                     continue 'outer;
                 }
             }
+
+            change_list.commit_traversal();
             change_list.set_attribute(new_attr.name, new_attr.value);
         }
     }
@@ -195,6 +209,8 @@ fn diff_attributes(change_list: &mut ChangeListBuilder, old: &[Attribute], new: 
                 continue 'outer2;
             }
         }
+
+        change_list.commit_traversal();
         change_list.remove_attribute(old_attr.name);
     }
 }
@@ -217,13 +233,17 @@ fn diff_children(
 ) {
     if new.is_empty() {
         if !old.is_empty() {
+            change_list.commit_traversal();
             remove_all_children(change_list, registry, old);
         }
         return;
     }
 
     if old.is_empty() {
-        create_and_append_children(cached_set, change_list, registry, new, cached_roots);
+        if !new.is_empty() {
+            change_list.commit_traversal();
+            create_and_append_children(cached_set, change_list, registry, new, cached_roots);
+        }
         return;
     }
 
@@ -384,42 +404,24 @@ fn diff_keyed_prefix(
     new: &[Node],
     cached_roots: &mut FxHashSet<CacheId>,
 ) -> KeyedPrefixResult {
-    let mut pushed = false;
+    change_list.go_down();
     let mut shared_prefix_count = 0;
 
-    for (old, new) in old.iter().zip(new.iter()) {
+    for (i, (old, new)) in old.iter().zip(new.iter()).enumerate() {
         if old.key() != new.key() {
             break;
         }
 
-        if pushed {
-            debug_assert!(shared_prefix_count > 0);
-            change_list.pop_push_next_sibling();
-        } else {
-            debug_assert_eq!(shared_prefix_count, 0);
-            change_list.push_first_child();
-            pushed = true;
-        }
-
+        change_list.go_to_sibling(i);
         diff(cached_set, change_list, registry, old, new, cached_roots);
         shared_prefix_count += 1;
-
-        // At the end of the loop, the change list stack looks like
-        //
-        //     [... parent child_we_just_diffed]
-        debug_assert!(pushed);
     }
 
     // If that was all of the old children, then create and append the remaining
     // new children and we're finished.
     if shared_prefix_count == old.len() {
-        debug_assert!(
-            pushed,
-            "we handle the case of empty children before calling this method, so
-             `shared_prefix_count` must be greater than zero, and therefore we
-               must have pushed in the above loop"
-        );
-        change_list.pop();
+        change_list.go_up();
+        change_list.commit_traversal();
         create_and_append_children(
             cached_set,
             change_list,
@@ -433,17 +435,13 @@ fn diff_keyed_prefix(
     // And if that was all of the new children, then remove all of the remaining
     // old children and we're finished.
     if shared_prefix_count == new.len() {
-        // Same as above.
-        debug_assert!(pushed);
-        change_list.pop_push_next_sibling();
-        change_list.remove_self_and_next_siblings();
+        change_list.go_to_sibling(shared_prefix_count);
+        change_list.commit_traversal();
+        remove_self_and_next_siblings(change_list, registry, &old[shared_prefix_count..]);
         return KeyedPrefixResult::Finished;
     }
 
-    if pushed {
-        debug_assert!(shared_prefix_count > 0);
-        change_list.pop();
-    }
+    change_list.go_up();
     KeyedPrefixResult::MoreWorkToDo(shared_prefix_count)
 }
 
@@ -507,9 +505,11 @@ fn diff_keyed_middle(
     // afresh.
     if shared_suffix_count == 0 && shared_keys.is_empty() {
         if shared_prefix_count == 0 {
+            change_list.commit_traversal();
             remove_all_children(change_list, registry, old);
         } else {
-            change_list.pop_push_next_sibling();
+            change_list.go_down_to_child(shared_prefix_count);
+            change_list.commit_traversal();
             remove_self_and_next_siblings(change_list, registry, &old[shared_prefix_count..]);
         }
         create_and_append_children(cached_set, change_list, registry, new, cached_roots);
@@ -529,6 +529,7 @@ fn diff_keyed_middle(
             .unwrap_or(old.len());
 
         if end - start > 0 {
+            change_list.commit_traversal();
             let mut t = change_list.save_children_to_temporaries(
                 shared_prefix_count + start,
                 shared_prefix_count + end,
@@ -553,6 +554,7 @@ fn diff_keyed_middle(
     for (i, old_child) in old.iter().enumerate().rev() {
         if !shared_keys.contains(&old_child.key()) {
             registry.remove_subtree(old_child);
+            change_list.commit_traversal();
             change_list.remove_child(i + shared_prefix_count);
             removed_count += 1;
         }
@@ -596,7 +598,7 @@ fn diff_keyed_middle(
         // shared suffix to the change list stack.
         //
         // [... parent]
-        change_list.push_child(old_shared_suffix_start - removed_count);
+        change_list.go_down_to_child(old_shared_suffix_start - removed_count);
     // [... parent first_child_of_shared_suffix]
     } else {
         // There is no shared suffix coming after these middle children.
@@ -609,7 +611,7 @@ fn diff_keyed_middle(
             let old_index = new_index_to_old_index[last_index];
             let temp = old_index_to_temp[old_index];
             // [... parent]
-            change_list.push_temporary(temp);
+            change_list.go_down_to_temp_child(temp);
             // [... parent last]
             diff(
                 cached_set,
@@ -622,18 +624,21 @@ fn diff_keyed_middle(
             if new_index_is_in_lis.contains(&last_index) {
                 // Don't move it, since it is already where it needs to be.
             } else {
+                change_list.commit_traversal();
+                // [... parent last]
                 change_list.append_child();
                 // [... parent]
-                change_list.push_temporary(temp);
+                change_list.go_down_to_temp_child(temp);
                 // [... parent last]
             }
         } else {
+            change_list.commit_traversal();
             // [... parent]
             create(cached_set, change_list, registry, last, cached_roots);
             // [... parent last]
             change_list.append_child();
             // [... parent]
-            change_list.push_last_child();
+            change_list.go_down_to_reverse_child(0);
             // [... parent last]
         }
     }
@@ -642,6 +647,7 @@ fn diff_keyed_middle(
         let old_index = new_index_to_old_index[new_index];
         if old_index == u32::MAX as usize {
             debug_assert!(!shared_keys.contains(&new_child.key()));
+            change_list.commit_traversal();
             // [... parent successor]
             create(cached_set, change_list, registry, new_child, cached_roots);
             // [... parent successor new_child]
@@ -654,11 +660,10 @@ fn diff_keyed_middle(
 
             if new_index_is_in_lis.contains(&new_index) {
                 // [... parent successor]
-                change_list.pop();
-                // [... parent]
-                change_list.push_temporary(temp);
+                change_list.go_to_temp_sibling(temp);
             // [... parent new_child]
             } else {
+                change_list.commit_traversal();
                 // [... parent successor]
                 change_list.push_temporary(temp);
                 // [... parent successor new_child]
@@ -678,7 +683,7 @@ fn diff_keyed_middle(
     }
 
     // [... parent child]
-    change_list.pop();
+    change_list.go_up();
     // [... parent]
 }
 
@@ -702,10 +707,11 @@ fn diff_keyed_suffix(
     debug_assert!(!old.is_empty());
 
     // [... parent]
-    change_list.push_child(new_shared_suffix_start);
+    change_list.go_down();
     // [... parent new_child]
 
-    for (old_child, new_child) in old.iter().zip(new.iter()) {
+    for (i, (old_child, new_child)) in old.iter().zip(new.iter()).enumerate() {
+        change_list.go_to_sibling(new_shared_suffix_start + i);
         diff(
             cached_set,
             change_list,
@@ -714,14 +720,10 @@ fn diff_keyed_suffix(
             new_child,
             cached_roots,
         );
-
-        // [... parent this_new_child]
-        change_list.pop_push_next_sibling();
-        // [... parent next_new_child]
     }
 
     // [... parent]
-    change_list.pop();
+    change_list.go_up();
 }
 
 // Diff children that are not keyed.
@@ -744,17 +746,14 @@ fn diff_non_keyed_children(
     debug_assert!(!new.is_empty());
     debug_assert!(!old.is_empty());
 
-    for (i, (new_child, old_child)) in new.iter().zip(old.iter()).enumerate() {
-        if i == 0 {
-            // [... parent]
-            change_list.push_first_child();
-        // [... parent first_child]
-        } else {
-            // [... parent prev_sibling]
-            change_list.pop_push_next_sibling();
-            // [... parent next_sibling]
-        }
+    //     [... parent]
+    change_list.go_down();
+    //     [... parent child]
 
+    for (i, (new_child, old_child)) in new.iter().zip(old.iter()).enumerate() {
+        // [... parent prev_child]
+        change_list.go_to_sibling(i);
+        // [... parent this_child]
         diff(
             cached_set,
             change_list,
@@ -765,23 +764,20 @@ fn diff_non_keyed_children(
         );
     }
 
-    // Note that because `new` and `old` are not empty, the previous loop always
-    // executes at least once, so the change list stack is now:
-    //
-    //     [... parent child]
-
     match old.len().cmp(&new.len()) {
         Ordering::Greater => {
-            // [... parent last_shared_child]
-            change_list.pop_push_next_sibling();
+            // [... parent prev_child]
+            change_list.go_to_sibling(new.len());
             // [... parent first_child_to_remove]
+            change_list.commit_traversal();
             remove_self_and_next_siblings(change_list, registry, &old[new.len()..]);
             // [... parent]
         }
         Ordering::Less => {
             // [... parent last_child]
-            change_list.pop();
+            change_list.go_up();
             // [... parent]
+            change_list.commit_traversal();
             create_and_append_children(
                 cached_set,
                 change_list,
@@ -792,7 +788,7 @@ fn diff_non_keyed_children(
         }
         Ordering::Equal => {
             // [... parent child]
-            change_list.pop();
+            change_list.go_up();
             // [... parent]
         }
     }
@@ -812,6 +808,7 @@ fn create_and_append_children(
     new: &[Node],
     cached_roots: &mut FxHashSet<CacheId>,
 ) {
+    debug_assert!(change_list.traversal_is_committed());
     for child in new {
         create(cached_set, change_list, registry, child, cached_roots);
         change_list.append_child();
@@ -830,6 +827,7 @@ fn remove_all_children(
     registry: &mut EventsRegistry,
     old: &[Node],
 ) {
+    debug_assert!(change_list.traversal_is_committed());
     for child in old {
         registry.remove_subtree(child);
     }
@@ -852,6 +850,7 @@ fn remove_self_and_next_siblings(
     registry: &mut EventsRegistry,
     old: &[Node],
 ) {
+    debug_assert!(change_list.traversal_is_committed());
     for child in old {
         registry.remove_subtree(child);
     }
@@ -874,6 +873,7 @@ fn create(
     node: &Node,
     cached_roots: &mut FxHashSet<CacheId>,
 ) {
+    debug_assert!(change_list.traversal_is_committed());
     match node.kind {
         NodeKind::Text(TextNode { text }) => {
             change_list.create_text_node(text);
