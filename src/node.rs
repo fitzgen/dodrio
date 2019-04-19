@@ -24,7 +24,7 @@ pub_unstable_internal! {
         Text(TextNode<'a>),
 
         /// An element potentially with attributes and children.
-        Element(ElementNode<'a>),
+        Element(&'a ElementNode<'a>),
 
         /// A node in the vdom's `CachedSet`. This allows us to avoid
         /// re-rendering and re-diffing subtrees.
@@ -187,15 +187,17 @@ impl<'a> Node<'a> {
         let attributes: &'a Attributes = bump.alloc(attributes);
         let attributes: &'a [Attribute<'a>] = attributes.as_ref();
 
+        let element = bump.alloc_with(|| ElementNode {
+            key,
+            tag_name,
+            listeners,
+            attributes,
+            children,
+            namespace,
+        });
+
         Node {
-            kind: NodeKind::Element(ElementNode {
-                key,
-                tag_name,
-                listeners,
-                attributes,
-                children,
-                namespace,
-            }),
+            kind: NodeKind::Element(element),
         }
     }
 

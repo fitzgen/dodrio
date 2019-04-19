@@ -19,7 +19,6 @@ cfg_if::cfg_if! {
             pub(crate) fn clear_active_listeners(&mut self) {}
         }
     } else {
-        use bumpalo::Bump;
         use crate::{
             node::{ElementNode, ListenerCallback, NodeKind},
             vdom::VdomWeak,
@@ -99,18 +98,14 @@ cfg_if::cfg_if! {
             }
 
             pub(crate) fn remove_subtree(&mut self, node: &Node) {
-                let bump = Bump::new();
-                let mut stack = bumpalo::collections::Vec::with_capacity_in(64, &bump);
-                stack.push(node);
-
-                while let Some(node) = stack.pop() {
-                    match node.kind {
-                        NodeKind::Cached(_) | NodeKind::Text(_) => continue,
-                        NodeKind::Element(ElementNode {listeners, children, ..}) => {
-                            for l in listeners {
-                                self.remove(l);
-                            }
-                            stack.extend(children);
+                match node.kind {
+                    NodeKind::Cached(_) | NodeKind::Text(_) => return,
+                    NodeKind::Element(&ElementNode {listeners, children, ..}) => {
+                        for l in listeners {
+                            self.remove(l);
+                        }
+                        for child in children {
+                            self.remove_subtree(child)
                         }
                     }
                 }

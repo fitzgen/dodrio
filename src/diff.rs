@@ -925,7 +925,7 @@ fn create(
         NodeKind::Text(TextNode { text }) => {
             change_list.create_text_node(text);
         }
-        NodeKind::Element(ElementNode {
+        NodeKind::Element(&ElementNode {
             key: _,
             tag_name,
             listeners,

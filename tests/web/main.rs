@@ -89,7 +89,7 @@ pub fn assert_rendered<R: Render>(container: &web_sys::Element, r: &R) {
                     "actual.text_content() == expected.text()"
                 );
             }
-            NodeKind::Element(ElementNode {
+            NodeKind::Element(&ElementNode {
                 tag_name,
                 attributes,
                 children,
