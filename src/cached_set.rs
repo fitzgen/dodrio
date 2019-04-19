@@ -75,33 +75,31 @@ impl CachedSet {
     // node has.
     fn trace(&self, node: &Node) -> FxHashSet<CacheId> {
         let mut edges = FxHashSet::default();
+        self.trace_recursive(&mut edges, node);
+        edges
+    }
 
-        let bump = Bump::new();
-        let mut stack = bumpalo::collections::Vec::with_capacity_in(64, &bump);
-        stack.push(node);
-
-        while let Some(node) = stack.pop() {
-            match &node.kind {
-                NodeKind::Text(_) => continue,
-                NodeKind::Cached(c) => {
-                    debug_assert!(self.items.contains_key(&c.id));
-                    edges.insert(c.id);
-                    edges.extend(
-                        self.items
-                            .get(&c.id)
-                            .expect_throw("CachedSet::trace: should have c.id in cached set")
-                            .edges
-                            .iter()
-                            .cloned(),
-                    );
-                }
-                NodeKind::Element(el) => {
-                    stack.extend(el.children);
+    fn trace_recursive(&self, edges: &mut FxHashSet<CacheId>, node: &Node) {
+        match &node.kind {
+            NodeKind::Text(_) => return,
+            NodeKind::Cached(c) => {
+                debug_assert!(self.items.contains_key(&c.id));
+                edges.insert(c.id);
+                edges.extend(
+                    self.items
+                        .get(&c.id)
+                        .expect_throw("CachedSet::trace: should have c.id in cached set")
+                        .edges
+                        .iter()
+                        .cloned(),
+                );
+            }
+            NodeKind::Element(el) => {
+                for child in el.children {
+                    self.trace_recursive(edges, child);
                 }
             }
         }
-
-        edges
     }
 
     fn next_id(&mut self) -> CacheId {
