@@ -6,8 +6,8 @@ use crate::{
 };
 use fxhash::{FxHashMap, FxHashSet};
 use std::cmp::Ordering;
-use std::ops::Range;
 use std::u32;
+use wasm_bindgen::UnwrapThrowExt;
 
 // Diff the `old` node with the `new` node. Emits instructions to modify a
 // physical DOM node that reflects `old` into something that reflects `new`.
@@ -465,7 +465,7 @@ fn diff_keyed_middle(
     change_list: &mut ChangeListBuilder,
     registry: &mut EventsRegistry,
     old: &[Node],
-    new: &[Node],
+    mut new: &[Node],
     cached_roots: &mut FxHashSet<CacheId>,
     shared_prefix_count: usize,
     shared_suffix_count: usize,
@@ -516,22 +516,6 @@ fn diff_keyed_middle(
         return;
     }
 
-    // The longest increasing subsequence within `new_index_to_old_index` in
-    // reverse order (since `lis_with` adds the indices in reverse
-    // order). We will leave these nodes in place in the DOM, and only move
-    // nodes that are not part of the LIS. This results in the minimum
-    // number of DOM nodes moved.
-    let mut reverse_lis = Vec::with_capacity(new_index_to_old_index.len());
-    let mut predecessors = vec![0; new_index_to_old_index.len()];
-    let mut starts = vec![0; new_index_to_old_index.len()];
-    longest_increasing_subsequence::lis_with(
-        &new_index_to_old_index,
-        &mut reverse_lis,
-        |a, b| a < b,
-        &mut predecessors,
-        &mut starts,
-    );
-
     // Save each of the old children whose keys are reused in the new
     // children.
     let mut old_index_to_temp = vec![u32::MAX; old.len()];
@@ -568,165 +552,134 @@ fn diff_keyed_middle(
     let mut removed_count = 0;
     for (i, old_child) in old.iter().enumerate().rev() {
         if !shared_keys.contains(&old_child.key()) {
+            registry.remove_subtree(old_child);
             change_list.remove_child(i + shared_prefix_count);
             removed_count += 1;
         }
     }
 
-    // Whether we have pushed a child onto the change list stack or not.
-    let mut pushed = false;
-
-    // Now iterate from the end of the new children back to the beginning,
-    // moving old children to their new destination, diffing them, and
-    // creating new children as necessary. Note that iterating in reverse
-    // order lets us use `Node.prototype.insertBefore` to move/insert
-    // children.
-    if shared_suffix_count > 0 {
-        change_list.push_child(old_shared_suffix_start - removed_count);
-        pushed = true;
-    }
-    let mut segment_end = new.len();
-    for lis_index in reverse_lis {
-        // Because we use `u32::MAX` as a sentinel value representing "a child
-        // with this key is not a member of `new`", we filter that out here.
-        let old_index = new_index_to_old_index[lis_index];
-        if old_index == u32::MAX as usize {
-            continue;
-        }
-
-        // A segment begins with a member of the LIS, which will remain in
-        // place in the DOM, followed by zero or more new children that are
-        // not members of the LIS. If one of these new children shares a key
-        // with one of the old children, then we will move that old child in
-        // the DOM. Otherwise, we create the new child afresh.
-        debug_assert!(segment_end - lis_index > 0);
-
-        // Go through each of the non-LIS child and move-and-diff or create
-        // it.
-        diff_and_move_or_create_segment(
-            cached_set,
-            change_list,
-            registry,
-            old,
-            new,
-            cached_roots,
-            lis_index + 1..segment_end,
-            &new_index_to_old_index,
-            &old_index_to_temp,
-            &mut pushed,
-        );
-
-        // Now we push the member of the LIS and diff it with its
-        // correspondingly-keyed new child.
-        let new_child = &new[lis_index];
-        let temp = old_index_to_temp[old_index];
-        debug_assert_ne!(temp, u32::MAX);
-        if pushed {
-            change_list.pop();
-        }
-        change_list.push_temporary(temp);
-        pushed = true;
-        diff(
-            cached_set,
-            change_list,
-            registry,
-            &old[old_index],
-            new_child,
-            cached_roots,
-        );
-
-        segment_end = lis_index;
+    // If there aren't any more new children, then we are done!
+    if new.is_empty() {
+        return;
     }
 
-    // And now diff-and-move or create each of the non-LIS children that
-    // appear before the first LIS-member.
-    diff_and_move_or_create_segment(
-        cached_set,
-        change_list,
-        registry,
-        old,
-        new,
-        cached_roots,
-        0..segment_end,
+    // The longest increasing subsequence within `new_index_to_old_index`. This
+    // is the longest sequence on DOM nodes in `old` that are relatively ordered
+    // correctly within `new`. We will leave these nodes in place in the DOM,
+    // and only move nodes that are not part of the LIS. This results in the
+    // maximum number of DOM nodes left in place, AKA the minimum number of DOM
+    // nodes moved.
+    let mut new_index_is_in_lis = FxHashSet::default();
+    new_index_is_in_lis.reserve(new_index_to_old_index.len());
+    let mut predecessors = vec![0; new_index_to_old_index.len()];
+    let mut starts = vec![0; new_index_to_old_index.len()];
+    longest_increasing_subsequence::lis_with(
         &new_index_to_old_index,
-        &old_index_to_temp,
-        &mut pushed,
+        &mut new_index_is_in_lis,
+        |a, b| a < b,
+        &mut predecessors,
+        &mut starts,
     );
 
-    if pushed {
-        change_list.pop();
-    }
-}
-
-// Diff-and-then-move or create each new node in the given segment. The
-// segment's nodes must _not_ be members of the LIS (those nodes we will diff in
-// place elsewhere, and we should not move them nor create them afresh).
-//
-// On entering this function, the change list stack has the parent and
-// optionally the next sibling after this segment of children:
-//
-//     [... parent next_sibling]     if *pushed == true
-//     [... parent]                  otherwise
-//
-// After exiting, if any children were moved or created, then `pushed` is set to
-// true and the change list stack has the first child in this segment on
-// top. Otherwise the stack is left as it was on entering.
-//
-//     [... parent child]     if *pushed == true
-//     [... parent]           otherwise
-fn diff_and_move_or_create_segment(
-    cached_set: &CachedSet,
-    change_list: &mut ChangeListBuilder,
-    registry: &mut EventsRegistry,
-    old: &[Node],
-    new: &[Node],
-    cached_roots: &mut FxHashSet<CacheId>,
-    segment: Range<usize>,
-    new_index_to_old_index: &[usize],
-    old_index_to_temp: &[u32],
-    pushed: &mut bool,
-) {
-    for new_index in segment.rev() {
-        let new_child = &new[new_index];
-        let old_index = new_index_to_old_index[new_index];
-        if old_index == u32::MAX as usize {
-            // The key is not reused. Create this new child afresh.
-            create(cached_set, change_list, registry, new_child, cached_roots);
-        } else {
-            // The key is reused. Diff it with the old node and then
-            // move the old node into its final destination.
+    // Now we will iterate from the end of the new children back to the
+    // beginning, diffing old children we are reusing and if they aren't in the
+    // LIS moving them to their new destination, or creating new children. Note
+    // that iterating in reverse order lets us use `Node.prototype.insertBefore`
+    // to move/insert children.
+    //
+    // But first, we ensure that we have a child on the change list stack that
+    // we can `insertBefore`. We handle this once before looping over `new`
+    // children, so that we don't have to keep checking on every loop iteration.
+    if shared_suffix_count > 0 {
+        // There is a shared suffix after these middle children. We will be
+        // inserting before that shared suffix, so add the first child of that
+        // shared suffix to the change list stack.
+        //
+        // [... parent]
+        change_list.push_child(old_shared_suffix_start - removed_count);
+    // [... parent first_child_of_shared_suffix]
+    } else {
+        // There is no shared suffix coming after these middle children.
+        // Therefore we have to process the last child in `new` and move it to
+        // the end of the parent's children if it isn't already there.
+        let last_index = new.len() - 1;
+        let last = new.last().unwrap_throw();
+        new = &new[..new.len() - 1];
+        if shared_keys.contains(&last.key()) {
+            let old_index = new_index_to_old_index[last_index];
             let temp = old_index_to_temp[old_index];
-            debug_assert_ne!(temp, u32::MAX);
+            // [... parent]
             change_list.push_temporary(temp);
+            // [... parent last]
             diff(
                 cached_set,
                 change_list,
                 registry,
-                new_child,
                 &old[old_index],
+                last,
                 cached_roots,
             );
-        }
-
-        // At this point the change list stack can have one of two shapes.
-        if *pushed {
-            // [... parent next_child new_child]
-            change_list.insert_before();
-        // [... parent new_child]
+            if new_index_is_in_lis.contains(&last_index) {
+                // Don't move it, since it is already where it needs to be.
+            } else {
+                change_list.append_child();
+                // [... parent]
+                change_list.push_temporary(temp);
+                // [... parent last]
+            }
         } else {
-            // [... parent new_child]
+            // [... parent]
+            create(cached_set, change_list, registry, last, cached_roots);
+            // [... parent last]
             change_list.append_child();
             // [... parent]
             change_list.push_last_child();
-            // [... parent new_child]
-            *pushed = true;
+            // [... parent last]
         }
-
-        // At the end of each loop iteration, the change list stack looks like:
-        //
-        //     [... parent new_child]
-        debug_assert!(*pushed);
     }
+
+    for (new_index, new_child) in new.iter().enumerate().rev() {
+        let old_index = new_index_to_old_index[new_index];
+        if old_index == u32::MAX as usize {
+            debug_assert!(!shared_keys.contains(&new_child.key()));
+            // [... parent successor]
+            create(cached_set, change_list, registry, new_child, cached_roots);
+            // [... parent successor new_child]
+            change_list.insert_before();
+        // [... parent new_child]
+        } else {
+            debug_assert!(shared_keys.contains(&new_child.key()));
+            let temp = old_index_to_temp[old_index];
+            debug_assert_ne!(temp, u32::MAX);
+
+            if new_index_is_in_lis.contains(&new_index) {
+                // [... parent successor]
+                change_list.pop();
+                // [... parent]
+                change_list.push_temporary(temp);
+            // [... parent new_child]
+            } else {
+                // [... parent successor]
+                change_list.push_temporary(temp);
+                // [... parent successor new_child]
+                change_list.insert_before();
+                // [... parent new_child]
+            }
+
+            diff(
+                cached_set,
+                change_list,
+                registry,
+                &old[old_index],
+                new_child,
+                cached_roots,
+            );
+        }
+    }
+
+    // [... parent child]
+    change_list.pop();
+    // [... parent]
 }
 
 // Diff the suffix of keyed children that share the same keys in the same order.
