@@ -188,13 +188,57 @@ const OP_TABLE = [
   },
 
   // 17
-  function setAttributeNS(interpreter, mem8, mem32, i) {
-    const nameId = mem32[i++];
-    const valueId = mem32[i++];
-    const name = interpreter.getCachedString(nameId);
-    const value = interpreter.getCachedString(valueId);
-    const node = top(interpreter.stack);
-    node.setAttributeNS(null, name, value);
+  function saveChildrenToTemporaries(interpreter, mem8, mem32, i) {
+    let temp = mem32[i++];
+    const start = mem32[i++];
+    const end = mem32[i++];
+    const parent = top(interpreter.stack);
+    const children = parent.childNodes;
+    for (let i = start; i < end; i++) {
+      interpreter.temporaries[temp++] = children[i];
+    }
+    return i;
+  },
+
+  // 18
+  function pushChild(interpreter, mem8, mem32, i) {
+    const parent = top(interpreter.stack);
+    const n = mem32[i++];
+    const child = parent.childNodes[n];
+    interpreter.stack.push(child);
+    return i;
+  },
+
+  // 19
+  function pushTemporary(interpreter, mem8, mem32, i) {
+    const temp = mem32[i++];
+    interpreter.stack.push(interpreter.temporaries[temp]);
+    return i;
+  },
+
+  // 20
+  function insertBefore(interpreter, mem8, mem32, i) {
+    const before = interpreter.stack.pop();
+    const after = interpreter.stack.pop();
+    after.parentNode.insertBefore(before, after);
+    interpreter.stack.push(before);
+    return i;
+  },
+
+  // 21
+  function pushLastChild(interpreter, mem8, mem32, i) {
+    const parent = top(interpreter.stack);
+    const child = parent.lastChild;
+    interpreter.stack.push(child);
+    return i;
+  },
+
+  // 22
+  function removeChild(interpreter, mem8, mem32, i) {
+    const n = mem32[i++];
+    const parent = top(interpreter.stack);
+    const child = parent.childNodes[n];
+    child.remove();
     return i;
   }
 ];
@@ -206,6 +250,7 @@ export class ChangeListInterpreter {
     this.ranges = [];
     this.stack = [];
     this.strings = new Map();
+    this.temporaries = [];
   }
 
   unmount() {
@@ -218,6 +263,7 @@ export class ChangeListInterpreter {
     this.ranges = null;
     this.stack = null;
     this.strings = null;
+    this.temporaries = null;
   }
 
   addChangeListRange(start, len) {
@@ -242,6 +288,7 @@ export class ChangeListInterpreter {
 
     this.ranges.length = 0;
     this.stack.length = 0;
+    this.temporaries.length = 0;
   }
 
   applyChangeRange(mem8, mem32, start, len) {

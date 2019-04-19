@@ -2,7 +2,7 @@ use super::change_list::ChangeListPersistentState;
 use super::RootRender;
 use crate::cached_set::CachedSet;
 use crate::events::EventsRegistry;
-use crate::node::Node;
+use crate::node::{Node, NodeKey};
 use crate::RenderContext;
 use bumpalo::Bump;
 use futures::future::Future;
@@ -166,7 +166,7 @@ impl Vdom {
 
         // Create a dummy `<div/>` in our container.
         initialize_container(container);
-        let current_root = Node::element(&dom_buffers[0], "div", [], [], [], None);
+        let current_root = Node::element(&dom_buffers[0], NodeKey::NONE, "div", [], [], [], None);
         let current_root = Some(unsafe { extend_node_lifetime(current_root) });
 
         let container = container.clone();
@@ -277,8 +277,8 @@ impl VdomInnerExclusive {
                         &cached_set,
                         &mut change_list,
                         &mut registry,
-                        old_contents,
-                        new_contents.clone(),
+                        &old_contents,
+                        &new_contents,
                         &mut cache_roots,
                     );
 
@@ -424,7 +424,6 @@ impl VdomWeak {
     /// If you don't want to do more things after the render completes, then use
     /// `schedule_render` instead of `render`.
     pub fn render(&self) -> impl Future<Item = (), Error = VdomDroppedError> {
-        debug!("VdomWeak::render: initiating render in new animation frame");
         futures::future::ok(self.inner.upgrade())
             .and_then(|inner| inner.ok_or(()))
             .map_err(|_| VdomDroppedError {})
@@ -449,7 +448,6 @@ impl VdomWeak {
                                 // animation frames.
                                 let _ = inner.shared.render_scheduled.take();
 
-                                debug!("VdomWeak::render: finished rendering");
                                 let r = resolve.call0(&JsValue::null());
                                 debug_assert!(r.is_ok());
                             }

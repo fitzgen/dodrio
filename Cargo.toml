@@ -34,17 +34,19 @@ required-features = ["xxx-unstable-internal-use-only"]
 xxx-unstable-internal-use-only = []
 
 [dependencies]
-bumpalo = "2.3.0"
+bumpalo = "2.4.1"
 cfg-if = "0.1.7"
 futures = "0.1.26"
-wasm-bindgen = "0.2.40"
-wasm-bindgen-futures = "0.3.17"
-js-sys = "0.3.17"
+wasm-bindgen = "0.2.42"
+wasm-bindgen-futures = "0.3.19"
+js-sys = "0.3.19"
 fxhash = "0.2.1"
 log = { version = "0.4.6", optional = true }
+bitflags = "1.0.4"
+longest-increasing-subsequence = "0.1.0"
 
 [dependencies.web-sys]
-version = "0.3.17"
+version = "0.3.19"
 features = [
   "console",
   "Document",
@@ -58,10 +60,10 @@ features = [
 console_log = "0.1.2"
 dodrio-js-api = { version = "=0.1.0", path = "./crates/js-api" }
 log = "0.4.6"
-wasm-bindgen-test = "0.2.40"
+wasm-bindgen-test = "0.2.42"
 
 [dev-dependencies.web-sys]
-version = "0.3.17"
+version = "0.3.19"
 features = [
   "Attr",
   "EventTarget",
@@ -71,7 +73,7 @@ features = [
 ]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-criterion = "0.2.10"
+criterion = "0.2.11"
 
 [profile.bench]
 debug = true

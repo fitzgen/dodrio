@@ -2,8 +2,8 @@ use crate::{cached_set::CacheId, RootRender, VdomWeak};
 use bumpalo::Bump;
 use std::fmt;
 use std::iter;
-use std::marker::PhantomData;
 use std::mem;
+use std::u32;
 
 /// A virtual DOM node.
 #[derive(Debug, Clone)]
@@ -24,11 +24,11 @@ pub_unstable_internal! {
         Text(TextNode<'a>),
 
         /// An element potentially with attributes and children.
-        Element(ElementNode<'a>),
+        Element(&'a ElementNode<'a>),
 
         /// A node in the vdom's `CachedSet`. This allows us to avoid
         /// re-rendering and re-diffing subtrees.
-        Cached(CachedNode<'a>),
+        Cached(CachedNode),
     }
 }
 
@@ -46,6 +46,7 @@ pub_unstable_internal! {
     /// children.
     #[derive(Debug, Clone)]
     pub(crate) struct ElementNode<'a> {
+        pub key: NodeKey,
         pub tag_name: &'a str,
         pub listeners: &'a [Listener<'a>],
         pub attributes: &'a [Attribute<'a>],
@@ -59,10 +60,31 @@ pub_unstable_internal! {
     /// allows us to avoid both re-rendering a sub-tree and re-diffing
     /// it. `CachedNode`s cannot contain cycles, since they can only contain
     /// other `CachedNode`s that already exist when they are being constructed.
-    #[derive(Debug, Clone)]
-    pub(crate) struct CachedNode<'a> {
+    #[derive(Debug, Clone, Copy)]
+    pub(crate) struct CachedNode {
         pub id: CacheId,
-        pub _phantom: PhantomData<&'a Node<'a>>,
+        // Always a copy of the inner cached node's key.
+        pub key: NodeKey,
+    }
+}
+
+pub_unstable_internal! {
+    /// The key for keyed children.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+    pub(crate) struct NodeKey(pub(crate) u32);
+}
+
+impl NodeKey {
+    pub const NONE: NodeKey = NodeKey(u32::MAX);
+
+    #[inline]
+    pub fn is_none(&self) -> bool {
+        *self == Self::NONE
+    }
+
+    #[inline]
+    pub fn is_some(&self) -> bool {
+        !self.is_none()
     }
 }
 
@@ -90,6 +112,15 @@ pub struct Listener<'a> {
 pub struct Attribute<'a> {
     pub(crate) name: &'a str,
     pub(crate) value: &'a str,
+}
+
+impl<'a> From<CachedNode> for Node<'a> {
+    #[inline]
+    fn from(c: CachedNode) -> Self {
+        Node {
+            kind: NodeKind::Cached(c),
+        }
+    }
 }
 
 impl fmt::Debug for Listener<'_> {
@@ -135,6 +166,7 @@ impl<'a> Node<'a> {
     #[inline]
     pub(crate) fn element<Listeners, Attributes, Children>(
         bump: &'a Bump,
+        key: NodeKey,
         tag_name: &'a str,
         listeners: Listeners,
         attributes: Attributes,
@@ -155,14 +187,17 @@ impl<'a> Node<'a> {
         let attributes: &'a Attributes = bump.alloc(attributes);
         let attributes: &'a [Attribute<'a>] = attributes.as_ref();
 
+        let element = bump.alloc_with(|| ElementNode {
+            key,
+            tag_name,
+            listeners,
+            attributes,
+            children,
+            namespace,
+        });
+
         Node {
-            kind: NodeKind::Element(ElementNode {
-                tag_name,
-                listeners,
-                attributes,
-                children,
-                namespace,
-            }),
+            kind: NodeKind::Element(element),
         }
     }
 
@@ -174,14 +209,12 @@ impl<'a> Node<'a> {
         }
     }
 
-    /// Construct a new cached node with the given id.
     #[inline]
-    pub(crate) fn cached(id: CacheId) -> Node<'a> {
-        Node {
-            kind: NodeKind::Cached(CachedNode {
-                id,
-                _phantom: PhantomData,
-            }),
+    pub(crate) fn key(&self) -> NodeKey {
+        match &self.kind {
+            NodeKind::Text(_) => NodeKey::NONE,
+            NodeKind::Element(e) => e.key,
+            NodeKind::Cached(c) => c.key,
         }
     }
 }

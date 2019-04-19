@@ -64,7 +64,6 @@ impl CachedSet {
         self.items.retain(|id, entry| {
             let keep = marked.contains(id);
             if !keep {
-                debug!("CachedSet::gc: removing {:?}", id);
                 let node: &Node = unsafe { &*entry.node };
                 registry.remove_subtree(node);
             }
@@ -76,33 +75,31 @@ impl CachedSet {
     // node has.
     fn trace(&self, node: &Node) -> FxHashSet<CacheId> {
         let mut edges = FxHashSet::default();
+        self.trace_recursive(&mut edges, node);
+        edges
+    }
 
-        let bump = Bump::new();
-        let mut stack = bumpalo::collections::Vec::with_capacity_in(64, &bump);
-        stack.push(node);
-
-        while let Some(node) = stack.pop() {
-            match &node.kind {
-                NodeKind::Text(_) => continue,
-                NodeKind::Cached(c) => {
-                    debug_assert!(self.items.contains_key(&c.id));
-                    edges.insert(c.id);
-                    edges.extend(
-                        self.items
-                            .get(&c.id)
-                            .expect_throw("CachedSet::trace: should have c.id in cached set")
-                            .edges
-                            .iter()
-                            .cloned(),
-                    );
-                }
-                NodeKind::Element(el) => {
-                    stack.extend(el.children);
+    fn trace_recursive(&self, edges: &mut FxHashSet<CacheId>, node: &Node) {
+        match &node.kind {
+            NodeKind::Text(_) => return,
+            NodeKind::Cached(c) => {
+                debug_assert!(self.items.contains_key(&c.id));
+                edges.insert(c.id);
+                edges.extend(
+                    self.items
+                        .get(&c.id)
+                        .expect_throw("CachedSet::trace: should have c.id in cached set")
+                        .edges
+                        .iter()
+                        .cloned(),
+                );
+            }
+            NodeKind::Element(el) => {
+                for child in el.children {
+                    self.trace_recursive(edges, child);
                 }
             }
         }
-
-        edges
     }
 
     fn next_id(&mut self) -> CacheId {
@@ -129,7 +126,6 @@ impl CachedSet {
 
         let mut set = set.borrow_mut();
         let id = set.next_id();
-        debug!("CachedSet::insert: id = {:?}; entry = {:?}", id, entry);
         set.items.insert(id, entry);
         id
     }
@@ -140,8 +136,7 @@ impl CachedSet {
     }
 
     /// Get the node for the given cache id.
-    pub fn get(&self, mut id: CacheId) -> Node {
-        debug!("CachedSet::get: id = {:?}", id);
+    pub fn get(&self, mut id: CacheId) -> &Node {
         loop {
             let entry = self
                 .items
@@ -152,7 +147,7 @@ impl CachedSet {
                 id = c.id;
                 continue;
             } else {
-                return node.clone();
+                return node;
             }
         }
     }

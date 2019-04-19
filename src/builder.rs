@@ -1,6 +1,6 @@
 //! Helpers for building virtual DOM nodes.
 
-use crate::{Attribute, Listener, Node, RootRender, VdomWeak};
+use crate::{node::NodeKey, Attribute, Listener, Node, RootRender, VdomWeak};
 use bumpalo::Bump;
 
 /// A virtual DOM element builder.
@@ -16,6 +16,7 @@ where
     Children: 'a + AsRef<[Node<'a>]>,
 {
     bump: &'a Bump,
+    key: NodeKey,
     tag_name: &'a str,
     listeners: Listeners,
     attributes: Attributes,
@@ -61,6 +62,7 @@ impl<'a>
         let bump = bump.into();
         ElementBuilder {
             bump,
+            key: NodeKey::NONE,
             tag_name,
             listeners: bumpalo::collections::Vec::new_in(bump),
             attributes: bumpalo::collections::Vec::new_in(bump),
@@ -110,6 +112,7 @@ where
     {
         ElementBuilder {
             bump: self.bump,
+            key: self.key,
             tag_name: self.tag_name,
             listeners,
             attributes: self.attributes,
@@ -148,6 +151,7 @@ where
     {
         ElementBuilder {
             bump: self.bump,
+            key: self.key,
             tag_name: self.tag_name,
             listeners: self.listeners,
             attributes,
@@ -186,6 +190,7 @@ where
     {
         ElementBuilder {
             bump: self.bump,
+            key: self.key,
             tag_name: self.tag_name,
             listeners: self.listeners,
             attributes: self.attributes,
@@ -204,7 +209,7 @@ where
     /// let b = Bump::new();
     ///
     /// // Create a `<td>` tag with an xhtml namespace
-    /// let my_div = td(&b)
+    /// let my_td = td(&b)
     ///     .namespace(Some("http://www.w3.org/1999/xhtml"))
     ///     .finish();
     /// ```
@@ -212,12 +217,52 @@ where
     pub fn namespace(self, namespace: Option<&'a str>) -> Self {
         ElementBuilder {
             bump: self.bump,
+            key: self.key,
             tag_name: self.tag_name,
             listeners: self.listeners,
             attributes: self.attributes,
             children: self.children,
             namespace,
         }
+    }
+
+    /// Set this element's key.
+    ///
+    /// When diffing sets of siblings, if an old sibling and new sibling share a
+    /// key, then they will always reuse the same physical DOM node. This is
+    /// important when using CSS animations, web components, third party JS, or
+    /// anything else that makes the diffing implementation observable.
+    ///
+    /// Do not use keys if such a scenario does not apply. Keyed diffing is
+    /// generally more expensive than not, since it is putting greater
+    /// constraints on the diffing algorithm.
+    ///
+    /// # Invariants You Must Uphold
+    ///
+    /// The key may not be `u32::MAX`, which is a reserved key value.
+    ///
+    /// Keys must be unique among siblings.
+    ///
+    /// All sibling nodes must be keyed, or they must all not be keyed. You may
+    /// not mix keyed and unkeyed siblings.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use dodrio::{builder::*, bumpalo::Bump};
+    ///
+    /// let b = Bump::new();
+    ///
+    /// let my_li = li(&b)
+    ///     .key(1337)
+    ///     .finish();
+    /// ```
+    #[inline]
+    pub fn key(mut self, key: u32) -> Self {
+        use std::u32;
+        debug_assert!(key != u32::MAX);
+        self.key = NodeKey(key);
+        self
     }
 
     /// Create the virtual DOM node described by this builder.
@@ -239,6 +284,7 @@ where
     pub fn finish(self) -> Node<'a> {
         Node::element(
             self.bump,
+            self.key,
             self.tag_name,
             self.listeners,
             self.attributes,
