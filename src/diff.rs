@@ -891,15 +891,34 @@ fn create(
             } else {
                 change_list.create_element(tag_name);
             }
+
             for l in listeners {
                 unsafe {
                     registry.add(l);
                 }
                 change_list.new_event_listener(l);
             }
+
             for attr in attributes {
                 change_list.set_attribute(&attr.name, &attr.value);
             }
+
+            // Fast path: if there is a single text child, it is faster to
+            // create-and-append the text node all at once via setting the
+            // parent's `textContent` in a single change list instruction than
+            // to emit three instructions to (1) create a text node, (2) set its
+            // text content, and finally (3) append the text node to this
+            // parent.
+            if children.len() == 1 {
+                if let Node {
+                    kind: NodeKind::Text(TextNode { text }),
+                } = children[0]
+                {
+                    change_list.set_text(text);
+                    return;
+                }
+            }
+
             for child in children {
                 create(cached_set, change_list, registry, child, cached_roots);
                 change_list.append_child();
