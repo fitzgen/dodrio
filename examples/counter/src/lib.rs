@@ -54,7 +54,8 @@ impl Render for Counter {
                 button(&cx)
                     .on("click", |root, vdom, _event| {
                         // Same as above, but decrementing instead of incrementing.
-                        root.unwrap_mut::<Counter>().decrement();
+                        let counter = root.unwrap_mut::<Counter>();
+                        counter.decrement();
                         vdom.schedule_render();
                     })
                     .children([text("-")])
