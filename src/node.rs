@@ -68,23 +68,43 @@ pub_unstable_internal! {
     }
 }
 
-pub_unstable_internal! {
-    /// The key for keyed children.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-    pub(crate) struct NodeKey(pub(crate) u32);
+/// The key for keyed children.
+///
+/// Keys must be unique among siblings.
+///
+/// If any sibling is keyed, then they all must be keyed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct NodeKey(pub(crate) u32);
+
+impl Default for NodeKey {
+    fn default() -> NodeKey {
+        NodeKey::NONE
+    }
 }
 
 impl NodeKey {
+    /// The default, lack of a key.
     pub const NONE: NodeKey = NodeKey(u32::MAX);
 
+    /// Is this key `NodeKey::NONE`?
     #[inline]
     pub fn is_none(&self) -> bool {
         *self == Self::NONE
     }
 
+    /// Is this key not `NodeKey::NONE`?
     #[inline]
     pub fn is_some(&self) -> bool {
         !self.is_none()
+    }
+
+    /// Create a new `NodeKey`.
+    ///
+    /// `key` must not be `u32::MAX`.
+    #[inline]
+    pub fn new(key: u32) -> Self {
+        debug_assert_ne!(key, u32::MAX);
+        NodeKey(key)
     }
 }
 
@@ -162,31 +182,22 @@ impl<'a> Attribute<'a> {
 }
 
 impl<'a> Node<'a> {
-    /// Construct a new Node of type element with given tag name and children
+    /// Low-level constructor for making a new `Node` of type element with given
+    /// parts.
+    ///
+    /// This is primarily intended for JSX and templating proc-macros to compile
+    /// down into. If you are building nodes by-hand, prefer using the
+    /// `dodrio::builder::*` APIs.
     #[inline]
-    pub(crate) fn element<Listeners, Attributes, Children>(
+    pub fn element(
         bump: &'a Bump,
         key: NodeKey,
         tag_name: &'a str,
-        listeners: Listeners,
-        attributes: Attributes,
-        children: Children,
+        listeners: &'a [Listener<'a>],
+        attributes: &'a [Attribute<'a>],
+        children: &'a [Node<'a>],
         namespace: Option<&'a str>,
-    ) -> Node<'a>
-    where
-        Listeners: 'a + AsRef<[Listener<'a>]>,
-        Attributes: 'a + AsRef<[Attribute<'a>]>,
-        Children: 'a + AsRef<[Node<'a>]>,
-    {
-        let children: &'a Children = bump.alloc(children);
-        let children: &'a [Node<'a>] = children.as_ref();
-
-        let listeners: &'a Listeners = bump.alloc(listeners);
-        let listeners: &'a [Listener<'a>] = listeners.as_ref();
-
-        let attributes: &'a Attributes = bump.alloc(attributes);
-        let attributes: &'a [Attribute<'a>] = attributes.as_ref();
-
+    ) -> Node<'a> {
         let element = bump.alloc_with(|| ElementNode {
             key,
             tag_name,

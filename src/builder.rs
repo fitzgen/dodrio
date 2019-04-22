@@ -282,13 +282,22 @@ where
     /// ```
     #[inline]
     pub fn finish(self) -> Node<'a> {
+        let children: &'a Children = self.bump.alloc(self.children);
+        let children: &'a [Node<'a>] = children.as_ref();
+
+        let listeners: &'a Listeners = self.bump.alloc(self.listeners);
+        let listeners: &'a [Listener<'a>] = listeners.as_ref();
+
+        let attributes: &'a Attributes = self.bump.alloc(self.attributes);
+        let attributes: &'a [Attribute<'a>] = attributes.as_ref();
+
         Node::element(
             self.bump,
             self.key,
             self.tag_name,
-            self.listeners,
-            self.attributes,
-            self.children,
+            listeners,
+            attributes,
+            children,
             self.namespace,
         )
     }

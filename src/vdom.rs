@@ -161,12 +161,15 @@ impl Vdom {
     /// Construct a `Vdom` with the already-boxed-as-a-trait-object root
     /// rendering component.
     pub fn with_boxed_root_render(container: &crate::Element, component: Box<RootRender>) -> Vdom {
+        crate::strace::init_strace();
+
         let dom_buffers = [Bump::new(), Bump::new()];
         let change_list = ManuallyDrop::new(ChangeListPersistentState::new(container));
 
         // Create a dummy `<div/>` in our container.
         initialize_container(container);
-        let current_root = Node::element(&dom_buffers[0], NodeKey::NONE, "div", [], [], [], None);
+        let current_root =
+            Node::element(&dom_buffers[0], NodeKey::NONE, "div", &[], &[], &[], None);
         let current_root = Some(unsafe { extend_node_lifetime(current_root) });
 
         let container = container.clone();

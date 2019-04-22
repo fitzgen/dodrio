@@ -29,6 +29,14 @@ harness = false
 required-features = ["xxx-unstable-internal-use-only"]
 
 [features]
+# Don't rely on this feature! Its behavior will change and it could go away at
+# any time. This enables monkey-patching DOM methods so that we wrap them and
+# trace what DOM methods are used and how many times they are invoked when
+# applying our emitted change lists to the physical DOM. This is useful for
+# evaluating the differences between how Dodrio applies changes from virtual
+# nodes to the physical DOM versus how other virtual DOM libraries do the same.
+xxx-unstable-strace = []
+
 # Don't use this feature! It only exists for exposing otherwise-internal APIs
 # for testing and benchmarks.
 xxx-unstable-internal-use-only = []

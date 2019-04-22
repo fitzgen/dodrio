@@ -114,16 +114,21 @@ define_change_list_instructions! {
     /// Stack: `[... Node] -> [... Node Node]`
     ///
     /// ```text
-    /// stack.push(stack.top().firstChild)
+    /// parent = stack.top()
+    /// child = parent.childNodes[parent.childNodes.length - n - 1]
+    /// stack.push(child)
     /// ```
-    push_first_child() = 5,
+    push_reverse_child(n) = 5,
 
-    /// Stack: `[... Node] -> [... Node]`
+    /// Stack: `[... Node Node] -> [... Node Node]`
     ///
     /// ```text
-    /// stack.push(stack.pop().nextSibling)
+    /// stack.pop();
+    /// parent = stack.top();
+    /// child = parent.childNodes[n]
+    /// stack.push(child)
     /// ```
-    pop_push_next_sibling() = 6,
+    pop_push_child(n) = 6,
 
     /// Stack: `[... T] -> [...]`
     ///
@@ -240,14 +245,15 @@ define_change_list_instructions! {
     /// ```
     insert_before() = 20,
 
-    /// Stack: `[... Node] -> [... Node Node]`
+    /// Stack: `[... Node Node] -> [... Node Node]`
     ///
     /// ```text
+    /// stack.pop()
     /// parent = stack.top()
-    /// child = parent.lastChild
+    /// child = parent.childNodes[parent.childNodes.length - n - 1]
     /// stack.push(child)
     /// ```
-    push_last_child() = 21,
+    pop_push_reverse_child(n) = 21,
 
     /// Stack: `[... Node] -> [... Node]`
     ///

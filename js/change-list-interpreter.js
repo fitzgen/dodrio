@@ -86,15 +86,23 @@ const OP_TABLE = [
   },
 
   // 5
-  function pushFirstChild(interpreter, mem8, mem32, i) {
-    interpreter.stack.push(top(interpreter.stack).firstChild);
+  function pushReverseChild(interpreter, mem8, mem32, i) {
+    const n = mem32[i++];
+    const parent = top(interpreter.stack);
+    const children = parent.childNodes;
+    const child = children[children.length - n - 1];
+    interpreter.stack.push(child);
     return i;
   },
 
   // 6
-  function popPushNextSibling(interpreter, mem8, mem32, i) {
-    const node = interpreter.stack.pop();
-    interpreter.stack.push(node.nextSibling);
+  function popPushChild(interpreter, mem8, mem32, i) {
+    const n = mem32[i++];
+    interpreter.stack.pop();
+    const parent = top(interpreter.stack);
+    const children = parent.childNodes;
+    const child = children[n];
+    interpreter.stack.push(child);
     return i;
   },
 
@@ -226,9 +234,12 @@ const OP_TABLE = [
   },
 
   // 21
-  function pushLastChild(interpreter, mem8, mem32, i) {
+  function popPushReverseChild(interpreter, mem8, mem32, i) {
+    const n = mem32[i++];
+    interpreter.stack.pop();
     const parent = top(interpreter.stack);
-    const child = parent.lastChild;
+    const children = parent.childNodes;
+    const child = children[children.length - n - 1];
     interpreter.stack.push(child);
     return i;
   },
