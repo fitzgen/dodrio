@@ -98,7 +98,7 @@ pub mod builder;
 
 // Re-export items at the top level.
 pub use self::cached::Cached;
-pub use self::node::{Attribute, Listener, Node};
+pub use self::node::{Attribute, Listener, Node, NodeKey};
 pub use self::render::{Render, RootRender};
 pub use self::render_context::RenderContext;
 pub use self::vdom::{Vdom, VdomWeak};

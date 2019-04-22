@@ -166,7 +166,8 @@ impl Vdom {
 
         // Create a dummy `<div/>` in our container.
         initialize_container(container);
-        let current_root = Node::element(&dom_buffers[0], NodeKey::NONE, "div", [], [], [], None);
+        let current_root =
+            Node::element(&dom_buffers[0], NodeKey::NONE, "div", &[], &[], &[], None);
         let current_root = Some(unsafe { extend_node_lifetime(current_root) });
 
         let container = container.clone();
