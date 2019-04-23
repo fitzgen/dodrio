@@ -229,12 +229,18 @@ impl ChangeListBuilder<'_> {
 
     pub fn set_attribute(&mut self, name: &str, value: &str) {
         debug_assert!(self.traversal_is_committed());
-        debug!("emit: set_attribute({:?}, {:?})", name, value);
-        let name_id = self.ensure_string(name);
-        let value_id = self.ensure_string(value);
-        self.state
-            .emitter
-            .set_attribute(name_id.into(), value_id.into());
+        if name == "class" {
+            let class_id = self.ensure_string(value);
+            debug!("emit: set_class({:?})", value);
+            self.state.emitter.set_class(class_id.into());
+        } else {
+            let name_id = self.ensure_string(name);
+            let value_id = self.ensure_string(value);
+            debug!("emit: set_attribute({:?}, {:?})", name, value);
+            self.state
+                .emitter
+                .set_attribute(name_id.into(), value_id.into());
+        }
     }
 
     pub fn remove_attribute(&mut self, name: &str) {

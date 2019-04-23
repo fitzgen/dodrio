@@ -251,6 +251,14 @@ const OP_TABLE = [
     const child = parent.childNodes[n];
     child.remove();
     return i;
+  },
+
+  // 23
+  function setClass(interpreter, mem8, mem32, i) {
+    const classId = mem32[i++];
+    const className = interpreter.getCachedString(classId);
+    top(interpreter.stack).className = className;
+    return i;
   }
 ];
 
