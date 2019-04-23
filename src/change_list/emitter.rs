@@ -263,4 +263,13 @@ define_change_list_instructions! {
     /// child.remove()
     /// ```
     remove_child(n) = 22,
+
+    /// Stack: `[... Node] -> [... Node]`
+    ///
+    /// ```text
+    /// class = getCachedString(class)
+    /// node = stack.top()
+    /// node.className = class
+    /// ```
+    set_class(class) = 23,
 }
