@@ -54,7 +54,7 @@ pub fn run() {
     // Create a new `GreetingViaJs` render component.
     let component = GreetingViaJs::new("World");
 
-    // Create a virtual DOM and mount it and the `Hello` render component to the
+    // Create a virtual DOM and mount it and the `GreetingViaJs` render component to the
     // `<body>`.
     let vdom = Vdom::new(body.as_ref(), component);
 
