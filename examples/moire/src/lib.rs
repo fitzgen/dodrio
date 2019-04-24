@@ -23,7 +23,7 @@ pub fn run() {
     // Create a new `Moire` render component.
     let component = Moire::new();
 
-    // Create a virtual DOM and mount it and the `Hello` render component to the
+    // Create a virtual DOM and mount it and the `Moire` render component to the
     // scene.
     let vdom = Vdom::new(&scene, component);
 

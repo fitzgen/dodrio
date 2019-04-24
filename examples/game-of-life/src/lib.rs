@@ -172,7 +172,7 @@ pub fn run() {
     // Create a new Game of Life `Universe` render component.
     let universe = Universe::new();
 
-    // Create a virtual DOM and mount it and the `Hello` render component to the
+    // Create a virtual DOM and mount it and the `Universe` render component to the
     // `<body>`.
     let vdom = Vdom::new(body.as_ref(), universe);
 
