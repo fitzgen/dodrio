@@ -1,8 +1,7 @@
 use dodrio::{bumpalo, Node, Render, RenderContext, Vdom};
 use std::cell::RefCell;
 use std::rc::Rc;
-use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
+use wasm_bindgen::{prelude::*, JsCast};
 use web_sys::Window;
 
 // Triangle container defining target size.

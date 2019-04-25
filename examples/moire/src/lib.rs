@@ -5,8 +5,7 @@ use dodrio::{bumpalo, Node, Render, RenderContext, Vdom};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::str;
-use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
+use wasm_bindgen::{prelude::*, JsCast};
 
 /// This is the main function that is automatically invoked when the wasm module
 /// is loaded.
