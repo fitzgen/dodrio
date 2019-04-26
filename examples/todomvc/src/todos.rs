@@ -49,7 +49,7 @@ pub trait TodosActions: TodoActions {
 impl<C> Todos<C> {
     /// Construct a new todos set.
     ///
-    /// If an existing set is available in local storage, then us that,
+    /// If an existing set is available in local storage, then use that,
     /// otherwise create a new set.
     pub fn new() -> Self
     where
