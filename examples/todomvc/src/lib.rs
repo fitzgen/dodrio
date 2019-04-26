@@ -28,7 +28,7 @@ pub fn run() -> Result<(), JsValue> {
     let document = utils::document();
     let container = document
         .query_selector(".todoapp")?
-        .ok_or_else(|| js_sys::Error::new("could not find `.todoapp` container"))?;
+        .ok_or_else(|| js_sys::Error::new("could not find .todoapp container"))?;
 
     // Create a new `Todos` render component.
     let todos = Todos::<Controller>::new();
