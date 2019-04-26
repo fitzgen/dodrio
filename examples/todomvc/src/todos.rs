@@ -9,8 +9,7 @@ use dodrio::{bumpalo, Node, Render, RenderContext, RootRender, VdomWeak};
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
 use std::mem;
-use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
+use wasm_bindgen::{prelude::*, JsCast};
 
 /// A collection of todos.
 #[derive(Default, Serialize, Deserialize)]

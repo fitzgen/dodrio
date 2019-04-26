@@ -6,8 +6,7 @@ use crate::visibility::Visibility;
 use dodrio::VdomWeak;
 use futures::prelude::*;
 use std::str::FromStr;
-use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
+use wasm_bindgen::{prelude::*, JsCast};
 
 /// Start the router.
 pub fn start(vdom: VdomWeak) {
