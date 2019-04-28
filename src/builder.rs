@@ -1010,6 +1010,10 @@ builder_constructors! {
     /// [`<rect>`](https://developer.mozilla.org/en-US/docs/Web/SVG/Element/rect)
     /// element.
     rect <> "http://www.w3.org/2000/svg";
+    /// Build a
+    /// [`<image>`](https://developer.mozilla.org/en-US/docs/Web/SVG/Element/image)
+    /// element.
+    image <> "http://www.w3.org/2000/svg";
 }
 
 /// Construct a text node.
