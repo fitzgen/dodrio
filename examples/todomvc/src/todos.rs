@@ -9,8 +9,7 @@ use dodrio::{bumpalo, Node, Render, RenderContext, RootRender, VdomWeak};
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
 use std::mem;
-use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
+use wasm_bindgen::{prelude::*, JsCast};
 
 /// A collection of todos.
 #[derive(Default, Serialize, Deserialize)]
@@ -50,7 +49,7 @@ pub trait TodosActions: TodoActions {
 impl<C> Todos<C> {
     /// Construct a new todos set.
     ///
-    /// If an existing set is available in local storage, then us that,
+    /// If an existing set is available in local storage, then use that,
     /// otherwise create a new set.
     pub fn new() -> Self
     where
