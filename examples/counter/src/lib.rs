@@ -1,4 +1,4 @@
-use dodrio::{bumpalo, Render, RenderContext};
+use dodrio::{bumpalo, Node, Render, RenderContext};
 use log::*;
 use wasm_bindgen::prelude::*;
 
@@ -27,7 +27,7 @@ impl Counter {
 // The `Render` implementation for `Counter`s displays the current count and has
 // buttons to increment and decrement the count.
 impl Render for Counter {
-    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> dodrio::Node<'a> {
+    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         use dodrio::builder::*;
 
         // Stringify the count as a bump-allocated string.
