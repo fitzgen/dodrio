@@ -30,6 +30,7 @@ impl InstructionEmitter {
 
     /// Invoke the given function with each of the allocated instruction
     /// sequences that this emitter has built up.
+    #[cfg_attr(feature = "xxx-unstable-internal-use-only", allow(dead_code))]
     pub fn each_instruction_sequence<F>(&mut self, f: F)
     where
         F: FnMut(&[u8]),
