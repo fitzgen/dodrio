@@ -124,18 +124,3 @@ impl dyn RootRender {
             .expect_throw("bad `RootRender::unwrap_ref` call")
     }
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn render_is_object_safe() {
-        #[allow(dead_code)]
-        fn takes_dyn_render(_: &dyn super::Render) {}
-    }
-
-    #[test]
-    fn root_render_is_object_safe() {
-        #[allow(dead_code)]
-        fn takes_dyn_render(_: &dyn super::RootRender) {}
-    }
-}
