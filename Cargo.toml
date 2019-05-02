@@ -50,7 +50,7 @@ wasm-bindgen-futures = "0.3.19"
 js-sys = "0.3.19"
 fxhash = "0.2.1"
 log = { version = "0.4.6", optional = true }
-bitflags = "1.0.4"
+bitflags = "1.0.5"
 longest-increasing-subsequence = "0.1.0"
 
 [dependencies.web-sys]
