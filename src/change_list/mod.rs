@@ -8,7 +8,8 @@ pub mod js;
 use self::emitter::InstructionEmitter;
 use self::strings::{StringKey, StringsCache};
 use self::traversal::{MoveTo, Traversal};
-use crate::Listener;
+use crate::{cached_set::CacheId, Listener};
+use fxhash::FxHashSet;
 
 #[derive(Debug)]
 pub(crate) struct ChangeListPersistentState {
@@ -16,11 +17,13 @@ pub(crate) struct ChangeListPersistentState {
     emitter: InstructionEmitter,
     traversal: Traversal,
     interpreter: js::ChangeListInterpreter,
+    templates: FxHashSet<CacheId>,
 }
 
 pub(crate) struct ChangeListBuilder<'a> {
     state: &'a mut ChangeListPersistentState,
     next_temporary: u32,
+    forcing_new_listeners: bool,
 }
 
 impl Drop for ChangeListPersistentState {
@@ -35,11 +38,13 @@ impl ChangeListPersistentState {
         let emitter = InstructionEmitter::new();
         let traversal = Traversal::new();
         let interpreter = js::ChangeListInterpreter::new(container);
+        let templates = Default::default();
         ChangeListPersistentState {
             strings,
             emitter,
             traversal,
             interpreter,
+            templates,
         }
     }
 
@@ -51,6 +56,7 @@ impl ChangeListPersistentState {
         ChangeListBuilder {
             state: self,
             next_temporary: 0,
+            forcing_new_listeners: false,
         }
     }
 }
@@ -281,6 +287,17 @@ impl ChangeListBuilder<'_> {
             .create_element_ns(tag_name_id.into(), ns_id.into());
     }
 
+    pub fn push_force_new_listeners(&mut self) -> bool {
+        let old = self.forcing_new_listeners;
+        self.forcing_new_listeners = true;
+        old
+    }
+
+    pub fn pop_force_new_listeners(&mut self, previous: bool) {
+        debug_assert!(self.forcing_new_listeners);
+        self.forcing_new_listeners = previous;
+    }
+
     pub fn new_event_listener(&mut self, listener: &Listener) {
         debug_assert!(self.traversal_is_committed());
         debug!("emit: new_event_listener({:?})", listener);
@@ -292,6 +309,12 @@ impl ChangeListBuilder<'_> {
 
     pub fn update_event_listener(&mut self, listener: &Listener) {
         debug_assert!(self.traversal_is_committed());
+
+        if self.forcing_new_listeners {
+            self.new_event_listener(listener);
+            return;
+        }
+
         debug!("emit: update_event_listener({:?})", listener);
         let (a, b) = listener.get_callback_parts();
         debug_assert!(a != 0);
@@ -306,5 +329,25 @@ impl ChangeListBuilder<'_> {
         debug!("emit: remove_event_listener({:?})", event);
         let event_id = self.ensure_string(event);
         self.state.emitter.remove_event_listener(event_id.into());
+    }
+
+    #[inline]
+    pub fn has_template(&mut self, id: CacheId) -> bool {
+        self.state.templates.contains(&id)
+    }
+
+    pub fn save_template(&mut self, id: CacheId) {
+        debug_assert!(self.traversal_is_committed());
+        debug_assert!(!self.has_template(id));
+        debug!("emit: save_template({:?})", id);
+        self.state.templates.insert(id);
+        self.state.emitter.save_template(id.into());
+    }
+
+    pub fn push_template(&mut self, id: CacheId) {
+        debug_assert!(self.traversal_is_committed());
+        debug_assert!(self.has_template(id));
+        debug!("emit: push_template({:?})", id);
+        self.state.emitter.push_template(id.into());
     }
 }

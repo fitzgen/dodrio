@@ -6,9 +6,13 @@ export function initStrace() {
 }
 
 const counts = new Map;
+counts.total = 0;
+
 let timer = null;
 
 function log(ctorName, kind, key) {
+  counts.total += 1;
+
   const entry = `${kind} ${ctorName}#${key}`
   const count = counts.get(entry);
   if (count === undefined) {
@@ -27,8 +31,13 @@ function dumpAndReset() {
   const data = [...counts]
         .sort((a, b) => b[1] - a[1])
         .map(a => ({ "DOM Method": a[0], "Count": a[1] }));
+
+  data.push({ "DOM Method": "<total>", "Count": counts.total });
+
   console.table(data, ["DOM Method", "Count"]);
+
   counts.clear();
+  counts.total = 0;
 }
 
 function instrument(proto, key, desc) {

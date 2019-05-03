@@ -35,6 +35,28 @@ pub(crate) struct CacheEntry {
     // once, we don't have to repeat the tracing every time we want to garbage
     // collect cache entries.
     edges: FxHashSet<CacheId>,
+
+    // The template for this cached virtual subtree.
+    //
+    // When a cache entry has a template, that means that the `ChangeList` will
+    // lazily build a physical DOM subtree based on the template, and when we
+    // create new versions of this cached result, we clone the template's
+    // physical DOM subtree and then modify it, rather than building the cached
+    // result up from scratch. This is a nice win because we bounce between JS
+    // and DOM methods less often, and get the C++ DOM implementation to do most
+    // of the subtree construction for us.
+    template: Option<CacheId>,
+
+    // Whether this entry should never be garbage collected. Typically only
+    // templates are pinned.
+    pinned: bool,
+}
+
+impl From<CacheId> for u32 {
+    #[inline]
+    fn from(id: CacheId) -> u32 {
+        id.0
+    }
 }
 
 impl CachedSet {
@@ -62,7 +84,7 @@ impl CachedSet {
         }
 
         self.items.retain(|id, entry| {
-            let keep = marked.contains(id);
+            let keep = entry.pinned || marked.contains(id);
             if !keep {
                 let node: &Node = unsafe { &*entry.node };
                 registry.remove_subtree(node);
@@ -108,21 +130,38 @@ impl CachedSet {
         CacheId(next.expect_throw("ID_COUNTER overflowed"))
     }
 
-    pub(crate) fn insert<F>(cx: &mut RenderContext, f: F) -> CacheId
+    pub(crate) fn insert<F>(
+        cx: &mut RenderContext,
+        pinned: bool,
+        template: Option<CacheId>,
+        f: F,
+    ) -> CacheId
     where
         F: for<'a> FnOnce(&mut RenderContext<'a>) -> Node<'a>,
     {
-        let bump = Bump::new();
         let set = cx.cached_set;
-        let mut nested_cx = RenderContext::new(&bump, set);
-        let node = f(&mut nested_cx);
-        let node = bump.alloc(node);
-        let edges = {
-            let set = set.borrow();
-            set.trace(node)
+        let bump = Bump::new();
+        let (node, edges) = {
+            let mut nested_cx = RenderContext::new(&bump, cx.cached_set, cx.templates);
+            let node = f(&mut nested_cx);
+            let node = bump.alloc(node);
+            let edges = {
+                let set = set.borrow();
+                set.trace(node)
+            };
+            (
+                node as *mut Node<'_> as usize as *const Node<'static>,
+                edges,
+            )
         };
-        let node = node as *mut Node<'_> as usize as *const Node<'static>;
-        let entry = CacheEntry { bump, node, edges };
+
+        let entry = CacheEntry {
+            bump,
+            node,
+            edges,
+            template,
+            pinned,
+        };
 
         let mut set = set.borrow_mut();
         let id = set.next_id();
@@ -135,20 +174,13 @@ impl CachedSet {
         self.items.contains_key(&id)
     }
 
-    /// Get the node for the given cache id.
-    pub fn get(&self, mut id: CacheId) -> &Node {
-        loop {
-            let entry = self
-                .items
-                .get(&id)
-                .expect_throw("CachedSet::get: should have id in set");
-            let node: &Node = unsafe { &*entry.node };
-            if let NodeKind::Cached(ref c) = node.kind {
-                id = c.id;
-                continue;
-            } else {
-                return node;
-            }
-        }
+    /// Get the cached node and its template (if any) for the given cache id.
+    pub fn get(&self, id: CacheId) -> (&Node, Option<CacheId>) {
+        let entry = self
+            .items
+            .get(&id)
+            .expect_throw("CachedSet::get: should have id in set");
+        let node: &Node = unsafe { &*entry.node };
+        (node, entry.template)
     }
 }

@@ -46,9 +46,10 @@ fn criterion_benchmark(c: &mut Criterion) {
         Benchmark::new("empty", {
             let mut bump = Bump::new();
             let cached_set = RefCell::new(CachedSet::default());
+            let mut templates = Default::default();
             move |b| {
                 bump.reset();
-                let mut cx = RenderContext::new(&bump, &cached_set);
+                let mut cx = RenderContext::new(&bump, &cached_set, &mut templates);
                 b.iter(|| {
                     black_box(Empty.render(&mut cx));
                 })
@@ -63,9 +64,10 @@ fn criterion_benchmark(c: &mut Criterion) {
             {
                 let mut bump = Bump::new();
                 let cached_set = RefCell::new(CachedSet::default());
+                let mut templates = Default::default();
                 move |b, n| {
                     bump.reset();
-                    let mut cx = RenderContext::new(&bump, &cached_set);
+                    let mut cx = RenderContext::new(&bump, &cached_set, &mut templates);
                     b.iter(|| {
                         black_box(SimpleList(*n).render(&mut cx));
                     })

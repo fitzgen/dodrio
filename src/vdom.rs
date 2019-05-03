@@ -1,11 +1,13 @@
 use super::change_list::ChangeListPersistentState;
 use super::RootRender;
-use crate::cached_set::CachedSet;
+use crate::cached::TemplateId;
+use crate::cached_set::{CacheId, CachedSet};
 use crate::events::EventsRegistry;
 use crate::node::{Node, NodeKey};
 use crate::RenderContext;
 use bumpalo::Bump;
 use futures::future::Future;
+use fxhash::FxHashMap;
 use std::cell::Cell;
 use std::cell::RefCell;
 use std::fmt;
@@ -61,6 +63,7 @@ pub(crate) struct VdomInnerExclusive {
     events_registry: Option<Rc<RefCell<EventsRegistry>>>,
     events_trampoline: Option<crate::EventsTrampoline>,
     cached_set: crate::RefCell<CachedSet>,
+    templates: FxHashMap<TemplateId, Option<CacheId>>,
 
     // Actually a reference into `self.dom_buffers[0]` or if `self.component` is
     // caching renders, into `self.component`'s bump.
@@ -186,6 +189,7 @@ impl Vdom {
                 events_registry: None,
                 events_trampoline: None,
                 cached_set: crate::RefCell::new(Default::default()),
+                templates: Default::default(),
             }),
         });
 
@@ -265,7 +269,8 @@ impl VdomInnerExclusive {
                 dom_buffers[1].reset();
 
                 // Render the new current contents into the inactive bump arena.
-                let mut cx = RenderContext::new(&dom_buffers[1], &self.cached_set);
+                let mut cx =
+                    RenderContext::new(&dom_buffers[1], &self.cached_set, &mut self.templates);
                 let new_contents = self.component.as_ref().unwrap_throw().render(&mut cx);
                 let new_contents = extend_node_lifetime(new_contents);
 

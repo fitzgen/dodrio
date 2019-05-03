@@ -7,6 +7,7 @@ use dodrio::{
     Attribute, CachedSet, ElementNode, Node, NodeKind, Render, RenderContext, TextNode, Vdom,
 };
 use futures::prelude::*;
+use fxhash::FxHashMap;
 use log::*;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -55,7 +56,8 @@ pub fn assert_rendered<R: Render>(container: &web_sys::Element, r: &R) {
 
     let cached_set = &RefCell::new(CachedSet::default());
     let bump = &Bump::new();
-    let cx = &mut RenderContext::new(bump, cached_set);
+    let templates = &mut FxHashMap::default();
+    let cx = &mut RenderContext::new(bump, cached_set, templates);
     let node = r.render(cx);
     let child = container
         .first_child()
@@ -111,7 +113,7 @@ pub fn assert_rendered<R: Render>(container: &web_sys::Element, r: &R) {
                 }
             }
             NodeKind::Cached(ref c) => {
-                let expected = cached_set.get(c.id);
+                let (expected, _template) = cached_set.get(c.id);
                 check_node(cached_set, actual, &expected);
             }
         }
