@@ -8,7 +8,7 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-cfg-if = "0.1.7"
+cfg-if = "0.1.9"
 dodrio = { path = "../.." }
 futures = "0.1.27"
 log = "0.4.6"
