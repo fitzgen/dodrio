@@ -9,6 +9,12 @@ use std::ops::{Deref, DerefMut};
 
 /// A renderable that supports caching for when rendering is expensive but can
 /// generate the same DOM tree.
+///
+/// # Example
+///
+/// The [TodoMVC
+/// example](https://github.com/fitzgen/dodrio/blob/master/examples/todomvc/src/todo.rs)
+/// caches individual todo items.
 #[derive(Clone, Debug, Default)]
 pub struct Cached<R>
 where
