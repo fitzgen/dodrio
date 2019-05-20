@@ -195,3 +195,29 @@ where
         cached.into()
     }
 }
+
+#[cfg(feature = "serde")]
+impl<R> serde::Serialize for Cached<R>
+where
+    R: Default + serde::Serialize,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.inner.serialize(serializer)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de, R> serde::Deserialize<'de> for Cached<R>
+where
+    R: Default + serde::Deserialize<'de>,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        R::deserialize(deserializer).map(Cached::new)
+    }
+}
