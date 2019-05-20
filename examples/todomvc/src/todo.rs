@@ -1,14 +1,19 @@
 //! Type definition and `dodrio::Render` implementation for a single todo item.
 
 use crate::keys;
-use dodrio::{Node, Render, RenderContext, RootRender, VdomWeak};
+use dodrio::{Cached, Node, Render, RenderContext, RootRender, VdomWeak};
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
 use wasm_bindgen::{prelude::*, JsCast};
 
 /// A single todo item.
-#[derive(Serialize, Deserialize)]
+#[derive(Default)]
 pub struct Todo<C> {
+    inner: Cached<TodoInner<C>>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct TodoInner<C> {
     id: usize,
     title: String,
     completed: bool,
@@ -48,47 +53,66 @@ impl<C> Todo<C> {
         let completed = false;
         let edits = None;
         Todo {
-            id,
-            title,
-            completed,
-            edits,
-            _controller: PhantomData,
+            inner: Cached::new(TodoInner {
+                id,
+                title,
+                completed,
+                edits,
+                _controller: PhantomData,
+            }),
         }
     }
 
     /// Set this todo item's id.
     pub fn set_id(&mut self, id: usize) {
-        self.id = id;
+        if id != self.inner.id {
+            Cached::invalidate(&self.inner);
+        }
+        self.inner.id = id;
     }
 
     /// Is this `Todo` complete?
     pub fn is_complete(&self) -> bool {
-        self.completed
+        self.inner.completed
     }
 
     /// Mark the `Todo` as complete or not.
     pub fn set_complete(&mut self, to: bool) {
-        self.completed = to;
+        if to != self.inner.completed {
+            Cached::invalidate(&self.inner);
+        }
+        self.inner.completed = to;
     }
 
     /// Get this todo's title.
     pub fn title(&self) -> &str {
-        &self.title
+        &self.inner.title
     }
 
     /// Set this todo item's title.
     pub fn set_title<S: Into<String>>(&mut self, title: S) {
-        self.title = title.into();
+        let title = title.into();
+        if title != self.inner.title {
+            Cached::invalidate(&self.inner);
+        }
+        self.inner.title = title;
     }
 
     /// Set the edits for this todo.
     pub fn set_edits<S: Into<String>>(&mut self, edits: Option<S>) {
-        self.edits = edits.map(Into::into);
+        let edits = edits.map(Into::into);
+        if edits != self.inner.edits {
+            Cached::invalidate(&self.inner);
+        }
+        self.inner.edits = edits;
     }
 
     /// Take this todo's edits, leaving `None` in their place.
     pub fn take_edits(&mut self) -> Option<String> {
-        self.edits.take()
+        if self.inner.edits.is_some() {
+            Cached::invalidate(&self.inner);
+        }
+        self.inner.edits.take()
     }
 }
 
@@ -99,17 +123,17 @@ impl<C: TodoActions> Render for Todo<C> {
             bumpalo::{self, collections::String},
         };
 
-        let id = self.id;
-        let title = self.edits.as_ref().unwrap_or(&self.title);
+        let id = self.inner.id;
+        let title = self.inner.edits.as_ref().unwrap_or(&self.inner.title);
         let title = bumpalo::format!(in cx.bump, "{}", title).into_bump_str();
 
         li(&cx)
             .attr("class", {
                 let mut class = String::new_in(cx.bump);
-                if self.completed {
+                if self.inner.completed {
                     class.push_str("completed ");
                 }
-                if self.edits.is_some() {
+                if self.inner.edits.is_some() {
                     class.push_str("editing");
                 }
                 class.into_bump_str()
@@ -121,7 +145,7 @@ impl<C: TodoActions> Render for Todo<C> {
                         input(&cx)
                             .attr("class", "toggle")
                             .attr("type", "checkbox")
-                            .bool_attr("checked", self.completed)
+                            .bool_attr("checked", self.inner.completed)
                             .on("click", move |root, vdom, _event| {
                                 C::toggle_completed(root, vdom, id);
                             })
@@ -169,5 +193,37 @@ impl<C: TodoActions> Render for Todo<C> {
                     .finish(),
             ])
             .finish()
+    }
+}
+
+impl<C> Default for TodoInner<C> {
+    fn default() -> Self {
+        TodoInner {
+            id: Default::default(),
+            title: Default::default(),
+            completed: Default::default(),
+            edits: Default::default(),
+            _controller: PhantomData,
+        }
+    }
+}
+
+impl<C> serde::Serialize for Todo<C> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.inner.serialize(serializer)
+    }
+}
+
+impl<'de, C> Deserialize<'de> for Todo<C> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        Ok(Todo {
+            inner: <Cached<TodoInner<C>>>::deserialize(deserializer)?,
+        })
     }
 }

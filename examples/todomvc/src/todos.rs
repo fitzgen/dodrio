@@ -28,7 +28,7 @@ pub struct Todos<C = Controller> {
 }
 
 /// Actions for `Todos` that can be triggered by UI interactions.
-pub trait TodosActions: TodoActions {
+pub trait TodosActions: 'static + TodoActions {
     /// Toggle the completion state of all todo items.
     fn toggle_all(root: &mut dyn RootRender, vdom: VdomWeak);
 

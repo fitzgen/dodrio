@@ -57,6 +57,15 @@ directory](https://github.com/fitzgen/dodrio/tree/master/examples), including:
 * [`js-component`](https://github.com/fitzgen/dodrio/tree/master/examples/js-component):
   Defines a rendering component in JavaScript with the `dodrio-js-api` crate.
 
+## Cargo Features
+
+* `log` &mdash; enable debugging-oriented log messages with the `log` crate's
+  facade. You still have to initialize a logger for the messages to go anywhere,
+  such as [`console_log`](https://github.com/iamcodemaker/console_log).
+
+* `serde` &mdash; enable `serde::{Serialize, Deserialize}` implementations for
+  `Cached<R>` where `R` is serializable and deserializable.
+
 ## Design
 
 ### Bump Allocation
