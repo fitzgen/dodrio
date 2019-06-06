@@ -61,16 +61,19 @@ impl<'a> RenderContext<'a> {
     }
     /// return an empty rendering context
     pub_unstable_internal! {
-        pub(crate) fn empty() -> Self {
-        let cached_set = &RefCell::new(CachedSet::default());
-        let bump = &Bump::new();
-        let templates = &mut FxHashMap::default();
-            RenderContext {
+        pub(crate) fn empty<F, T>(f: F) -> T
+            where F: FnOnce(&mut RenderContext) -> T,
+            {
+            let cached_set = &RefCell::new(CachedSet::default());
+            let bump = &Bump::new();
+            let templates = &mut FxHashMap::default();
+
+            f(&mut RenderContext {
                 bump,
                 cached_set,
                 templates,
                 _non_exhaustive: (),
-            }
+            })
         }
     }
 
