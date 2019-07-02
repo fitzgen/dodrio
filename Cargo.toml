@@ -42,7 +42,7 @@ xxx-unstable-strace = []
 xxx-unstable-internal-use-only = []
 
 [dependencies]
-bumpalo = "2.4.3"
+bumpalo = "2.5.0"
 cfg-if = "0.1.9"
 futures = "0.1.28"
 wasm-bindgen = "0.2.42"
