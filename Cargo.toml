@@ -49,7 +49,7 @@ wasm-bindgen = "0.2.42"
 wasm-bindgen-futures = "0.3.19"
 js-sys = "0.3.19"
 fxhash = "0.2.1"
-log = { version = "0.4.6", optional = true }
+log = { version = "0.4.7", optional = true }
 longest-increasing-subsequence = "0.1.0"
 serde = { version = "1.0.94", optional = true }
 
@@ -67,7 +67,7 @@ features = [
 [dev-dependencies]
 console_log = "0.1.2"
 dodrio-js-api = { version = "=0.1.0", path = "./crates/js-api" }
-log = "0.4.6"
+log = "0.4.7"
 wasm-bindgen-test = "0.2.42"
 
 [dev-dependencies.web-sys]
