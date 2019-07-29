@@ -17,7 +17,7 @@ wasm-bindgen-futures = "0.3.19"
 # Optional dependencies for logging.
 console_error_panic_hook = { optional = true, version = "0.1.6" }
 console_log = { optional = true, version = "0.1.2" }
-log = { optional = true, version = "0.4.7" }
+log = { optional = true, version = "0.4.8" }
 
 [dependencies.web-sys]
 version = "0.3.19"
