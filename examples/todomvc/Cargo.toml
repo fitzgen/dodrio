@@ -9,7 +9,7 @@ cfg-if = "0.1.9"
 dodrio = { path = "../..", features = ["serde"] }
 futures = "0.1.28"
 js-sys = "0.3.19"
-serde = { features = ["derive"], version = "1.0.98" }
+serde = { features = ["derive"], version = "1.0.101" }
 serde_json = "1.0.40"
 wasm-bindgen = "0.2.42"
 wasm-bindgen-futures = "0.3.19"
