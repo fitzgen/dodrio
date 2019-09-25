@@ -43,7 +43,7 @@ xxx-unstable-internal-use-only = []
 
 [dependencies]
 bumpalo = "2.5.0"
-cfg-if = "0.1.9"
+cfg-if = "0.1.10"
 futures = "0.1.28"
 wasm-bindgen = "0.2.42"
 wasm-bindgen-futures = "0.3.19"
