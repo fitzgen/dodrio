@@ -7,7 +7,7 @@ version = "0.1.0"
 [dependencies]
 cfg-if = "0.1.9"
 dodrio = { path = "../..", features = ["serde"] }
-futures = "0.1.28"
+futures = "0.3.1"
 js-sys = "0.3.19"
 serde = { features = ["derive"], version = "1.0.98" }
 serde_json = "1.0.40"
