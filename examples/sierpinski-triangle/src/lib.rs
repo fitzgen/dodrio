@@ -111,7 +111,7 @@ impl Render for Container {
 
 // Kick off a loop that keeps re-rendering on every animation frame.
 fn animate(window: Window, vdom: Vdom) {
-    let rc: Rc<RefCell<Option<Closure<FnMut()>>>> = Rc::new(RefCell::new(None));
+    let rc = <Rc<RefCell<Option<Closure<dyn FnMut()>>>>>::default();
     let rc2 = rc.clone();
     let window2 = window.clone();
     let weak = vdom.weak();
@@ -126,7 +126,7 @@ fn animate(window: Window, vdom: Vdom) {
                     .unchecked_ref::<js_sys::Function>(),
             )
             .unwrap_throw();
-    }) as Box<FnMut()>);
+    }) as Box<dyn FnMut()>);
     window2
         .request_animation_frame(f.as_ref().unchecked_ref::<js_sys::Function>())
         .unwrap_throw();

@@ -10,10 +10,9 @@ crate-type = ["cdylib"]
 [dependencies]
 cfg-if = "0.1.9"
 dodrio = { path = "../.." }
-futures = "0.1.28"
 log = "0.4.8"
 wasm-bindgen = "0.2.42"
-wasm-bindgen-futures = "0.3.19"
+wasm-bindgen-futures = "0.4.5"
 
 # Optional dependencies for logging.
 console_error_panic_hook = { optional = true, version = "0.1.6" }
@@ -35,7 +34,7 @@ features = [
 ]
 
 [dev-dependencies]
-wasm-bindgen-test = "0.2.42"
+wasm-bindgen-test = "0.3.5"
 
 [features]
 logging = [

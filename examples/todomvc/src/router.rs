@@ -4,7 +4,6 @@ use crate::todos::Todos;
 use crate::utils;
 use crate::visibility::Visibility;
 use dodrio::VdomWeak;
-use futures::prelude::*;
 use std::str::FromStr;
 use wasm_bindgen::{prelude::*, JsCast};
 
@@ -29,23 +28,25 @@ pub fn start(vdom: VdomWeak) {
                 v
             });
 
-        wasm_bindgen_futures::spawn_local(
-            vdom.with_component({
-                let vdom = vdom.clone();
-                move |root| {
-                    let todos = root.unwrap_mut::<Todos>();
-                    // If the todos' visibility already matches the event's
-                    // visibility, then there is nothing to do (ha). If they
-                    // don't match, then we need to update the todos' visibility
-                    // and re-render.
-                    if todos.visibility() != new_vis {
-                        todos.set_visibility(new_vis);
-                        vdom.schedule_render();
-                    }
-                }
-            })
-            .map_err(|_| ()),
-        );
+        // // -- another tricky bit --
+        // wasm_bindgen_futures::spawn_local(async move {
+        //     let _ = vdom
+        //         .with_component({
+        //             let vdom = vdom.clone();
+        //             move |root| {
+        //                 let todos = root.unwrap_mut::<Todos>();
+        //                 // If the todos' visibility already matches the event's
+        //                 // visibility, then there is nothing to do (ha). If they
+        //                 // don't match, then we need to update the todos' visibility
+        //                 // and re-render.
+        //                 if todos.visibility() != new_vis {
+        //                     todos.set_visibility(new_vis);
+        //                     vdom.schedule_render();
+        //                 }
+        //             }
+        //         })
+        //         .await;
+        // });
     };
 
     // Call it once to handle the initial `#` fragment.
@@ -56,7 +57,7 @@ pub fn start(vdom: VdomWeak) {
     // Note that if we ever intended to unmount our todos app, we would want to
     // provide a method for removing this router's event listener and cleaning
     // up after ourselves.
-    let on_hash_change = Closure::wrap(Box::new(on_hash_change) as Box<FnMut()>);
+    let on_hash_change = Closure::wrap(Box::new(on_hash_change) as Box<dyn FnMut()>);
     let window = utils::window();
     window
         .add_event_listener_with_callback("hashchange", on_hash_change.as_ref().unchecked_ref())
