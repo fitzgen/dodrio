@@ -6,11 +6,11 @@ use crate::events::EventsRegistry;
 use crate::node::{Node, NodeKey};
 use crate::RenderContext;
 use bumpalo::Bump;
-use futures::future::Future;
 use fxhash::FxHashMap;
 use std::cell::Cell;
 use std::cell::RefCell;
 use std::fmt;
+use std::future::Future;
 use std::mem;
 use std::mem::ManuallyDrop;
 use std::rc::{Rc, Weak};
@@ -371,25 +371,20 @@ impl VdomWeak {
     /// Replace the root rendering component with the new `root`.
     ///
     /// Returns a future that resolves to the *old* root component.
-    pub fn set_component(
+    pub async fn set_component(
         self,
         root: Box<dyn RootRender>,
-    ) -> impl Future<Item = Box<dyn RootRender + 'static>, Error = VdomDroppedError> {
-        futures::future::ok(self.inner.upgrade())
-            .and_then(|inner| inner.ok_or(()))
-            .map_err(|_| VdomDroppedError {})
-            .and_then(|inner| {
-                let promise = js_sys::Promise::resolve(&JsValue::null());
-                JsFuture::from(promise)
-                    .map_err(|_| VdomDroppedError {})
-                    .and_then(move |_| {
-                        let old = {
-                            let mut exclusive = inner.exclusive.borrow_mut();
-                            mem::replace(&mut *exclusive.component.as_mut().unwrap_throw(), root)
-                        };
-                        VdomWeak::new(&inner).render().map(|_| old)
-                    })
-            })
+    ) -> Result<Box<dyn RootRender + 'static>, VdomDroppedError> {
+        let inner = self.inner.upgrade().ok_or(VdomDroppedError {})?;
+
+        let old = {
+            let mut exclusive = inner.exclusive.borrow_mut();
+            mem::replace(&mut *exclusive.component.as_mut().unwrap_throw(), root)
+        };
+
+        VdomWeak::new(&inner).render().await?;
+
+        Ok(old)
     }
 
     /// Execute `f` with a reference to this virtual DOM's root rendering
@@ -397,24 +392,15 @@ impl VdomWeak {
     ///
     /// To ensure exclusive access to the root rendering component, the
     /// invocation takes place on a new tick of the micro-task queue.
-    pub fn with_component<F, T>(&self, f: F) -> impl Future<Item = T, Error = VdomDroppedError>
+    pub async fn with_component<F, T>(&self, f: F) -> Result<T, VdomDroppedError>
     where
         F: 'static + FnOnce(&mut dyn RootRender) -> T,
     {
-        futures::future::ok(self.inner.upgrade())
-            .and_then(|inner| inner.ok_or(()))
-            .map_err(|_| VdomDroppedError {})
-            .and_then(|inner| {
-                let mut f = Some(f);
-                let promise = js_sys::Promise::resolve(&JsValue::null());
-                JsFuture::from(promise)
-                    .map_err(|_| VdomDroppedError {})
-                    .map(move |_| {
-                        let f = f.take().unwrap_throw();
-                        let mut exclusive = inner.exclusive.borrow_mut();
-                        f(exclusive.component_raw_mut())
-                    })
-            })
+        let inner = self.inner.upgrade().ok_or(VdomDroppedError {})?;
+
+        let mut exclusive = inner.exclusive.borrow_mut();
+
+        Ok(f(exclusive.component_raw_mut()))
     }
 
     /// Schedule a render to occur during the next animation frame.
@@ -423,7 +409,12 @@ impl VdomWeak {
     /// `render` instead.
     pub fn schedule_render(&self) {
         debug!("VdomWeak::schedule_render");
-        wasm_bindgen_futures::spawn_local(self.render().map_err(|_| ()));
+
+        let future = self.render();
+
+        wasm_bindgen_futures::spawn_local(async move {
+            let _ = future.await;
+        });
     }
 
     /// Schedule a render to occur during the next animation frame and return a
@@ -431,41 +422,46 @@ impl VdomWeak {
     ///
     /// If you don't want to do more things after the render completes, then use
     /// `schedule_render` instead of `render`.
-    pub fn render(&self) -> impl Future<Item = (), Error = VdomDroppedError> {
-        futures::future::ok(self.inner.upgrade())
-            .and_then(|inner| inner.ok_or(()))
-            .map_err(|_| VdomDroppedError {})
-            .and_then(|inner| {
-                let promise = inner.shared.render_scheduled.take().unwrap_or_else(|| {
-                    js_sys::Promise::new(&mut |resolve, reject| {
-                        let vdom = VdomWeak {
-                            inner: Rc::downgrade(&inner),
-                        };
-                        with_animation_frame(move || match vdom.inner.upgrade() {
-                            None => {
-                                warn!("VdomWeak::render: vdom unmounted before we could render");
-                                let r = reject.call0(&JsValue::null());
-                                debug_assert!(r.is_ok());
-                            }
-                            Some(inner) => {
-                                let mut exclusive = inner.exclusive.borrow_mut();
-                                exclusive.render();
+    pub fn render(&self) -> impl Future<Output = Result<(), VdomDroppedError>> {
+        let inner = self.inner.upgrade();
 
-                                // We did the render, so take the promise away
-                                // and let future `render` calls request new
-                                // animation frames.
-                                let _ = inner.shared.render_scheduled.take();
+        async move {
+            let inner = inner.ok_or(VdomDroppedError {})?;
 
-                                let r = resolve.call0(&JsValue::null());
-                                debug_assert!(r.is_ok());
-                            }
-                        });
-                    })
-                });
-                inner.shared.render_scheduled.set(Some(promise.clone()));
-                JsFuture::from(promise)
-                    .map(|_| ())
-                    .map_err(|_| VdomDroppedError {})
-            })
+            let promise = inner.shared.render_scheduled.take().unwrap_or_else(|| {
+                js_sys::Promise::new(&mut |resolve, reject| {
+                    let vdom = VdomWeak {
+                        inner: Rc::downgrade(&inner),
+                    };
+
+                    with_animation_frame(move || match vdom.inner.upgrade() {
+                        None => {
+                            warn!("VdomWeak::render: vdom unmounted before we could render");
+                            let r = reject.call0(&JsValue::null());
+                            debug_assert!(r.is_ok());
+                        }
+                        Some(inner) => {
+                            let mut exclusive = inner.exclusive.borrow_mut();
+                            exclusive.render();
+
+                            // We did the render, so take the promise away
+                            // and let future `render` calls request new
+                            // animation frames.
+                            let _ = inner.shared.render_scheduled.take();
+
+                            let r = resolve.call0(&JsValue::null());
+                            debug_assert!(r.is_ok());
+                        }
+                    });
+                })
+            });
+
+            inner.shared.render_scheduled.set(Some(promise.clone()));
+
+            JsFuture::from(promise)
+                .await
+                .map(drop)
+                .map_err(|_| VdomDroppedError {})
+        }
     }
 }
