@@ -1,6 +1,5 @@
 use super::{assert_rendered, before_after, create_element, RenderFn};
 use dodrio::{builder::*, Vdom};
-use futures::prelude::*;
 use std::rc::Rc;
 use wasm_bindgen_test::*;
 

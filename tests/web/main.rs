@@ -6,7 +6,6 @@ use bumpalo::Bump;
 use dodrio::{
     Attribute, CachedSet, ElementNode, Node, NodeKind, Render, RenderContext, TextNode, Vdom,
 };
-use futures::prelude::*;
 use fxhash::FxHashMap;
 use log::*;
 use std::cell::RefCell;
@@ -168,7 +167,7 @@ where
 /// Assert that if we start by rendering the `before` virtual DOM tree into a
 /// physical DOM tree, and then diff it with the `after` virtual DOM tree, then
 /// the physical DOM tree correctly matches `after`.
-pub fn assert_before_after<R, S>(before: R, after: S) -> impl Future<Item = (), Error = JsValue>
+pub async fn assert_before_after<R, S>(before: R, after: S) -> Result<(), JsValue>
 where
     R: 'static + Render,
     S: 'static + Render,
@@ -180,7 +179,7 @@ where
 
     debug!("====== Rendering the *before* DOM into the physical DOM ======");
     let vdom1 = Rc::new(Vdom::new(&container, before.clone()));
-    let vdom2 = vdom1.clone();
+    let _vdom2 = vdom1.clone();
 
     debug!("====== Checking the *before* DOM against the physical DOM ======");
     assert_rendered(&container, &before);
@@ -188,12 +187,13 @@ where
     debug!("====== Rendering the *after* DOM into the physical DOM ======");
     let weak = vdom1.weak();
     weak.set_component(Box::new(after.clone()))
-        .map(move |_| {
-            debug!("====== Checking the *after* DOM against the physical DOM ======");
-            assert_rendered(&container, &after);
-            drop(vdom2);
-        })
-        .map_err(|e| JsValue::from(e.to_string()))
+        .await
+        .map_err(|e| e.to_string())?;
+
+    debug!("====== Checking the *after* DOM against the physical DOM ======");
+    assert_rendered(&container, &after);
+
+    Ok(())
 }
 
 /// A helper macro for declaring a bunch of `assert_before_after` tests.
@@ -210,14 +210,16 @@ macro_rules! before_after {
         }
     )* ) => {
         $(
-            #[wasm_bindgen_test(async)]
-            fn $name() -> impl Future<Item = (), Error = wasm_bindgen::JsValue> {
+            #[wasm_bindgen_test]
+            async fn $name() {
                 use crate::{assert_before_after, RenderFn};
                 log::debug!("############### {} ###############", stringify!($name));
                 assert_before_after(
                     RenderFn(|$before_bump| { $( $before )* }),
                     RenderFn(|$after_bump| { $( $after )* })
                 )
+                .await
+                .unwrap()
             }
         )*
     }

@@ -1,6 +1,5 @@
 use crate::{assert_rendered, create_element};
 use dodrio::{builder::*, bumpalo, Node, Render, RenderContext, Vdom};
-use futures::Future;
 use log::*;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
@@ -32,10 +31,7 @@ where
     parent.finish()
 }
 
-fn assert_keyed<Before, After>(
-    before: Before,
-    after: After,
-) -> impl Future<Item = (), Error = JsValue>
+async fn assert_keyed<Before, After>(before: Before, after: After) -> Result<(), JsValue>
 where
     Before: 'static + Render,
     After: 'static + Render,
@@ -56,7 +52,7 @@ where
 
     debug!("====== Rendering the *before* DOM into the physical DOM ======");
     let vdom1 = Rc::new(Vdom::new(&container, before.clone()));
-    let vdom2 = vdom1.clone();
+    let _vdom2 = vdom1.clone();
     let saved = save_keyed_elements(&container);
 
     debug!("====== Checking the *before* DOM against the physical DOM ======");
@@ -65,13 +61,14 @@ where
     debug!("====== Rendering the *after* DOM into the physical DOM ======");
     let weak = vdom1.weak();
     weak.set_component(Box::new(after.clone()))
-        .map(move |_| {
-            debug!("====== Checking the *after* DOM against the physical DOM ======");
-            assert_rendered(&container, &after);
-            check_keyed_elements(&container, saved);
-            drop(vdom2);
-        })
-        .map_err(|e| JsValue::from(e.to_string()))
+        .await
+        .map_err(|e| e.to_string())?;
+
+    debug!("====== Checking the *after* DOM against the physical DOM ======");
+    assert_rendered(&container, &after);
+    check_keyed_elements(&container, saved);
+
+    Ok(())
 }
 
 macro_rules! keyed_tests {
@@ -86,14 +83,14 @@ macro_rules! keyed_tests {
         }
     )* ) => {
         $(
-            #[wasm_bindgen_test(async)]
-            fn $name() -> impl Future<Item = (), Error = wasm_bindgen::JsValue> {
+            #[wasm_bindgen_test]
+            async fn $name() {
                 use crate::RenderFn;
                 log::debug!("############### {} ###############", stringify!($name));
                 assert_keyed(
                     RenderFn(|$before_cx| { $( $before )* }),
                     RenderFn(|$after_cx| { $( $after )* }),
-                )
+                ).await.unwrap()
             }
         )*
     }
