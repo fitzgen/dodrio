@@ -86,7 +86,7 @@ cfg_if::cfg_if! {
                             callback(component, vdom_weak, event);
                         }
                     }
-                }) as Box<Fn(web_sys::Event, u32, u32)>);
+                }) as Box<dyn Fn(web_sys::Event, u32, u32)>);
 
                 (registry, closure)
             }
@@ -99,7 +99,7 @@ cfg_if::cfg_if! {
 
             pub(crate) fn remove_subtree(&mut self, node: &Node) {
                 match node.kind {
-                    NodeKind::Cached(_) | NodeKind::Text(_) => return,
+                    NodeKind::Cached(_) | NodeKind::Text(_) => {},
                     NodeKind::Element(&ElementNode {listeners, children, ..}) => {
                         for l in listeners {
                             self.remove(l);

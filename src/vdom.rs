@@ -55,7 +55,7 @@ pub(crate) struct VdomInnerExclusive {
     // Always `Some` except just before we drop. Just an option so that
     // `unmount` can take the component out but we can still have a Drop
     // implementation.
-    component: Option<Box<RootRender>>,
+    component: Option<Box<dyn RootRender>>,
 
     dom_buffers: Option<[Bump; 2]>,
     change_list: ManuallyDrop<ChangeListPersistentState>,
@@ -158,12 +158,15 @@ impl Vdom {
     where
         R: RootRender,
     {
-        Self::with_boxed_root_render(container, Box::new(component) as Box<RootRender>)
+        Self::with_boxed_root_render(container, Box::new(component) as Box<dyn RootRender>)
     }
 
     /// Construct a `Vdom` with the already-boxed-as-a-trait-object root
     /// rendering component.
-    pub fn with_boxed_root_render(container: &crate::Element, component: Box<RootRender>) -> Vdom {
+    pub fn with_boxed_root_render(
+        container: &crate::Element,
+        component: Box<dyn RootRender>,
+    ) -> Vdom {
         crate::strace::init_strace();
 
         let dom_buffers = [Bump::new(), Bump::new()];
@@ -217,7 +220,7 @@ impl Vdom {
         R: RootRender,
     {
         let mut exclusive = self.inner.exclusive.borrow_mut();
-        let component = Box::new(component) as Box<RootRender>;
+        let component = Box::new(component) as Box<dyn RootRender>;
         exclusive.component = Some(component);
         exclusive.render();
     }
@@ -237,7 +240,7 @@ impl Vdom {
     /// Unmount this virtual DOM, unregister its event listeners, and return its
     /// root render component.
     #[inline]
-    pub fn unmount(self) -> Box<RootRender> {
+    pub fn unmount(self) -> Box<dyn RootRender> {
         Rc::try_unwrap(self.inner.clone())
             .map_err(|_| ())
             .unwrap_throw()
@@ -323,7 +326,7 @@ impl VdomInnerExclusive {
     }
 }
 
-fn request_animation_frame(f: &Closure<FnMut()>) {
+fn request_animation_frame(f: &Closure<dyn FnMut()>) {
     web_sys::window()
         .expect_throw("should have a window")
         .request_animation_frame(f.as_ref().unchecked_ref())
@@ -340,7 +343,7 @@ where
     let f = Closure::wrap(Box::new(move || {
         *g.borrow_mut() = None;
         f();
-    }) as Box<FnMut()>);
+    }) as Box<dyn FnMut()>);
     request_animation_frame(&f);
 
     *h.borrow_mut() = Some(f);
