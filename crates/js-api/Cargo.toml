@@ -16,8 +16,7 @@ travis-ci = { repository = "fitzgen/dodrio" }
 dodrio = { version = "=0.1.0", path = "../.." }
 wasm-bindgen = "0.2.42"
 js-sys = "0.3.19"
-wasm-bindgen-futures = "0.3.19"
-futures = "0.1.28"
+wasm-bindgen-futures = "0.4.5"
 
 [dev-dependencies]
-wasm-bindgen-test = "0.2.42"
+wasm-bindgen-test = "0.3.5"
