@@ -90,7 +90,9 @@ macro_rules! keyed_tests {
                 assert_keyed(
                     RenderFn(|$before_cx| { $( $before )* }),
                     RenderFn(|$after_cx| { $( $after )* }),
-                ).await.unwrap()
+                )
+                .await
+                .unwrap()
             }
         )*
     }
