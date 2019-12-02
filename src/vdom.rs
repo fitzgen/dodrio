@@ -380,6 +380,9 @@ impl VdomWeak {
     ) -> Result<Box<dyn RootRender + 'static>, VdomDroppedError> {
         let inner = self.inner.upgrade().ok_or(VdomDroppedError {})?;
 
+        // Wait for a new tick of the micro-task queue
+        let _ = JsFuture::from(js_sys::Promise::resolve(&JsValue::null())).await;
+
         let old = {
             let mut exclusive = inner.exclusive.borrow_mut();
             mem::replace(&mut *exclusive.component.as_mut().unwrap_throw(), root)
@@ -400,6 +403,9 @@ impl VdomWeak {
         F: 'static + FnOnce(&mut dyn RootRender) -> T,
     {
         let inner = self.inner.upgrade().ok_or(VdomDroppedError {})?;
+
+        // Wait for a new tick of the micro-task queue
+        let _ = JsFuture::from(js_sys::Promise::resolve(&JsValue::null())).await;
 
         let mut exclusive = inner.exclusive.borrow_mut();
 
