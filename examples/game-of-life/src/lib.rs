@@ -184,14 +184,19 @@ pub fn run() {
     let f = Closure::wrap(Box::new(move || {
         weak.schedule_render();
 
-        // // -- tricky bit --
-        // wasm_bindgen_futures::spawn_local(
-        //     weak.with_component(|root| {
-        //         let universe = root.unwrap_mut::<Universe>();
-        //         universe.tick();
-        //     })
-        //     .map_err(|_| wasm_bindgen::throw_str("impossible, we always keep the vdom alive")),
-        // );
+        wasm_bindgen_futures::spawn_local({
+            let weak = weak.clone();
+            async move {
+                let fut = weak.with_component(|root| {
+                    let universe = root.unwrap_mut::<Universe>();
+                    universe.tick();
+                });
+
+                if fut.await.is_err() {
+                    wasm_bindgen::throw_str("impossible, we always keep the vdom alive");
+                }
+            }
+        });
 
         window
             .request_animation_frame(

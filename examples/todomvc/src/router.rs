@@ -28,25 +28,27 @@ pub fn start(vdom: VdomWeak) {
                 v
             });
 
-        // // -- another tricky bit --
-        // wasm_bindgen_futures::spawn_local(async move {
-        //     let _ = vdom
-        //         .with_component({
-        //             let vdom = vdom.clone();
-        //             move |root| {
-        //                 let todos = root.unwrap_mut::<Todos>();
-        //                 // If the todos' visibility already matches the event's
-        //                 // visibility, then there is nothing to do (ha). If they
-        //                 // don't match, then we need to update the todos' visibility
-        //                 // and re-render.
-        //                 if todos.visibility() != new_vis {
-        //                     todos.set_visibility(new_vis);
-        //                     vdom.schedule_render();
-        //                 }
-        //             }
-        //         })
-        //         .await;
-        // });
+        wasm_bindgen_futures::spawn_local({
+            let vdom = vdom.clone();
+            async move {
+                let _ = vdom
+                    .with_component({
+                        let vdom = vdom.clone();
+                        move |root| {
+                            let todos = root.unwrap_mut::<Todos>();
+                            // If the todos' visibility already matches the event's
+                            // visibility, then there is nothing to do (ha). If they
+                            // don't match, then we need to update the todos' visibility
+                            // and re-render.
+                            if todos.visibility() != new_vis {
+                                todos.set_visibility(new_vis);
+                                vdom.schedule_render();
+                            }
+                        }
+                    })
+                    .await;
+            }
+        });
     };
 
     // Call it once to handle the initial `#` fragment.
