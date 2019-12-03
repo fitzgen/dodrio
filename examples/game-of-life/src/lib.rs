@@ -1,5 +1,4 @@
 use dodrio::{bumpalo, Node, Render, RenderContext, Vdom};
-use futures::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::{prelude::*, JsCast};
@@ -178,20 +177,26 @@ pub fn run() {
 
     // Kick off a loop that keeps computing a tick of the universe and then
     // re-rendering on every animation frame.
-    let rc: Rc<RefCell<Option<Closure<FnMut()>>>> = Rc::new(RefCell::new(None));
+    let rc = <Rc<RefCell<Option<Closure<dyn FnMut()>>>>>::default();
     let rc2 = rc.clone();
     let window2 = window.clone();
     let weak = vdom.weak();
     let f = Closure::wrap(Box::new(move || {
         weak.schedule_render();
 
-        wasm_bindgen_futures::spawn_local(
-            weak.with_component(|root| {
-                let universe = root.unwrap_mut::<Universe>();
-                universe.tick();
-            })
-            .map_err(|_| wasm_bindgen::throw_str("impossible, we always keep the vdom alive")),
-        );
+        wasm_bindgen_futures::spawn_local({
+            let weak = weak.clone();
+            async move {
+                let fut = weak.with_component(|root| {
+                    let universe = root.unwrap_mut::<Universe>();
+                    universe.tick();
+                });
+
+                if fut.await.is_err() {
+                    wasm_bindgen::throw_str("impossible, we always keep the vdom alive");
+                }
+            }
+        });
 
         window
             .request_animation_frame(
@@ -202,7 +207,7 @@ pub fn run() {
                     .unchecked_ref::<js_sys::Function>(),
             )
             .unwrap_throw();
-    }) as Box<FnMut()>);
+    }) as Box<dyn FnMut()>);
     window2
         .request_animation_frame(f.as_ref().unchecked_ref::<js_sys::Function>())
         .unwrap_throw();

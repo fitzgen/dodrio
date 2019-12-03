@@ -42,19 +42,18 @@ xxx-unstable-strace = []
 xxx-unstable-internal-use-only = []
 
 [dependencies]
-bumpalo = "2.5.0"
-cfg-if = "0.1.9"
-futures = "0.1.28"
-wasm-bindgen = "0.2.42"
-wasm-bindgen-futures = "0.3.19"
-js-sys = "0.3.19"
+bumpalo = "2.6.0"
+cfg-if = "0.1.10"
 fxhash = "0.2.1"
+js-sys = "0.3.32"
 log = { version = "0.4.8", optional = true }
 longest-increasing-subsequence = "0.1.0"
-serde = { version = "1.0.98", optional = true }
+serde = { version = "1.0.103", optional = true }
+wasm-bindgen = "0.2.55"
+wasm-bindgen-futures = "0.4.5"
 
 [dependencies.web-sys]
-version = "0.3.19"
+version = "0.3.32"
 features = [
   "console",
   "Document",
@@ -67,8 +66,9 @@ features = [
 [dev-dependencies]
 console_log = "0.1.2"
 dodrio-js-api = { version = "=0.1.0", path = "./crates/js-api" }
+futures = "0.3.1"
 log = "0.4.8"
-wasm-bindgen-test = "0.2.42"
+wasm-bindgen-test = "0.3.5"
 
 [dev-dependencies.web-sys]
 version = "0.3.19"
@@ -81,7 +81,7 @@ features = [
 ]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-criterion = "0.2.11"
+criterion = "0.3.0"
 
 [profile.bench]
 debug = true

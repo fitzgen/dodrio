@@ -71,22 +71,22 @@ where
 /// requirements.
 pub trait RootRender: Any + Render {
     /// Get this `&RootRender` trait object as an `&Any` trait object reference.
-    fn as_any(&self) -> &Any;
+    fn as_any(&self) -> &dyn Any;
 
     /// Get this `&mut RootRender` trait object as an `&mut Any` trait object
     /// reference.
-    fn as_any_mut(&mut self) -> &mut Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
 impl<T> RootRender for T
 where
     T: Any + Render,
 {
-    fn as_any(&self) -> &Any {
+    fn as_any(&self) -> &dyn Any {
         self
     }
 
-    fn as_any_mut(&mut self) -> &mut Any {
+    fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
 }

@@ -167,7 +167,7 @@ mod tests {
 
     #[test]
     fn test_traversal() {
-        fn t<F>(f: F) -> Box<FnMut(&mut Traversal)>
+        fn t<F>(f: F) -> Box<dyn FnMut(&mut Traversal)>
         where
             F: 'static + FnMut(&mut Traversal),
         {

@@ -1,6 +1,5 @@
 use super::{assert_rendered, before_after, create_element, RenderFn};
 use dodrio::{builder::*, bumpalo, Cached, Node, Render, RenderContext, RootRender, Vdom};
-use futures::prelude::*;
 use std::cell::Cell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
@@ -29,8 +28,8 @@ impl Render for CountRenders {
     }
 }
 
-#[wasm_bindgen_test(async)]
-fn uses_cached_render() -> impl Future<Item = (), Error = JsValue> {
+#[wasm_bindgen_test]
+async fn uses_cached_render() {
     use dodrio::builder::*;
 
     let cached = Cached::new(CountRenders::new());
@@ -50,52 +49,61 @@ fn uses_cached_render() -> impl Future<Item = (), Error = JsValue> {
     let vdom6 = vdom0.clone();
     let vdom7 = vdom0.clone();
 
+    // We render, populate the cache, and get "1".
+    vdom0.weak().render().await.unwrap();
     vdom0
         .weak()
-        // We render, populate the cache, and get "1".
-        .render()
-        .and_then(move |_| {
-            vdom0.weak().with_component(move |comp| {
-                let comp = comp.unwrap_mut::<Cached<CountRenders>>();
-                assert_eq!(comp.render_count.get(), 1);
-                assert_rendered(&container1, &RenderFn(|_| text("1")));
-            })
+        .with_component(move |comp| {
+            let comp = comp.unwrap_mut::<Cached<CountRenders>>();
+            assert_eq!(comp.render_count.get(), 1);
+            assert_rendered(&container1, &RenderFn(|_| text("1")));
         })
-        // We re-render, re-use the cached node, and get "1" again.
-        .and_then(move |_| vdom1.weak().render())
-        .and_then(move |_| {
-            vdom2.weak().with_component(move |comp| {
-                let comp = comp.unwrap_mut::<Cached<CountRenders>>();
-                assert_eq!(comp.render_count.get(), 1);
-                assert_rendered(&container2, &RenderFn(|_| text("1")));
-            })
+        .await
+        .unwrap();
+
+    // We re-render, re-use the cached node, and get "1" again.
+    vdom1.weak().render().await.unwrap();
+    vdom2
+        .weak()
+        .with_component(move |comp| {
+            let comp = comp.unwrap_mut::<Cached<CountRenders>>();
+            assert_eq!(comp.render_count.get(), 1);
+            assert_rendered(&container2, &RenderFn(|_| text("1")));
         })
-        // We invalidate the cache, re-render, re-populate the cache, and should
-        // now have "2".
-        .and_then(move |_| {
-            vdom3.weak().with_component(move |comp| {
-                let comp = comp.unwrap_mut::<Cached<CountRenders>>();
-                Cached::invalidate(comp);
-            })
+        .await
+        .unwrap();
+
+    // We invalidate the cache, re-render, re-populate the cache, and should now have "2".
+    vdom3
+        .weak()
+        .with_component(move |comp| {
+            let comp = comp.unwrap_mut::<Cached<CountRenders>>();
+            Cached::invalidate(comp);
         })
-        .and_then(move |_| vdom4.weak().render())
-        .and_then(move |_| {
-            vdom5.weak().with_component(move |comp| {
-                let comp = comp.unwrap_mut::<Cached<CountRenders>>();
-                assert_eq!(comp.render_count.get(), 2);
-                assert_rendered(&container3, &RenderFn(|_| text("2")));
-            })
+        .await
+        .unwrap();
+    vdom4.weak().render().await.unwrap();
+    vdom5
+        .weak()
+        .with_component(move |comp| {
+            let comp = comp.unwrap_mut::<Cached<CountRenders>>();
+            assert_eq!(comp.render_count.get(), 2);
+            assert_rendered(&container3, &RenderFn(|_| text("2")));
         })
-        // We re-render, re-use the cached node, and get "2" again.
-        .and_then(move |_| vdom6.weak().render())
-        .and_then(move |_| {
-            vdom7.weak().with_component(move |comp| {
-                let comp = comp.unwrap_mut::<Cached<CountRenders>>();
-                assert_eq!(comp.render_count.get(), 2);
-                assert_rendered(&container4, &RenderFn(|_| text("2")));
-            })
+        .await
+        .unwrap();
+
+    // We re-render, re-use the cached node, and get "2" again.
+    vdom6.weak().render().await.unwrap();
+    vdom7
+        .weak()
+        .with_component(move |comp| {
+            let comp = comp.unwrap_mut::<Cached<CountRenders>>();
+            assert_eq!(comp.render_count.get(), 2);
+            assert_rendered(&container4, &RenderFn(|_| text("2")));
         })
-        .map_err(|e| JsValue::from(e.to_string()))
+        .await
+        .unwrap();
 }
 
 #[wasm_bindgen(module = "/tests/web/cached.js")]
@@ -104,8 +112,8 @@ extern "C" {
     fn get_clone_node_count() -> u32;
 }
 
-#[wasm_bindgen_test(async)]
-fn creating_cached_nodes_uses_clone_node() -> impl Future<Item = (), Error = JsValue> {
+#[wasm_bindgen_test]
+async fn creating_cached_nodes_uses_clone_node() {
     use dodrio::builder::*;
 
     let container = create_element("div");
@@ -113,28 +121,28 @@ fn creating_cached_nodes_uses_clone_node() -> impl Future<Item = (), Error = JsV
     // The initial vdom render should populate the cache and save a template.
     let vdom0 = Rc::new(Vdom::new(&container, Cached::new(CountRenders::new())));
     let vdom1 = vdom0.clone();
-    let vdom2 = vdom0.clone();
+    let _vdom2 = vdom0.clone();
 
     let clone_node_count_before = get_clone_node_count();
 
+    // Render something entirely different...
     vdom0
         .weak()
-        // Render something entirely different...
-        .set_component(Box::new(RenderFn(|_| text("hi"))) as Box<RootRender>)
-        .and_then(move |_| {
-            // Re-render our cached node. Since we are creating it from scratch,
-            // and already have a template from the earlier render, we should
-            // call `cloneNode` here.
-            vdom1
-                .weak()
-                .set_component(Box::new(Cached::new(CountRenders::new())) as Box<RootRender>)
-        })
-        .map(move |_| {
-            let clone_node_count_after = get_clone_node_count();
-            assert_eq!(clone_node_count_after, clone_node_count_before + 1);
-            drop(vdom2);
-        })
-        .map_err(|e| JsValue::from(e.to_string()))
+        .set_component(Box::new(RenderFn(|_| text("hi"))) as Box<dyn RootRender>)
+        .await
+        .unwrap();
+
+    // Re-render our cached node. Since we are creating it from scratch,
+    // and already have a template from the earlier render, we should
+    // call `cloneNode` here.
+    vdom1
+        .weak()
+        .set_component(Box::new(Cached::new(CountRenders::new())) as Box<dyn RootRender>)
+        .await
+        .unwrap();
+
+    let clone_node_count_after = get_clone_node_count();
+    assert_eq!(clone_node_count_after, clone_node_count_before + 1);
 }
 
 struct Id(&'static str);

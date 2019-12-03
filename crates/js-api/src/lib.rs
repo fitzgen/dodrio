@@ -116,7 +116,6 @@ impl Render for GreetingViaJs {
 #![deny(missing_docs, missing_debug_implementations)]
 
 use dodrio::{builder, bumpalo, Node, Render, RenderContext};
-use futures::prelude::*;
 use js_sys::{Object, Promise, Reflect};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
@@ -185,12 +184,16 @@ impl VdomWeak {
     /// Schedule re-rendering of the virtual DOM. A promise is returned that is
     /// resolved after the rendering has happened.
     pub fn render(&self) -> Promise {
-        wasm_bindgen_futures::future_to_promise(
-            self.inner.render().map(|_| JsValue::null()).map_err(|e| {
+        let future = self.inner.render();
+
+        wasm_bindgen_futures::future_to_promise(async move {
+            if let Err(e) = future.await {
                 let msg = e.to_string();
-                js_sys::Error::new(&msg).into()
-            }),
-        )
+                Err(js_sys::Error::new(&msg).into())
+            } else {
+                Ok(JsValue::null())
+            }
+        })
     }
 }
 

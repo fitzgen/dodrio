@@ -13,6 +13,7 @@ use dodrio::{
     CachedSet, Node, Render, RenderContext, Vdom,
 };
 use std::cell::RefCell;
+use std::convert::TryInto;
 
 /// The simplest thing we can render: `<div/>`.
 struct Empty;
@@ -73,16 +74,9 @@ fn criterion_benchmark(c: &mut Criterion) {
                     })
                 }
             },
-            vec![
-                // TODO: Only test one `n` value until
-                // https://github.com/bheisler/criterion.rs/issues/269 is fixed.
-                //
-                // 100,
-                // 1_000,
-                10_000,
-            ],
+            vec![100, 1_000, 10_000],
         )
-        .throughput(|n| Throughput::Elements(*n as u32)),
+        .throughput(|n| Throughput::Elements((*n).try_into().unwrap())),
     );
 
     c.bench(
@@ -96,14 +90,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                     black_box(&vdom);
                 })
             },
-            vec![
-                // TODO: Only test one `n` value until
-                // https://github.com/bheisler/criterion.rs/issues/269 is fixed.
-                //
-                // 100,
-                // 1_000,
-                10_000,
-            ],
+            vec![100, 1_000, 10_000],
         )
         .with_function("empty-to-full-list-to-empty", |b, &n| {
             b.iter(|| {
@@ -123,7 +110,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                 black_box(&vdom);
             })
         })
-        .throughput(|n| Throughput::Elements(*n as u32)),
+        .throughput(|n| Throughput::Elements((*n).try_into().unwrap())),
     );
 }
 

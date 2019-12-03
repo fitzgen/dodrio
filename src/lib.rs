@@ -123,7 +123,7 @@ cfg_if::cfg_if! {
         /// An element node in the physical DOM.
         pub type Element = web_sys::Element;
 
-        pub(crate) type EventsTrampoline = wasm_bindgen::closure::Closure<Fn(web_sys::Event, u32, u32)>;
+        pub(crate) type EventsTrampoline = wasm_bindgen::closure::Closure<dyn Fn(web_sys::Event, u32, u32)>;
     }
 }
 

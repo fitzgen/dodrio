@@ -1,8 +1,7 @@
 use super::{assert_rendered, create_element, RenderFn};
 use dodrio::{builder::*, Node, Render, RenderContext, Vdom};
 use dodrio_js_api::JsRender;
-use futures::prelude::*;
-use futures::sync::oneshot;
+use futures::channel::oneshot;
 use js_sys::Object;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
@@ -14,7 +13,7 @@ pub struct WrapJs {
 }
 
 impl WrapJs {
-    pub fn new() -> (WrapJs, oneshot::Receiver<()>, Closure<FnMut()>) {
+    pub fn new() -> (WrapJs, oneshot::Receiver<()>, Closure<dyn FnMut()>) {
         let (sender, receiver) = oneshot::channel();
 
         let on_after_render = Closure::wrap(Box::new({
@@ -26,7 +25,7 @@ impl WrapJs {
                     .send(())
                     .expect_throw("receiver should not have been dropped");
             }
-        }) as Box<FnMut()>);
+        }) as Box<dyn FnMut()>);
 
         let component = WrapJs {
             inner: JsRender::new(JsComponent::new(&on_after_render)),
@@ -52,7 +51,7 @@ extern "C" {
     type JsComponent;
 
     #[wasm_bindgen(constructor)]
-    fn new(on_after_render: &Closure<FnMut()>) -> JsComponent;
+    fn new(on_after_render: &Closure<dyn FnMut()>) -> JsComponent;
 }
 
 fn eval_js_rendering_component() {
@@ -96,14 +95,14 @@ fn eval_js_rendering_component() {
     });
 }
 
-#[wasm_bindgen_test(async)]
-fn can_use_js_rendering_components() -> impl Future<Item = (), Error = JsValue> {
+#[wasm_bindgen_test]
+async fn can_use_js_rendering_components() {
     eval_js_rendering_component();
 
     let container = create_element("div");
-    let (component, receiver, closure) = WrapJs::new();
+    let (component, receiver, _closure) = WrapJs::new();
+    let _vdom = Rc::new(Vdom::new(&container, component));
 
-    let vdom = Rc::new(Vdom::new(&container, component));
     assert_rendered(
         &container,
         &RenderFn(|cx| {
@@ -131,30 +130,24 @@ fn can_use_js_rendering_components() -> impl Future<Item = (), Error = JsValue> 
         .expect_throw("should be an `HTMLElement` object")
         .click();
 
-    receiver
-        .map(move |_| {
-            assert_rendered(
-                &container,
-                &RenderFn(|cx| {
-                    div(&cx)
-                        .attr("class", "wrap-js")
-                        .children([span(&cx)
-                            .attr("class", "js-component")
-                            .children([
-                                text("Here is some plain text"),
-                                b(&cx)
-                                    .children([text("...and here is some bold text")])
-                                    .finish(),
-                                text("1"),
-                            ])
-                            .finish()])
-                        .finish()
-                }),
-            );
+    receiver.await.unwrap();
 
-            drop(vdom);
-            drop(container);
-            drop(closure);
-        })
-        .map_err(|e| e.to_string().into())
+    assert_rendered(
+        &container,
+        &RenderFn(|cx| {
+            div(&cx)
+                .attr("class", "wrap-js")
+                .children([span(&cx)
+                    .attr("class", "js-component")
+                    .children([
+                        text("Here is some plain text"),
+                        b(&cx)
+                            .children([text("...and here is some bold text")])
+                            .finish(),
+                        text("1"),
+                    ])
+                    .finish()])
+                .finish()
+        }),
+    );
 }
