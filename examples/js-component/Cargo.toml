@@ -12,12 +12,12 @@ crate-type = ["cdylib"]
 [dependencies]
 dodrio = { path = "../.." }
 dodrio-js-api = { path = "../../crates/js-api" }
-wasm-bindgen = "0.2.42"
+wasm-bindgen = "0.2.55"
 console_error_panic_hook = "0.1.6"
-js-sys = "0.3.19"
+js-sys = "0.3.32"
 
 [dependencies.web-sys]
-version = "0.3.19"
+version = "0.3.32"
 features = [
   "Document",
   "HtmlElement",
