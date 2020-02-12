@@ -21,8 +21,8 @@ use wasm_bindgen::UnwrapThrowExt;
 ///
 /// pub struct MyComponent;
 ///
-/// impl Render for MyComponent {
-///     fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
+/// impl<'a> Render<'a> for MyComponent {
+///     fn render(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
 ///         use dodrio::builder::*;
 ///
 ///         p(&cx)
@@ -35,26 +35,26 @@ use wasm_bindgen::UnwrapThrowExt;
 ///     }
 /// }
 /// ```
-pub trait Render {
+pub trait Render<'a> {
     /// Render `self` as a virtual DOM. Use the given context's `Bump` for
     /// temporary allocations.
-    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a>;
+    fn render(&self, cx: &mut RenderContext<'a>) -> Node<'a>;
 }
 
-impl<'r, R> Render for &'r R
+impl<'a, 'r, R> Render<'a> for &'r R
 where
-    R: Render,
+    R: Render<'a>,
 {
-    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
+    fn render(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         (**self).render(cx)
     }
 }
 
-impl<R> Render for Rc<R>
+impl<'a, R> Render<'a> for Rc<R>
 where
-    R: Render,
+    R: Render<'a>,
 {
-    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
+    fn render(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         (**self).render(cx)
     }
 }
@@ -69,7 +69,7 @@ where
 /// You do not need to implement this trait by hand: there is a blanket
 /// implementation for all `Render` types that fulfill the `RootRender`
 /// requirements.
-pub trait RootRender: Any + Render {
+pub trait RootRender: Any + for<'a> Render<'a> {
     /// Get this `&RootRender` trait object as an `&Any` trait object reference.
     fn as_any(&self) -> &dyn Any;
 
@@ -80,7 +80,7 @@ pub trait RootRender: Any + Render {
 
 impl<T> RootRender for T
 where
-    T: Any + Render,
+    T: Any + for<'a> Render<'a>,
 {
     fn as_any(&self) -> &dyn Any {
         self
@@ -137,5 +137,30 @@ mod tests {
     fn root_render_is_object_safe() {
         #[allow(dead_code)]
         fn takes_dyn_render(_: &dyn super::RootRender) {}
+    }
+
+    #[test]
+    fn render_bump_scoped_child() {
+        use crate::{Node, Render, bumpalo::collections::String, RenderContext, builder::*};
+        
+        struct Child<'a> {
+            name: &'a str,
+        }
+
+        impl<'a> Render<'a> for Child<'a> {
+            fn render(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
+                text(self.name)
+            }
+        }
+
+        struct Parent;
+
+        impl<'a> Render<'a> for Parent {
+            fn render(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
+                let child_name = String::from_str_in("child", cx.bump).into_bump_str();
+
+                div(&cx).children([Child { name: child_name }.render(cx)]).finish()
+            }
+        }
     }
 }

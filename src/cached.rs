@@ -45,8 +45,8 @@ where
     ///     count: u32,
     /// }
     ///
-    /// impl Render for Counter {
-    ///     fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
+    /// impl<'a> Render<'a> for Counter {
+    ///     fn render(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
     ///         // ...
     /// #       unimplemented!()
     ///     }
@@ -85,8 +85,8 @@ where
     ///     who: String
     /// }
     ///
-    /// impl Render for Hello {
-    ///     fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
+    /// impl<'a> Render<'a> for Hello {
+    ///     fn render(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
     ///         use dodrio::builder::*;
     ///         let greeting = bumpalo::format!(in cx.bump, "Hello, {}!", self.who);
     ///         p(&cx)
@@ -143,11 +143,11 @@ where
     }
 }
 
-impl<R> Render for Cached<R>
+impl<'a, R> Render<'a> for Cached<R>
 where
-    R: 'static + Default + Render,
+    R: 'static + Default + for<'b> Render<'b>,
 {
-    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
+    fn render(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         let template = cx.template::<R>();
         let cached = match self.cached.get() {
             // This does-the-cache-contain-this-id check is necessary because

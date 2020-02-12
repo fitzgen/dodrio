@@ -216,8 +216,8 @@ impl JsRender {
     }
 }
 
-impl Render for JsRender {
-    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
+impl<'a> Render<'a> for JsRender {
+    fn render(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         create(cx, self.render())
     }
 }
