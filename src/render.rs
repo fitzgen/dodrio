@@ -148,7 +148,7 @@ mod tests {
         }
 
         impl<'a> Render<'a> for Child<'a> {
-            fn render(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
+            fn render(&self, _cx: &mut RenderContext<'a>) -> Node<'a> {
                 text(self.name)
             }
         }
