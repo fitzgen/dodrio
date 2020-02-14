@@ -104,8 +104,8 @@ impl Moire {
     }
 }
 
-impl Render for Moire {
-    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
+impl<'a> Render<'a> for Moire {
+    fn render(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         use dodrio::builder::*;
 
         let elapsed = web_sys::window()

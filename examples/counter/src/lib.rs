@@ -26,8 +26,8 @@ impl Counter {
 
 // The `Render` implementation for `Counter`s displays the current count and has
 // buttons to increment and decrement the count.
-impl Render for Counter {
-    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
+impl<'a> Render<'a> for Counter {
+    fn render(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         use dodrio::builder::*;
 
         // Stringify the count as a bump-allocated string.
