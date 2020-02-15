@@ -1,4 +1,4 @@
-use super::{assert_rendered, before_after, create_element, RenderFn};
+use super::{assert_rendered, before_after, create_element, RenderFn, html_string};
 use dodrio::{builder::*, Vdom};
 use std::rc::Rc;
 use wasm_bindgen_test::*;
@@ -9,7 +9,18 @@ fn render_initial_text() {
 
     let container = create_element("div");
     let _vdom = Vdom::new(&container, hello.clone());
-    assert_rendered(&container, &hello);
+    assert_rendered(container, &hello);
+}
+
+fn render_to_string() {
+   let hello = Rc::new(RenderFn(|cx| {
+       div(&cx)
+            .attr("id", "hello-world")
+            .children([text("Hello "), span(&cx).child(text("World!")).finish()])
+            .finish()
+    }));
+    let string_html = html_string(&hello);
+    assert!(&string_html, "<div id=hello_world> Hello <span>World!</span></div>");
 }
 
 #[wasm_bindgen_test]

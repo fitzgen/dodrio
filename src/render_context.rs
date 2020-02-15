@@ -5,6 +5,7 @@ use crate::{
 };
 use bumpalo::Bump;
 use fxhash::FxHashMap;
+use std::cell::RefCell;
 use std::fmt;
 
 /// Common context available to all `Render` implementations.
@@ -56,6 +57,23 @@ impl<'a> RenderContext<'a> {
                 templates,
                 _non_exhaustive: (),
             }
+        }
+    }
+    /// return an empty rendering context
+    pub_unstable_internal! {
+        pub(crate) fn empty<F, T>(f: F) -> T
+            where F: FnOnce(&mut RenderContext) -> T,
+            {
+            let cached_set = &RefCell::new(CachedSet::default());
+            let bump = &Bump::new();
+            let templates = &mut FxHashMap::default();
+
+            f(&mut RenderContext {
+                bump,
+                cached_set,
+                templates,
+                _non_exhaustive: (),
+            })
         }
     }
 

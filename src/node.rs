@@ -1,3 +1,5 @@
+use crate::Render;
+use crate::RenderContext;
 use crate::{cached_set::CacheId, RootRender, VdomWeak};
 use bumpalo::Bump;
 use std::fmt;
@@ -268,4 +270,33 @@ impl Listener<'_> {
             (a, b)
         }
     }
+}
+
+pub fn html_string<R>(component: &R) -> String
+where
+    R: Render,
+{
+    fn html_string_recursive(cx: &mut RenderContext, s: &mut String, node: &Node) {
+        match node.kind {
+            NodeKind::Text(ref t) => s.push_str(t.text),
+            NodeKind::Element(ref e) => {
+                s.push_str(e.tag_name);
+                for c in e.children {
+                    html_string_recursive(cx, s, c);
+                }
+
+                s.push_str(&format!("</{}>", e.tag_name));
+            }
+            NodeKind::Cached(ref c) => {
+                html_string_recursive(cx, s, cx.cached_set.borrow().get(c.id).0);
+            }
+        }
+    }
+
+    RenderContext::empty(|cx| {
+        let node = component.render(cx);
+        let mut s = String::new();
+        html_string_recursive(cx, &mut s, &node);
+        s
+    })
 }
