@@ -272,7 +272,7 @@ define_change_list_instructions! {
     /// node = stack.top()
     /// node.className = class
     /// ```
-    //set_class(class) = 23,
+    set_class(class) = 23,
 
     /// Stack: `[... Node] -> [... Node]`
     ///

@@ -78,7 +78,7 @@ pub(crate) fn diff(
                 return;
             }
             diff_listeners(change_list, registry, old_listeners, new_listeners);
-            diff_attributes(change_list, old_attributes, new_attributes);
+            diff_attributes(change_list, old_attributes, new_attributes, new_namespace.is_some());
             diff_children(
                 cached_set,
                 change_list,
@@ -204,26 +204,26 @@ fn diff_listeners(
 //     [... node]
 //
 // The change list stack is left unchanged.
-fn diff_attributes(change_list: &mut ChangeListBuilder, old: &[Attribute], new: &[Attribute]) {
+fn diff_attributes(change_list: &mut ChangeListBuilder, old: &[Attribute], new: &[Attribute], is_namespaced: bool) {
     // Do O(n^2) passes to add/update and remove attributes, since
     // there are almost always very few attributes.
     'outer: for new_attr in new {
         if new_attr.is_volatile() {
             change_list.commit_traversal();
-            change_list.set_attribute(new_attr.name, new_attr.value);
+            change_list.set_attribute(new_attr.name, new_attr.value, is_namespaced);
         } else {
             for old_attr in old {
                 if old_attr.name == new_attr.name {
                     if old_attr.value != new_attr.value {
                         change_list.commit_traversal();
-                        change_list.set_attribute(new_attr.name, new_attr.value);
+                        change_list.set_attribute(new_attr.name, new_attr.value, is_namespaced);
                     }
                     continue 'outer;
                 }
             }
 
             change_list.commit_traversal();
-            change_list.set_attribute(new_attr.name, new_attr.value);
+            change_list.set_attribute(new_attr.name, new_attr.value, is_namespaced);
         }
     }
 
@@ -953,7 +953,7 @@ fn create(
             }
 
             for attr in attributes {
-                change_list.set_attribute(&attr.name, &attr.value);
+                change_list.set_attribute(&attr.name, &attr.value, namespace.is_some());
             }
 
             // Fast path: if there is a single text child, it is faster to
