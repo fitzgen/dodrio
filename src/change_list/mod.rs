@@ -240,12 +240,12 @@ impl ChangeListBuilder<'_> {
         //     debug!("emit: set_class({:?})", value);
         //     self.state.emitter.set_class(class_id.into());
         // } else {
-            let name_id = self.ensure_string(name);
-            let value_id = self.ensure_string(value);
-            debug!("emit: set_attribute({:?}, {:?})", name, value);
-            self.state
-                .emitter
-                .set_attribute(name_id.into(), value_id.into());
+        let name_id = self.ensure_string(name);
+        let value_id = self.ensure_string(value);
+        debug!("emit: set_attribute({:?}, {:?})", name, value);
+        self.state
+            .emitter
+            .set_attribute(name_id.into(), value_id.into());
         // }
     }
 

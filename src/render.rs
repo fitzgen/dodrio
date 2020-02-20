@@ -141,8 +141,8 @@ mod tests {
 
     #[test]
     fn render_bump_scoped_child() {
-        use crate::{Node, Render, bumpalo::collections::String, RenderContext, builder::*};
-        
+        use crate::{builder::*, bumpalo::collections::String, Node, Render, RenderContext};
+
         struct Child<'a> {
             name: &'a str,
         }
@@ -159,7 +159,9 @@ mod tests {
             fn render(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
                 let child_name = String::from_str_in("child", cx.bump).into_bump_str();
 
-                div(&cx).children([Child { name: child_name }.render(cx)]).finish()
+                div(&cx)
+                    .children([Child { name: child_name }.render(cx)])
+                    .finish()
             }
         }
     }
