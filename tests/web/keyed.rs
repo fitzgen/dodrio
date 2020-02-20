@@ -7,8 +7,8 @@ use wasm_bindgen_test::*;
 
 struct Keyed(u16);
 
-impl Render for Keyed {
-    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
+impl<'a> Render<'a> for Keyed {
+    fn render(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         let key = bumpalo::format!(in cx.bump, "{}", self.0).into_bump_str();
         div(&cx)
             .attr("class", "keyed")
@@ -33,8 +33,8 @@ where
 
 async fn assert_keyed<Before, After>(before: Before, after: After) -> Result<(), JsValue>
 where
-    Before: 'static + Render,
-    After: 'static + Render,
+    Before: 'static + for<'a> Render<'a>,
+    After: 'static + for<'a> Render<'a>,
 {
     #[wasm_bindgen(module = "/tests/web/keyed.js")]
     extern "C" {

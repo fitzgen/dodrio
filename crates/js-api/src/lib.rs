@@ -99,8 +99,8 @@ impl GreetingViaJs {
 
 /// And finally the `Render` implementation! This adds a `<p>` element and some
 /// text around whatever the inner JS `Greeting` component renders.
-impl Render for GreetingViaJs {
-    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
+impl<'a> Render<'a> for GreetingViaJs {
+    fn render(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         use dodrio::builder::*;
         p(&cx)
             .children([

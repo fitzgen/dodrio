@@ -35,8 +35,8 @@ impl WrapJs {
     }
 }
 
-impl Render for WrapJs {
-    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
+impl<'a> Render<'a> for WrapJs {
+    fn render(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         div(&cx)
             .attr("class", "wrap-js")
             .children([self.inner.render(cx)])

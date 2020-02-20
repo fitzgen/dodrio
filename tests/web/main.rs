@@ -50,7 +50,7 @@ pub fn init_logging() {
 
 /// Assert that the `container` contains the physical DOM tree that matches
 /// `r`'s rendered virtual DOM.
-pub fn assert_rendered<R: Render>(container: &web_sys::Element, r: &R) {
+pub fn assert_rendered<R: for<'a> Render<'a>>(container: &web_sys::Element, r: &R) {
     init_logging();
 
     let cached_set = &RefCell::new(CachedSet::default());
@@ -155,11 +155,11 @@ pub struct RenderFn<F>(F)
 where
     F: for<'a> Fn(&mut RenderContext<'a>) -> Node<'a>;
 
-impl<F> Render for RenderFn<F>
+impl<'a, F> Render<'a> for RenderFn<F>
 where
-    F: for<'a> Fn(&mut RenderContext<'a>) -> Node<'a>,
+    F: for<'b> Fn(&mut RenderContext<'b>) -> Node<'b>,
 {
-    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
+    fn render(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         (self.0)(cx)
     }
 }
@@ -169,8 +169,8 @@ where
 /// the physical DOM tree correctly matches `after`.
 pub async fn assert_before_after<R, S>(before: R, after: S) -> Result<(), JsValue>
 where
-    R: 'static + Render,
-    S: 'static + Render,
+    R: 'static + for<'a> Render<'a>,
+    S: 'static + for<'a> Render<'a>,
 {
     let container = create_element("div");
 
