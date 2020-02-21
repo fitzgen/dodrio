@@ -1,6 +1,7 @@
 use super::{assert_rendered, before_after, create_element, RenderFn};
 use dodrio::{builder::*, Vdom};
 use std::rc::Rc;
+use wasm_bindgen::{ JsCast};
 use wasm_bindgen_test::*;
 
 #[wasm_bindgen_test]
@@ -32,6 +33,58 @@ fn container_is_emptied_upon_drop() {
     let vdom = Vdom::new(&container, RenderFn(|_cx| text("blah")));
     drop(vdom);
     assert!(container.first_child().is_none());
+}
+
+/// Originally, dodrio would use go through the className property for SVGs.
+/// 
+/// This is problematic because when SVG elements are created, the className is flagged as a read
+/// only property, so setting it causes an exception to be thrown. Here's an example of how this
+/// happens:
+///
+/// let elem = web_sys::window()
+///     .unwrap()
+///     .document()
+///     .unwrap()
+///     .create_element_ns(Some("http://www.w3.org/2000/svg"), "svg")
+///     .unwrap();
+///
+/// elem.set_class_name("does-not-work"); 
+/// 
+/// -----------------------------------------------------------------------------------------------
+///     
+///     wasm-bindgen: imported JS function that was not marked as `catch` threw an error:
+///     setting getter-only property "className"
+/// 
+/// -----------------------------------------------------------------------------------------------
+/// 
+/// Now, dodrio passes the 'class' attribute of all namespaced elements into set_attribute. This
+/// satisfies the restrictions on SVG and keeps the optimized path for non-namespaced elements
+#[wasm_bindgen_test(async)]
+async fn test_svg_set_class() {
+    let container = create_element("div");
+
+
+    let valid_svg = Rc::new(RenderFn(|cx| {
+        ElementBuilder::new(cx.bump, "svg")
+            .namespace(Some("http://www.w3.org/2000/svg"))
+            .attr("class", "works")
+            .finish()
+    }));
+
+    let vdom = Vdom::new(&container, valid_svg.clone());
+    let weak = vdom.weak();
+
+    weak.render().await.unwrap();
+
+    assert_eq!(
+        "works", 
+        container.first_child()
+            .expect("unable to get svg")
+            .dyn_ref::<web_sys::Element>()
+            .expect("svg should be an element")
+            .get_attribute("class")
+            .expect("unable to get 'class' of svg")
+    );
 }
 
 before_after! {
