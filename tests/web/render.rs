@@ -35,7 +35,7 @@ fn container_is_emptied_upon_drop() {
     assert!(container.first_child().is_none());
 }
 
-/// Originally, dodrio would use go through the className property for SVGs.
+/// Originally, dodrio would use the className property for SVGs.
 /// 
 /// This is problematic because when SVG elements are created, the className is flagged as a read
 /// only property, so setting it causes an exception to be thrown. Here's an example of how this
