@@ -1,5 +1,5 @@
 use super::{assert_rendered, before_after, create_element, RenderFn};
-use dodrio::{builder::*, Vdom};
+use dodrio::{builder::*, bumpalo::collections::String, Node, Render, RenderContext, Vdom};
 use std::rc::Rc;
 use wasm_bindgen::{ JsCast};
 use wasm_bindgen_test::*;
@@ -33,6 +33,41 @@ fn container_is_emptied_upon_drop() {
     let vdom = Vdom::new(&container, RenderFn(|_cx| text("blah")));
     drop(vdom);
     assert!(container.first_child().is_none());
+}
+
+/// Renders a child with a lifetime scoped to the RenderContext bump arena.
+#[wasm_bindgen_test]
+fn render_bump_scoped_node() {        
+    struct Child<'a> {
+        name: &'a str,
+    }
+
+    impl<'a> Render<'a> for Child<'a> {
+        fn render(&self, _cx: &mut RenderContext<'a>) -> Node<'a> {
+            text(self.name)
+        }
+    }
+
+    struct Parent;
+
+    impl<'a> Render<'a> for Parent {
+        fn render(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
+            let child_name = String::from_str_in("child", cx.bump).into_bump_str();
+
+            div(&cx)
+                .children([Child { name: child_name }.render(cx)])
+                .finish()
+        }
+    }
+
+    let parent = Rc::new(RenderFn(|cx| {
+        Parent.render(cx)
+    }));
+
+    let container = create_element("div");
+    let _vdom = Vdom::new(&container, parent.clone());
+
+    assert_rendered(&container, &parent);
 }
 
 /// Originally, dodrio would use the className property for SVGs.
