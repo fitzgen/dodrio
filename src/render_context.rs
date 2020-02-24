@@ -69,7 +69,7 @@ impl<'a> RenderContext<'a> {
     /// Get or create the cached template for `Cached<R>`.
     pub(crate) fn template<R>(&mut self) -> Option<CacheId>
     where
-        R: 'static + Default + Render,
+        R: 'static + Default + for<'b> Render<'b>,
     {
         let template_id = Cached::<R>::template_id();
         if let Some(cache_id) = self.templates.get(&template_id).cloned() {

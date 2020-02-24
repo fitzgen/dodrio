@@ -233,9 +233,9 @@ impl ChangeListBuilder<'_> {
         self.state.emitter.replace_with();
     }
 
-    pub fn set_attribute(&mut self, name: &str, value: &str) {
+    pub fn set_attribute(&mut self, name: &str, value: &str, is_namespaced: bool) {
         debug_assert!(self.traversal_is_committed());
-        if name == "class" {
+        if name == "class" && !is_namespaced {
             let class_id = self.ensure_string(value);
             debug!("emit: set_class({:?})", value);
             self.state.emitter.set_class(class_id.into());

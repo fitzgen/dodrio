@@ -17,16 +17,16 @@ use std::convert::TryInto;
 
 /// The simplest thing we can render: `<div/>`.
 struct Empty;
-impl Render for Empty {
-    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
+impl<'a> Render<'a> for Empty {
+    fn render(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         div(&cx).finish()
     }
 }
 
 /// Render a list that is `self.0` items long, has attributes and listeners.
 struct SimpleList(usize);
-impl Render for SimpleList {
-    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
+impl<'a> Render<'a> for SimpleList {
+    fn render(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         let mut children = bumpalo::collections::Vec::with_capacity_in(self.0, cx.bump);
         children.extend((0..self.0).map(|_| {
             li(&cx)

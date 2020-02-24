@@ -289,8 +289,8 @@ impl<C: TodosActions> Todos<C> {
     }
 }
 
-impl<C: TodosActions> Render for Todos<C> {
-    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
+impl<'a, C: TodosActions> Render<'a> for Todos<C> {
+    fn render(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         use dodrio::builder::*;
 
         div(&cx)

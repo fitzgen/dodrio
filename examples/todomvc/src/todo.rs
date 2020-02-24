@@ -116,8 +116,8 @@ impl<C> Todo<C> {
     }
 }
 
-impl<C: TodoActions> Render for Todo<C> {
-    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
+impl<'a, C: TodoActions> Render<'a> for Todo<C> {
+    fn render(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         use dodrio::{
             builder::*,
             bumpalo::{self, collections::String},

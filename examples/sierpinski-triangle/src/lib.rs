@@ -85,8 +85,8 @@ impl Container {
     }
 }
 
-impl Render for Container {
-    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
+impl<'a> Render<'a> for Container {
+    fn render(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         use dodrio::builder::div;
 
         let elapsed = web_sys::window()

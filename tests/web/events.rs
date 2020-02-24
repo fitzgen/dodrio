@@ -24,8 +24,8 @@ impl EventContainer {
     }
 }
 
-impl Render for EventContainer {
-    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
+impl<'a> Render<'a> for EventContainer {
+    fn render(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         use dodrio::builder::*;
         div(&cx)
             .attr("id", "target")
@@ -126,8 +126,8 @@ impl ListensOnlyOnFirstRender {
     }
 }
 
-impl Render for ListensOnlyOnFirstRender {
-    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
+impl<'a> Render<'a> for ListensOnlyOnFirstRender {
+    fn render(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         use dodrio::builder::*;
 
         let count = self.count.get();

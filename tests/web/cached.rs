@@ -18,8 +18,8 @@ impl CountRenders {
     }
 }
 
-impl Render for CountRenders {
-    fn render<'a>(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
+impl<'a> Render<'a> for CountRenders {
+    fn render(&self, cx: &mut RenderContext<'a>) -> Node<'a> {
         let count = self.render_count.get() + 1;
         self.render_count.set(count);
 
@@ -153,8 +153,8 @@ impl Default for Id {
     }
 }
 
-impl Render for Id {
-    fn render<'a>(&self, _cx: &mut RenderContext<'a>) -> Node<'a> {
+impl<'a> Render<'a> for Id {
+    fn render(&self, _cx: &mut RenderContext<'a>) -> Node<'a> {
         text(self.0)
     }
 }
