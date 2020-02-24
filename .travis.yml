@@ -25,9 +25,6 @@ matrix:
     - name: "build (beta)"
       rust: beta
       script: INSTALL=1 ./build.sh
-    - name: "build (nightly)"
-      rust: nightly
-      script: INSTALL=1 ./build.sh
     - name: "headless browser tests (firefox)"
       rust: stable
       addons:
@@ -37,10 +34,17 @@ matrix:
       rust: stable
       install: echo "no install"
       script: cargo test --all
-    - name: "check native benches"
-      rust: nightly
-      install: echo "no install"
-      script: cargo check --benches --features xxx-unstable-internal-use-only
+
+    # TODO: A bug in `rustc` is making `js-sys` broken on nightly:
+    # https://github.com/rust-lang/rust/issues/69315
+    # - name: "build (nightly)"
+    #   rust: nightly
+    #   script: INSTALL=1 ./build.sh
+    # - name: "check native benches"
+    #   rust: nightly
+    #   install: echo "no install"
+    #   script: cargo check --benches --features xxx-unstable-internal-use-only
+
     # TODO: `chromedriver` is complaining about ports or something. Temporarily
     # disable in CI until we figure it out.
     # - name: "headless browser tests (chrome)"
