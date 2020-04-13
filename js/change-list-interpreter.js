@@ -9,275 +9,6 @@ function string(mem, pointer, length) {
   return decoder.decode(buf);
 }
 
-const OP_TABLE = [
-  // 0
-  function setText(interpreter, mem8, mem32, i) {
-    const pointer = mem32[i++];
-    const length = mem32[i++];
-    const str = string(mem8, pointer, length);
-    top(interpreter.stack).textContent = str;
-    return i;
-  },
-
-  // 1
-  function removeSelfAndNextSiblings(interpreter, mem8, mem32, i) {
-    const node = interpreter.stack.pop();
-    let sibling = node.nextSibling;
-    while (sibling) {
-      const temp = sibling.nextSibling;
-      sibling.remove();
-      sibling = temp;
-    }
-    node.remove();
-    return i;
-  },
-
-  // 2
-  function replaceWith(interpreter, mem8, mem32, i) {
-    const newNode = interpreter.stack.pop();
-    const oldNode = interpreter.stack.pop();
-    oldNode.replaceWith(newNode);
-    interpreter.stack.push(newNode);
-    return i;
-  },
-
-  // 3
-  function setAttribute(interpreter, mem8, mem32, i) {
-    const nameId = mem32[i++];
-    const valueId = mem32[i++];
-    const name = interpreter.getCachedString(nameId);
-    const value = interpreter.getCachedString(valueId);
-    const node = top(interpreter.stack);
-    node.setAttribute(name, value);
-
-    // Some attributes are "volatile" and don't work through `setAttribute`.
-    if (name === "value") {
-      node.value = value;
-    }
-    if (name === "checked") {
-      node.checked = true;
-    }
-    if (name === "selected") {
-      node.selected = true;
-    }
-
-    return i;
-  },
-
-  // 4
-  function removeAttribute(interpreter, mem8, mem32, i) {
-    const nameId = mem32[i++];
-    const name = interpreter.getCachedString(nameId);
-    const node = top(interpreter.stack);
-    node.removeAttribute(name);
-
-    // Some attributes are "volatile" and don't work through `removeAttribute`.
-    if (name === "value") {
-      node.value = null;
-    }
-    if (name === "checked") {
-      node.checked = false;
-    }
-    if (name === "selected") {
-      node.selected = false;
-    }
-
-    return i;
-  },
-
-  // 5
-  function pushReverseChild(interpreter, mem8, mem32, i) {
-    const n = mem32[i++];
-    const parent = top(interpreter.stack);
-    const children = parent.childNodes;
-    const child = children[children.length - n - 1];
-    interpreter.stack.push(child);
-    return i;
-  },
-
-  // 6
-  function popPushChild(interpreter, mem8, mem32, i) {
-    const n = mem32[i++];
-    interpreter.stack.pop();
-    const parent = top(interpreter.stack);
-    const children = parent.childNodes;
-    const child = children[n];
-    interpreter.stack.push(child);
-    return i;
-  },
-
-  // 7
-  function pop(interpreter, mem8, mem32, i) {
-    interpreter.stack.pop();
-    return i;
-  },
-
-  // 8
-  function appendChild(interpreter, mem8, mem32, i) {
-    const child = interpreter.stack.pop();
-    top(interpreter.stack).appendChild(child);
-    return i;
-  },
-
-  // 9
-  function createTextNode(interpreter, mem8, mem32, i) {
-    const pointer = mem32[i++];
-    const length = mem32[i++];
-    const text = string(mem8, pointer, length);
-    interpreter.stack.push(document.createTextNode(text));
-    return i;
-  },
-
-  // 10
-  function createElement(interpreter, mem8, mem32, i) {
-    const tagNameId = mem32[i++];
-    const tagName = interpreter.getCachedString(tagNameId);
-    interpreter.stack.push(document.createElement(tagName));
-    return i;
-  },
-
-  // 11
-  function newEventListener(interpreter, mem8, mem32, i) {
-    const eventId = mem32[i++];
-    const eventType = interpreter.getCachedString(eventId);
-    const a = mem32[i++];
-    const b = mem32[i++];
-    const el = top(interpreter.stack);
-    el.addEventListener(eventType, interpreter.eventHandler);
-    el[`dodrio-a-${eventType}`] = a;
-    el[`dodrio-b-${eventType}`] = b;
-    return i;
-  },
-
-  // 12
-  function updateEventListener(interpreter, mem8, mem32, i) {
-    const eventId = mem32[i++];
-    const eventType = interpreter.getCachedString(eventId);
-    const el = top(interpreter.stack);
-    el[`dodrio-a-${eventType}`] = mem32[i++];
-    el[`dodrio-b-${eventType}`] = mem32[i++];
-    return i;
-  },
-
-  // 13
-  function removeEventListener(interpreter, mem8, mem32, i) {
-    const eventId = mem32[i++];
-    const eventType = interpreter.getCachedString(eventId);
-    const el = top(interpreter.stack);
-    el.removeEventListener(eventType, interpreter.eventHandler);
-    return i;
-  },
-
-  // 14
-  function addCachedString(interpreter, mem8, mem32, i) {
-    const pointer = mem32[i++];
-    const length = mem32[i++];
-    const id = mem32[i++];
-    const str = string(mem8, pointer, length);
-    interpreter.addCachedString(str, id);
-    return i;
-  },
-
-  // 15
-  function dropCachedString(interpreter, mem8, mem32, i) {
-    const id = mem32[i++];
-    interpreter.dropCachedString(id);
-    return i;
-  },
-
-  // 16
-  function createElementNS(interpreter, mem8, mem32, i) {
-    const tagNameId = mem32[i++];
-    const tagName = interpreter.getCachedString(tagNameId);
-    const nsId = mem32[i++];
-    const ns = interpreter.getCachedString(nsId);
-    interpreter.stack.push(document.createElementNS(ns, tagName));
-    return i;
-  },
-
-  // 17
-  function saveChildrenToTemporaries(interpreter, mem8, mem32, i) {
-    let temp = mem32[i++];
-    const start = mem32[i++];
-    const end = mem32[i++];
-    const parent = top(interpreter.stack);
-    const children = parent.childNodes;
-    for (let i = start; i < end; i++) {
-      interpreter.temporaries[temp++] = children[i];
-    }
-    return i;
-  },
-
-  // 18
-  function pushChild(interpreter, mem8, mem32, i) {
-    const parent = top(interpreter.stack);
-    const n = mem32[i++];
-    const child = parent.childNodes[n];
-    interpreter.stack.push(child);
-    return i;
-  },
-
-  // 19
-  function pushTemporary(interpreter, mem8, mem32, i) {
-    const temp = mem32[i++];
-    interpreter.stack.push(interpreter.temporaries[temp]);
-    return i;
-  },
-
-  // 20
-  function insertBefore(interpreter, mem8, mem32, i) {
-    const before = interpreter.stack.pop();
-    const after = interpreter.stack.pop();
-    after.parentNode.insertBefore(before, after);
-    interpreter.stack.push(before);
-    return i;
-  },
-
-  // 21
-  function popPushReverseChild(interpreter, mem8, mem32, i) {
-    const n = mem32[i++];
-    interpreter.stack.pop();
-    const parent = top(interpreter.stack);
-    const children = parent.childNodes;
-    const child = children[children.length - n - 1];
-    interpreter.stack.push(child);
-    return i;
-  },
-
-  // 22
-  function removeChild(interpreter, mem8, mem32, i) {
-    const n = mem32[i++];
-    const parent = top(interpreter.stack);
-    const child = parent.childNodes[n];
-    child.remove();
-    return i;
-  },
-
-  // 23
-  function setClass(interpreter, mem8, mem32, i) {
-    const classId = mem32[i++];
-    const className = interpreter.getCachedString(classId);
-    top(interpreter.stack).className = className;
-    return i;
-  },
-
-  // 24
-  function saveTemplate(interpreter, mem8, mem32, i) {
-    const id = mem32[i++];
-    const template = top(interpreter.stack);
-    interpreter.saveTemplate(id, template.cloneNode(true));
-    return i;
-  },
-
-  // 25
-  function pushTemplate(interpreter, mem8, mem32, i) {
-    const id = mem32[i++];
-    const template = interpreter.getTemplate(id);
-    interpreter.stack.push(template.cloneNode(true));
-    return i;
-  }
-];
-
 export class ChangeListInterpreter {
   constructor(container) {
     this.trampoline = null;
@@ -320,36 +51,32 @@ export class ChangeListInterpreter {
     for (let i = 0; i < this.ranges.length; i += 2) {
       const start = this.ranges[i];
       const len = this.ranges[i + 1];
-      this.applyChangeRange(mem8, mem32, start, len);
+      this.applyChangeRange(mem8, mem32, start, len, memory);
     }
 
+    this.reset();
+  }
+
+  start() {
+    this.stack.push(this.container.firstChild);
+  }
+
+  reset() {
     this.ranges.length = 0;
     this.stack.length = 0;
     this.temporaries.length = 0;
   }
 
-  applyChangeRange(mem8, mem32, start, len) {
+  applyChangeRange(mem8, mem32, start, len, memory) {
     const end = (start + len) / 4;
     for (let i = start / 4; i < end; ) {
       const op = mem32[i++];
-      i = OP_TABLE[op](this, mem8, mem32, i);
+      i = OP_TABLE[op](this, mem8, mem32, i, memory);
     }
-  }
-
-  addCachedString(str, id) {
-    this.strings.set(id, str);
-  }
-
-  dropCachedString(id) {
-    this.strings.delete(id);
   }
 
   getCachedString(id) {
     return this.strings.get(id);
-  }
-
-  saveTemplate(id, template) {
-    this.templates.set(id, template);
   }
 
   getTemplate(id) {
@@ -373,5 +100,216 @@ export class ChangeListInterpreter {
       const b = this[`dodrio-b-${type}`];
       trampoline(event, a, b);
     }
+  }
+
+  // 0
+  setText(pointer, length, memory) {
+    const mem8 = new Uint8Array(memory.buffer);  
+    const str = string(mem8, pointer, length);
+    top(this.stack).textContent = str;
+  }
+
+  // 1
+  removeSelfAndNextSiblings(interpreter) {
+    const node = this.stack.pop();
+    let sibling = node.nextSibling;
+    while (sibling) {
+      const temp = sibling.nextSibling;
+      sibling.remove();
+      sibling = temp;
+    }
+    node.remove();
+  }
+
+  // 2
+  replaceWith(interpreter) {
+    const newNode = this.stack.pop();
+    const oldNode = this.stack.pop();
+    oldNode.replaceWith(newNode);
+    this.stack.push(newNode);
+  }
+
+  // 3
+  setAttribute(nameId, valueId) {
+    const name = this.getCachedString(nameId);
+    const value = this.getCachedString(valueId);
+    const node = top(this.stack);
+    node.setAttribute(name, value);
+
+    // Some attributes are "volatile" and don't work through `setAttribute`.
+    if (name === "value") {
+      node.value = value;
+    }
+    if (name === "checked") {
+      node.checked = true;
+    }
+    if (name === "selected") {
+      node.selected = true;
+    }
+  }
+
+  // 4
+  removeAttribute(nameId) {
+    const name = this.getCachedString(nameId);
+    const node = top(this.stack);
+    node.removeAttribute(name);
+
+    // Some attributes are "volatile" and don't work through `removeAttribute`.
+    if (name === "value") {
+      node.value = null;
+    }
+    if (name === "checked") {
+      node.checked = false;
+    }
+    if (name === "selected") {
+      node.selected = false;
+    }
+  }
+
+  // 5
+  pushReverseChild(n) {
+    const parent = top(this.stack);
+    const children = parent.childNodes;
+    const child = children[children.length - n - 1];
+    this.stack.push(child);
+  }
+
+  // 6
+  popPushChild(n) {
+    this.stack.pop();
+    const parent = top(this.stack);
+    const children = parent.childNodes;
+    const child = children[n];
+    this.stack.push(child);
+  }
+
+  // 7
+  pop(interpreter) {
+    this.stack.pop();
+  }
+
+  // 8
+  appendChild(interpreter) {
+    const child = this.stack.pop();
+    top(this.stack).appendChild(child);
+  }
+
+  // 9
+  createTextNode(pointer, length, memory) {
+    const mem8 = new Uint8Array(memory.buffer);
+    const text = string(mem8, pointer, length);
+    this.stack.push(document.createTextNode(text));
+  }
+
+  // 10
+  createElement(tagNameId) {
+    const tagName = this.getCachedString(tagNameId);
+    this.stack.push(document.createElement(tagName));
+  }
+
+  // 11
+  newEventListener(eventId, a, b) {
+    const eventType = this.getCachedString(eventId);
+    const el = top(this.stack);
+    el.addEventListener(eventType, this.eventHandler);
+    el[`dodrio-a-${eventType}`] = a;
+    el[`dodrio-b-${eventType}`] = b;
+  }
+
+  // 12
+  updateEventListener(eventId, a, b) {
+    const eventType = this.getCachedString(eventId);
+    const el = top(this.stack);
+    el[`dodrio-a-${eventType}`] = a;
+    el[`dodrio-b-${eventType}`] = b;
+  }
+
+  // 13
+  removeEventListener(eventId) {
+    const eventType = this.getCachedString(eventId);
+    const el = top(this.stack);
+    el.removeEventListener(eventType, this.eventHandler);
+  }
+
+  // 14
+  addCachedString(pointer, length, id, memory) {
+    const mem8 = new Uint8Array(memory.buffer);
+    const str = string(mem8, pointer, length);
+    this.strings.set(id, str);
+  }
+
+  // 15
+  dropCachedString(id) {
+    this.strings.delete(id);
+  }
+
+  // 16
+  createElementNS(tagNameId, nsId) {
+    const tagName = this.getCachedString(tagNameId);
+    const ns = this.getCachedString(nsId);
+    this.stack.push(document.createElementNS(ns, tagName));
+  }
+
+  // 17
+  saveChildrenToTemporaries(temp, start, end) {
+    const parent = top(this.stack);
+    const children = parent.childNodes;
+    for (let i = start; i < end; i++) {
+      this.temporaries[temp++] = children[i];
+    }
+  }
+
+  // 18
+  pushChild(n) {
+    const parent = top(this.stack);
+    const child = parent.childNodes[n];
+    this.stack.push(child);
+  }
+
+  // 19
+  pushTemporary(temp) {
+    this.stack.push(this.temporaries[temp]);
+  }
+
+  // 20
+  insertBefore(interpreter) {
+    const before = this.stack.pop();
+    const after = this.stack.pop();
+    after.parentNode.insertBefore(before, after);
+    this.stack.push(before);
+  }
+
+  // 21
+  popPushReverseChild(n) {
+    this.stack.pop();
+    const parent = top(this.stack);
+    const children = parent.childNodes;
+    const child = children[children.length - n - 1];
+    this.stack.push(child);
+  }
+
+  // 22
+  removeChild(n) {
+    const parent = top(this.stack);
+    const child = parent.childNodes[n];
+    child.remove();
+  }
+
+  // 23
+  setClass(classId) {
+    const className = this.getCachedString(classId);
+    top(this.stack).className = className;
+  }
+
+  // 24
+  saveTemplate(id) {
+    const template = top(this.stack);
+    this.templates.set(id, template.cloneNode(true));
+  }
+
+  // 25
+  pushTemplate(id) {
+    const template = this.getTemplate(id);
+    this.stack.push(template.cloneNode(true));
   }
 }

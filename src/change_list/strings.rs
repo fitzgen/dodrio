@@ -1,4 +1,4 @@
-use crate::change_list::emitter::InstructionEmitter;
+use super::js;
 use fxhash::FxHashMap;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -30,7 +30,11 @@ impl StringsCache {
     }
 
     /// Ensure that the given string is cached, and get its key.
-    pub fn ensure_string(&mut self, string: &str, emitter: &InstructionEmitter) -> StringKey {
+    pub fn ensure_string(
+        &mut self,
+        string: &str,
+        interpreter: &js::ChangeListInterpreter,
+    ) -> StringKey {
         if let Some(entry) = self.entries.get_mut(string) {
             entry.used = true;
             entry.key
@@ -39,12 +43,18 @@ impl StringsCache {
             self.next_string_key += 1;
             let entry = StringsCacheEntry { key, used: true };
             self.entries.insert(string.to_string(), entry);
-            emitter.add_cached_string(string.as_ptr() as u32, string.len() as u32, key.into());
+            debug!("emit: add_cached_string({}, {:?})", string, key);
+            interpreter.add_cached_string(
+                string.as_ptr() as u32,
+                string.len() as u32,
+                key.into(),
+                wasm_bindgen::memory(),
+            );
             key
         }
     }
 
-    pub fn drop_unused_strings(&mut self, emitter: &InstructionEmitter) {
+    pub fn drop_unused_strings(&mut self, interpreter: &js::ChangeListInterpreter) {
         self.entries.retain(|string, entry| {
             if entry.used {
                 // Since this entry was used during while rendering this frame,
@@ -58,7 +68,7 @@ impl StringsCache {
             } else {
                 let key = entry.key.into();
                 debug!("emit: drop_cached_string({}) = {:?}", key, string);
-                emitter.drop_cached_string(key);
+                interpreter.drop_cached_string(key);
                 false
             }
         });

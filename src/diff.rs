@@ -26,6 +26,8 @@ pub(crate) fn diff(
     new: &Node,
     cached_roots: &mut FxHashSet<CacheId>,
 ) {
+    debug!("diff {:?} {:?}", new.kind, old.kind);
+
     match (&new.kind, &old.kind) {
         (
             &NodeKind::Text(TextNode { text: new_text }),
@@ -78,7 +80,12 @@ pub(crate) fn diff(
                 return;
             }
             diff_listeners(change_list, registry, old_listeners, new_listeners);
-            diff_attributes(change_list, old_attributes, new_attributes, new_namespace.is_some());
+            diff_attributes(
+                change_list,
+                old_attributes,
+                new_attributes,
+                new_namespace.is_some(),
+            );
             diff_children(
                 cached_set,
                 change_list,
@@ -204,7 +211,12 @@ fn diff_listeners(
 //     [... node]
 //
 // The change list stack is left unchanged.
-fn diff_attributes(change_list: &mut ChangeListBuilder, old: &[Attribute], new: &[Attribute], is_namespaced: bool) {
+fn diff_attributes(
+    change_list: &mut ChangeListBuilder,
+    old: &[Attribute],
+    new: &[Attribute],
+    is_namespaced: bool,
+) {
     // Do O(n^2) passes to add/update and remove attributes, since
     // there are almost always very few attributes.
     'outer: for new_attr in new {
