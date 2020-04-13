@@ -89,11 +89,11 @@ cfg_if::cfg_if! {
             #[wasm_bindgen(structural, method, js_name = applyChanges)]
             pub fn apply_changes(this: &ChangeListInterpreter, memory: JsValue);
 
-            #[wasm_bindgen(structural, method, js_name = initEventsTrampoline)]
-            pub fn init_events_trampoline(
-                this: &ChangeListInterpreter,
-                trampoline: &crate::EventsTrampoline,
-            );
+            // #[wasm_bindgen(structural, method, js_name = initEventsTrampoline)]
+            // pub fn init_events_trampoline(
+            //     this: &ChangeListInterpreter,
+            //     trampoline: &crate::EventsTrampoline,
+            // );
 
             #[wasm_bindgen(structural, method, js_name = start)]
             pub fn start(this: &ChangeListInterpreter);

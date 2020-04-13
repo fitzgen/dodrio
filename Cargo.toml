@@ -61,6 +61,7 @@ features = [
   "Event",
   "Node",
   "Window",
+  "Text",
 ]
 
 [dev-dependencies]

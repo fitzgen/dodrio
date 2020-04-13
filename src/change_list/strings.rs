@@ -1,4 +1,4 @@
-use super::js;
+use super::interpreter::ChangeListInterpreter;
 use fxhash::FxHashMap;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -33,7 +33,7 @@ impl StringsCache {
     pub fn ensure_string(
         &mut self,
         string: &str,
-        interpreter: &js::ChangeListInterpreter,
+        interpreter: &mut ChangeListInterpreter,
     ) -> StringKey {
         if let Some(entry) = self.entries.get_mut(string) {
             entry.used = true;
@@ -44,17 +44,12 @@ impl StringsCache {
             let entry = StringsCacheEntry { key, used: true };
             self.entries.insert(string.to_string(), entry);
             debug!("emit: add_cached_string({}, {:?})", string, key);
-            interpreter.add_cached_string(
-                string.as_ptr() as u32,
-                string.len() as u32,
-                key.into(),
-                wasm_bindgen::memory(),
-            );
+            interpreter.add_cached_string(string, key.into());
             key
         }
     }
 
-    pub fn drop_unused_strings(&mut self, interpreter: &js::ChangeListInterpreter) {
+    pub fn drop_unused_strings(&mut self, interpreter: &mut ChangeListInterpreter) {
         self.entries.retain(|string, entry| {
             if entry.used {
                 // Since this entry was used during while rendering this frame,

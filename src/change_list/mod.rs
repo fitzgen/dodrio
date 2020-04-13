@@ -1,9 +1,11 @@
+pub(crate) mod interpreter;
 pub(crate) mod strings;
 pub(crate) mod traversal;
 
 // Note: has to be `pub` because of `wasm-bindgen` visibility restrictions.
 pub mod js;
 
+use self::interpreter::ChangeListInterpreter;
 use self::strings::{StringKey, StringsCache};
 use self::traversal::{MoveTo, Traversal};
 use crate::{cached_set::CacheId, Listener};
@@ -13,7 +15,7 @@ use fxhash::FxHashSet;
 pub(crate) struct ChangeListPersistentState {
     strings: StringsCache,
     traversal: Traversal,
-    interpreter: js::ChangeListInterpreter,
+    interpreter: ChangeListInterpreter,
     templates: FxHashSet<CacheId>,
 }
 
@@ -33,7 +35,7 @@ impl ChangeListPersistentState {
     pub(crate) fn new(container: &crate::Element) -> ChangeListPersistentState {
         let strings = StringsCache::new();
         let traversal = Traversal::new();
-        let interpreter = js::ChangeListInterpreter::new(container);
+        let interpreter = ChangeListInterpreter::new(container.clone());
         let templates = Default::default();
 
         ChangeListPersistentState {
@@ -44,11 +46,11 @@ impl ChangeListPersistentState {
         }
     }
 
-    pub(crate) fn init_events_trampoline(&mut self, trampoline: &crate::EventsTrampoline) {
+    pub(crate) fn init_events_trampoline(&mut self, trampoline: crate::EventsTrampoline) {
         self.interpreter.init_events_trampoline(trampoline);
     }
 
-    pub(crate) fn builder<'a>(&'a mut self) -> ChangeListBuilder<'a> {
+    pub(crate) fn builder(&mut self) -> ChangeListBuilder {
         let builder = ChangeListBuilder {
             state: self,
             next_temporary: 0,
@@ -64,7 +66,7 @@ impl ChangeListBuilder<'_> {
     pub(crate) fn finish(self) {
         self.state
             .strings
-            .drop_unused_strings(&self.state.interpreter);
+            .drop_unused_strings(&mut self.state.interpreter);
 
         debug!("emit: reset");
         self.state.interpreter.reset();
@@ -168,19 +170,19 @@ impl ChangeListBuilder<'_> {
         temp_base
     }
 
-    pub fn push_temporary(&self, temp: u32) {
+    pub fn push_temporary(&mut self, temp: u32) {
         debug_assert!(self.traversal_is_committed());
         debug!("emit: push_temporary({})", temp);
         self.state.interpreter.push_temporary(temp);
     }
 
-    pub fn remove_child(&self, child: usize) {
+    pub fn remove_child(&mut self, child: usize) {
         debug_assert!(self.traversal_is_committed());
         debug!("emit: remove_child({})", child);
         self.state.interpreter.remove_child(child as u32);
     }
 
-    pub fn insert_before(&self) {
+    pub fn insert_before(&mut self) {
         debug_assert!(self.traversal_is_committed());
         debug!("emit: insert_before()");
         self.state.interpreter.insert_before();
@@ -189,26 +191,22 @@ impl ChangeListBuilder<'_> {
     pub fn ensure_string(&mut self, string: &str) -> StringKey {
         self.state
             .strings
-            .ensure_string(string, &self.state.interpreter)
+            .ensure_string(string, &mut self.state.interpreter)
     }
 
-    pub fn set_text(&self, text: &str) {
+    pub fn set_text(&mut self, text: &str) {
         debug_assert!(self.traversal_is_committed());
         debug!("emit: set_text({:?})", text);
-        self.state.interpreter.set_text(
-            text.as_ptr() as u32,
-            text.len() as u32,
-            wasm_bindgen::memory(),
-        );
+        self.state.interpreter.set_text(text);
     }
 
-    pub fn remove_self_and_next_siblings(&self) {
+    pub fn remove_self_and_next_siblings(&mut self) {
         debug_assert!(self.traversal_is_committed());
         debug!("emit: remove_self_and_next_siblings()");
         self.state.interpreter.remove_self_and_next_siblings();
     }
 
-    pub fn replace_with(&self) {
+    pub fn replace_with(&mut self) {
         debug_assert!(self.traversal_is_committed());
         debug!("emit: replace_with()");
         self.state.interpreter.replace_with();
@@ -237,20 +235,16 @@ impl ChangeListBuilder<'_> {
         self.state.interpreter.remove_attribute(name_id.into());
     }
 
-    pub fn append_child(&self) {
+    pub fn append_child(&mut self) {
         debug_assert!(self.traversal_is_committed());
         debug!("emit: append_child()");
         self.state.interpreter.append_child();
     }
 
-    pub fn create_text_node(&self, text: &str) {
+    pub fn create_text_node(&mut self, text: &str) {
         debug_assert!(self.traversal_is_committed());
         debug!("emit: create_text_node({:?})", text);
-        self.state.interpreter.create_text_node(
-            text.as_ptr() as u32,
-            text.len() as u32,
-            wasm_bindgen::memory(),
-        );
+        self.state.interpreter.create_text_node(text);
     }
 
     pub fn create_element(&mut self, tag_name: &str) {
