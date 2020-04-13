@@ -9,7 +9,7 @@ pub struct ChangeListInterpreter {
     container: Element,
     stack: Stack,
     strings: HashMap<u32, String>,
-    temporaries: Vec<Node>,
+    temporaries: HashMap<u32, Node>,
     templates: HashMap<u32, Node>,
     callback: Option<Closure<dyn FnMut(&Event)>>,
     document: Document,
@@ -135,11 +135,29 @@ impl ChangeListInterpreter {
     pub fn replace_with(&mut self) {
         let new_node = self.stack.pop();
         let old_node = self.stack.pop();
-        old_node
-            .dyn_ref::<Element>()
-            .expect(&format!("not an element: {:?}", old_node))
-            .replace_with_with_node_1(&new_node)
-            .unwrap();
+
+        if old_node.has_type::<Element>() {
+            old_node
+                .dyn_ref::<Element>()
+                .unwrap()
+                .replace_with_with_node_1(&new_node)
+                .unwrap();
+        } else if old_node.has_type::<web_sys::CharacterData>() {
+            old_node
+                .dyn_ref::<web_sys::CharacterData>()
+                .unwrap()
+                .replace_with_with_node_1(&new_node)
+                .unwrap();
+        } else if old_node.has_type::<web_sys::DocumentType>() {
+            old_node
+                .dyn_ref::<web_sys::DocumentType>()
+                .unwrap()
+                .replace_with_with_node_1(&new_node)
+                .unwrap();
+        } else {
+            panic!("Cannot replace node: {:?}", old_node);
+        }
+
         self.stack.push(new_node);
     }
 
@@ -240,17 +258,21 @@ impl ChangeListInterpreter {
     // 11
     pub fn new_event_listener(&mut self, event_id: u32, a: u32, b: u32) {
         let event_type = self.get_cached_string(event_id).unwrap();
-        if let Some(el) = self.stack.top().dyn_ref::<Element>() {
-            el.add_event_listener_with_callback(
-                event_type,
-                self.callback.as_ref().unwrap().as_ref().unchecked_ref(),
-            )
+        let el = self.stack.top();
+
+        let el = el
+            .dyn_ref::<Element>()
+            .expect(&format!("not an element: {:?}", el));
+        el.add_event_listener_with_callback(
+            event_type,
+            self.callback.as_ref().unwrap().as_ref().unchecked_ref(),
+        )
+        .unwrap();
+        debug!("adding attributes: {}, {}", a, b);
+        el.set_attribute(&format!("dodrio-a-{}", event_type), &a.to_string())
             .unwrap();
-            el.set_attribute(&format!("dodrio-a-{}", event_type), &a.to_string())
-                .unwrap();
-            el.set_attribute(&format!("dodrio-b-{}", event_type), &b.to_string())
-                .unwrap();
-        }
+        el.set_attribute(&format!("dodrio-b-{}", event_type), &b.to_string())
+            .unwrap();
     }
 
     // 12
@@ -304,8 +326,8 @@ impl ChangeListInterpreter {
         let parent = self.stack.top();
         let children = parent.child_nodes();
         for i in start..end {
+            self.temporaries.insert(temp, children.get(i).unwrap());
             temp += 1;
-            self.temporaries[temp as usize] = children.get(i).unwrap();
         }
     }
 
@@ -318,7 +340,8 @@ impl ChangeListInterpreter {
 
     // 19
     pub fn push_temporary(&mut self, temp: u32) {
-        self.stack.push(self.temporaries[temp as usize].clone());
+        let t = self.temporaries.get(&temp).unwrap().clone();
+        self.stack.push(t);
     }
 
     // 20

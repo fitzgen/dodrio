@@ -62,6 +62,8 @@ features = [
   "Node",
   "Window",
   "Text",
+  "DocumentType",
+  "CharacterData",
 ]
 
 [dev-dependencies]
