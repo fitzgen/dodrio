@@ -1,7 +1,7 @@
 use super::{assert_rendered, before_after, create_element, RenderFn};
 use dodrio::{builder::*, bumpalo::collections::String, Node, Render, RenderContext, Vdom};
 use std::rc::Rc;
-use wasm_bindgen::{ JsCast};
+use wasm_bindgen::JsCast;
 use wasm_bindgen_test::*;
 
 #[wasm_bindgen_test]
@@ -37,7 +37,7 @@ fn container_is_emptied_upon_drop() {
 
 /// Renders a child with a lifetime scoped to the RenderContext bump arena.
 #[wasm_bindgen_test]
-fn render_bump_scoped_node() {        
+fn render_bump_scoped_node() {
     struct Child<'a> {
         name: &'a str,
     }
@@ -60,9 +60,7 @@ fn render_bump_scoped_node() {
         }
     }
 
-    let parent = Rc::new(RenderFn(|cx| {
-        Parent.render(cx)
-    }));
+    let parent = Rc::new(RenderFn(|cx| Parent.render(cx)));
 
     let container = create_element("div");
     let _vdom = Vdom::new(&container, parent.clone());
@@ -71,7 +69,7 @@ fn render_bump_scoped_node() {
 }
 
 /// Originally, dodrio would use the className property for SVGs.
-/// 
+///
 /// This is problematic because when SVG elements are created, the className is flagged as a read
 /// only property, so setting it causes an exception to be thrown. Here's an example of how this
 /// happens:
@@ -83,21 +81,20 @@ fn render_bump_scoped_node() {
 ///     .create_element_ns(Some("http://www.w3.org/2000/svg"), "svg")
 ///     .unwrap();
 ///
-/// elem.set_class_name("does-not-work"); 
-/// 
+/// elem.set_class_name("does-not-work");
+///
 /// -----------------------------------------------------------------------------------------------
 ///     
 ///     wasm-bindgen: imported JS function that was not marked as `catch` threw an error:
 ///     setting getter-only property "className"
-/// 
+///
 /// -----------------------------------------------------------------------------------------------
-/// 
+///
 /// Now, dodrio passes the 'class' attribute of all namespaced elements into set_attribute. This
 /// satisfies the restrictions on SVG and keeps the optimized path for non-namespaced elements
 #[wasm_bindgen_test(async)]
 async fn test_svg_set_class() {
     let container = create_element("div");
-
 
     let valid_svg = Rc::new(RenderFn(|cx| {
         ElementBuilder::new(cx.bump, "svg")
@@ -112,8 +109,9 @@ async fn test_svg_set_class() {
     weak.render().await.unwrap();
 
     assert_eq!(
-        "works", 
-        container.first_child()
+        "works",
+        container
+            .first_child()
             .expect("unable to get svg")
             .dyn_ref::<web_sys::Element>()
             .expect("svg should be an element")

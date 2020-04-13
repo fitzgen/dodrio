@@ -1,9 +1,6 @@
 pub(crate) mod interpreter;
 pub(crate) mod traversal;
 
-// Note: has to be `pub` because of `wasm-bindgen` visibility restrictions.
-pub mod js;
-
 use self::interpreter::ChangeListInterpreter;
 use self::traversal::{MoveTo, Traversal};
 use crate::{cached_set::CacheId, Listener};
