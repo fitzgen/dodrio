@@ -8,7 +8,6 @@ use web_sys::{window, Document, Event, Node};
 pub struct ChangeListInterpreter {
     container: Element,
     stack: Stack,
-    strings: HashMap<u32, String>,
     temporaries: HashMap<u32, Node>,
     templates: HashMap<u32, Node>,
     callback: Option<Closure<dyn FnMut(&Event)>>,
@@ -52,7 +51,6 @@ impl ChangeListInterpreter {
         Self {
             container,
             stack: Default::default(),
-            strings: Default::default(),
             temporaries: Default::default(),
             templates: Default::default(),
             callback: None,
@@ -62,7 +60,6 @@ impl ChangeListInterpreter {
 
     pub fn unmount(&mut self) {
         self.stack.clear();
-        self.strings.clear();
         self.temporaries.clear();
         self.templates.clear();
     }
@@ -76,10 +73,6 @@ impl ChangeListInterpreter {
     pub fn reset(&mut self) {
         self.stack.clear();
         self.temporaries.clear();
-    }
-
-    pub fn get_cached_string(&self, id: u32) -> Option<&String> {
-        self.strings.get(&id)
     }
 
     pub fn get_template(&self, id: u32) -> Option<&Node> {
@@ -162,9 +155,7 @@ impl ChangeListInterpreter {
     }
 
     // 3
-    pub fn set_attribute(&mut self, name_id: u32, value_id: u32) {
-        let name = self.get_cached_string(name_id).unwrap();
-        let value = self.get_cached_string(value_id).unwrap();
+    pub fn set_attribute(&mut self, name: &str, value: &str) {
         let node = self.stack.top();
 
         if let Some(node) = node.dyn_ref::<Element>() {
@@ -185,8 +176,7 @@ impl ChangeListInterpreter {
     }
 
     // 4
-    pub fn remove_attribute(&mut self, name_id: u32) {
-        let name = self.get_cached_string(name_id).unwrap();
+    pub fn remove_attribute(&mut self, name: &str) {
         let node = self.stack.top();
         if let Some(node) = node.dyn_ref::<Element>() {
             node.remove_attribute(name).unwrap();
@@ -244,8 +234,7 @@ impl ChangeListInterpreter {
     }
 
     // 10
-    pub fn create_element(&mut self, tag_name_id: u32) {
-        let tag_name = self.get_cached_string(tag_name_id).unwrap();
+    pub fn create_element(&mut self, tag_name: &str) {
         let el = self
             .document
             .create_element(tag_name)
@@ -256,8 +245,7 @@ impl ChangeListInterpreter {
     }
 
     // 11
-    pub fn new_event_listener(&mut self, event_id: u32, a: u32, b: u32) {
-        let event_type = self.get_cached_string(event_id).unwrap();
+    pub fn new_event_listener(&mut self, event_type: &str, a: u32, b: u32) {
         let el = self.stack.top();
 
         let el = el
@@ -276,8 +264,7 @@ impl ChangeListInterpreter {
     }
 
     // 12
-    pub fn update_event_listener(&mut self, event_id: u32, a: u32, b: u32) {
-        let event_type = self.get_cached_string(event_id).unwrap();
+    pub fn update_event_listener(&mut self, event_type: &str, a: u32, b: u32) {
         if let Some(el) = self.stack.top().dyn_ref::<Element>() {
             el.set_attribute(&format!("dodrio-a-{}", event_type), &a.to_string())
                 .unwrap();
@@ -287,8 +274,7 @@ impl ChangeListInterpreter {
     }
 
     // 13
-    pub fn remove_event_listener(&mut self, event_id: u32) {
-        let event_type = self.get_cached_string(event_id).unwrap();
+    pub fn remove_event_listener(&mut self, event_type: &str) {
         if let Some(el) = self.stack.top().dyn_ref::<Element>() {
             el.remove_event_listener_with_callback(
                 event_type,
@@ -298,20 +284,8 @@ impl ChangeListInterpreter {
         }
     }
 
-    // 14
-    pub fn add_cached_string(&mut self, string: &str, id: u32) {
-        self.strings.insert(id, string.into());
-    }
-
-    // 15
-    pub fn drop_cached_string(&mut self, id: u32) {
-        self.strings.remove(&id);
-    }
-
     // 16
-    pub fn create_element_ns(&mut self, tag_name_id: u32, ns_id: u32) {
-        let tag_name = self.get_cached_string(tag_name_id).unwrap();
-        let ns = self.get_cached_string(ns_id).unwrap();
+    pub fn create_element_ns(&mut self, tag_name: &str, ns: &str) {
         let el = self
             .document
             .create_element_ns(Some(ns), tag_name)
@@ -374,8 +348,7 @@ impl ChangeListInterpreter {
     }
 
     // 23
-    pub fn set_class(&mut self, class_id: u32) {
-        let class_name = self.get_cached_string(class_id).unwrap();
+    pub fn set_class(&mut self, class_name: &str) {
         if let Some(el) = self.stack.top().dyn_ref::<Element>() {
             el.set_class_name(class_name);
         }

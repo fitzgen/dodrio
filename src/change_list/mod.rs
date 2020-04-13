@@ -1,19 +1,16 @@
 pub(crate) mod interpreter;
-pub(crate) mod strings;
 pub(crate) mod traversal;
 
 // Note: has to be `pub` because of `wasm-bindgen` visibility restrictions.
 pub mod js;
 
 use self::interpreter::ChangeListInterpreter;
-use self::strings::{StringKey, StringsCache};
 use self::traversal::{MoveTo, Traversal};
 use crate::{cached_set::CacheId, Listener};
 use fxhash::FxHashSet;
 
 #[derive(Debug)]
 pub(crate) struct ChangeListPersistentState {
-    strings: StringsCache,
     traversal: Traversal,
     interpreter: ChangeListInterpreter,
     templates: FxHashSet<CacheId>,
@@ -33,13 +30,11 @@ impl Drop for ChangeListPersistentState {
 
 impl ChangeListPersistentState {
     pub(crate) fn new(container: &crate::Element) -> ChangeListPersistentState {
-        let strings = StringsCache::new();
         let traversal = Traversal::new();
         let interpreter = ChangeListInterpreter::new(container.clone());
         let templates = Default::default();
 
         ChangeListPersistentState {
-            strings,
             traversal,
             interpreter,
             templates,
@@ -65,10 +60,6 @@ impl ChangeListPersistentState {
 
 impl ChangeListBuilder<'_> {
     pub(crate) fn finish(self) {
-        self.state
-            .strings
-            .drop_unused_strings(&mut self.state.interpreter);
-
         debug!("emit: reset");
         self.state.interpreter.reset();
         self.state.traversal.reset();
@@ -189,12 +180,6 @@ impl ChangeListBuilder<'_> {
         self.state.interpreter.insert_before();
     }
 
-    pub fn ensure_string(&mut self, string: &str) -> StringKey {
-        self.state
-            .strings
-            .ensure_string(string, &mut self.state.interpreter)
-    }
-
     pub fn set_text(&mut self, text: &str) {
         debug_assert!(self.traversal_is_committed());
         debug!("emit: set_text({:?})", text);
@@ -216,24 +201,18 @@ impl ChangeListBuilder<'_> {
     pub fn set_attribute(&mut self, name: &str, value: &str, is_namespaced: bool) {
         debug_assert!(self.traversal_is_committed());
         if name == "class" && !is_namespaced {
-            let class_id = self.ensure_string(value);
             debug!("emit: set_class({:?})", value);
-            self.state.interpreter.set_class(class_id.into());
+            self.state.interpreter.set_class(value);
         } else {
-            let name_id = self.ensure_string(name);
-            let value_id = self.ensure_string(value);
             debug!("emit: set_attribute({:?}, {:?})", name, value);
-            self.state
-                .interpreter
-                .set_attribute(name_id.into(), value_id.into());
+            self.state.interpreter.set_attribute(name, value);
         }
     }
 
     pub fn remove_attribute(&mut self, name: &str) {
         debug_assert!(self.traversal_is_committed());
         debug!("emit: remove_attribute({:?})", name);
-        let name_id = self.ensure_string(name);
-        self.state.interpreter.remove_attribute(name_id.into());
+        self.state.interpreter.remove_attribute(name);
     }
 
     pub fn append_child(&mut self) {
@@ -251,18 +230,13 @@ impl ChangeListBuilder<'_> {
     pub fn create_element(&mut self, tag_name: &str) {
         debug_assert!(self.traversal_is_committed());
         debug!("emit: create_element({:?})", tag_name);
-        let tag_name_id = self.ensure_string(tag_name);
-        self.state.interpreter.create_element(tag_name_id.into());
+        self.state.interpreter.create_element(tag_name);
     }
 
     pub fn create_element_ns(&mut self, tag_name: &str, ns: &str) {
         debug_assert!(self.traversal_is_committed());
         debug!("emit: create_element_ns({:?}, {:?})", tag_name, ns);
-        let tag_name_id = self.ensure_string(tag_name);
-        let ns_id = self.ensure_string(ns);
-        self.state
-            .interpreter
-            .create_element_ns(tag_name_id.into(), ns_id.into());
+        self.state.interpreter.create_element_ns(tag_name, ns);
     }
 
     pub fn push_force_new_listeners(&mut self) -> bool {
@@ -281,10 +255,10 @@ impl ChangeListBuilder<'_> {
         debug!("emit: new_event_listener({:?})", listener);
         let (a, b) = listener.get_callback_parts();
         debug_assert!(a != 0);
-        let event_id = self.ensure_string(listener.event);
+
         self.state
             .interpreter
-            .new_event_listener(event_id.into(), a, b);
+            .new_event_listener(listener.event, a, b);
     }
 
     pub fn update_event_listener(&mut self, listener: &Listener) {
@@ -298,19 +272,16 @@ impl ChangeListBuilder<'_> {
         debug!("emit: update_event_listener({:?})", listener);
         let (a, b) = listener.get_callback_parts();
         debug_assert!(a != 0);
-        let event_id = self.ensure_string(listener.event);
         self.state
             .interpreter
-            .update_event_listener(event_id.into(), a, b);
+            .update_event_listener(listener.event, a, b);
     }
 
     pub fn remove_event_listener(&mut self, event: &str) {
         debug_assert!(self.traversal_is_committed());
         debug!("emit: remove_event_listener({:?})", event);
-        let event_id = self.ensure_string(event);
-        self.state
-            .interpreter
-            .remove_event_listener(event_id.into());
+
+        self.state.interpreter.remove_event_listener(event);
     }
 
     #[inline]
