@@ -1,15 +1,15 @@
-use std::collections::HashMap;
-
+use crate::cached_set::CacheId;
 use crate::{Element, EventsTrampoline};
+use fxhash::FxHashMap;
 use wasm_bindgen::{closure::Closure, JsCast};
 use web_sys::{window, Document, Event, Node};
 
 #[derive(Debug)]
-pub struct ChangeListInterpreter {
+pub(crate) struct ChangeListInterpreter {
     container: Element,
     stack: Stack,
-    temporaries: HashMap<u32, Node>,
-    templates: HashMap<u32, Node>,
+    temporaries: FxHashMap<u32, Node>,
+    templates: FxHashMap<CacheId, Node>,
     callback: Option<Closure<dyn FnMut(&Event)>>,
     document: Document,
 }
@@ -20,6 +20,12 @@ struct Stack {
 }
 
 impl Stack {
+    pub fn with_capacity(cap: usize) -> Self {
+        Stack {
+            list: Vec::with_capacity(cap),
+        }
+    }
+
     pub fn push(&mut self, node: Node) {
         debug!("stack-push: {:?}", node);
         self.list.push(node);
@@ -50,7 +56,7 @@ impl ChangeListInterpreter {
 
         Self {
             container,
-            stack: Default::default(),
+            stack: Stack::with_capacity(20),
             temporaries: Default::default(),
             templates: Default::default(),
             callback: None,
@@ -75,7 +81,7 @@ impl ChangeListInterpreter {
         self.temporaries.clear();
     }
 
-    pub fn get_template(&self, id: u32) -> Option<&Node> {
+    pub fn get_template(&self, id: CacheId) -> Option<&Node> {
         self.templates.get(&id)
     }
 
@@ -355,16 +361,20 @@ impl ChangeListInterpreter {
     }
 
     // 24
-    pub fn save_template(&mut self, id: u32) {
+    pub fn save_template(&mut self, id: CacheId) {
         let template = self.stack.top();
         let t = template.clone_node_with_deep(true).unwrap();
         self.templates.insert(id, t);
     }
 
     // 25
-    pub fn push_template(&mut self, id: u32) {
+    pub fn push_template(&mut self, id: CacheId) {
         let template = self.get_template(id).unwrap();
         let t = template.clone_node_with_deep(true).unwrap();
         self.stack.push(t);
+    }
+
+    pub fn has_template(&self, id: CacheId) -> bool {
+        self.templates.contains_key(&id)
     }
 }

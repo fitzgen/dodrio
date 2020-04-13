@@ -7,13 +7,11 @@ pub mod js;
 use self::interpreter::ChangeListInterpreter;
 use self::traversal::{MoveTo, Traversal};
 use crate::{cached_set::CacheId, Listener};
-use fxhash::FxHashSet;
 
 #[derive(Debug)]
 pub(crate) struct ChangeListPersistentState {
     traversal: Traversal,
     interpreter: ChangeListInterpreter,
-    templates: FxHashSet<CacheId>,
 }
 
 pub(crate) struct ChangeListBuilder<'a> {
@@ -32,12 +30,10 @@ impl ChangeListPersistentState {
     pub(crate) fn new(container: &crate::Element) -> ChangeListPersistentState {
         let traversal = Traversal::new();
         let interpreter = ChangeListInterpreter::new(container.clone());
-        let templates = Default::default();
 
         ChangeListPersistentState {
             traversal,
             interpreter,
-            templates,
         }
     }
 
@@ -286,21 +282,20 @@ impl ChangeListBuilder<'_> {
 
     #[inline]
     pub fn has_template(&mut self, id: CacheId) -> bool {
-        self.state.templates.contains(&id)
+        self.state.interpreter.has_template(id)
     }
 
     pub fn save_template(&mut self, id: CacheId) {
         debug_assert!(self.traversal_is_committed());
         debug_assert!(!self.has_template(id));
         debug!("emit: save_template({:?})", id);
-        self.state.templates.insert(id);
-        self.state.interpreter.save_template(id.into());
+        self.state.interpreter.save_template(id);
     }
 
     pub fn push_template(&mut self, id: CacheId) {
         debug_assert!(self.traversal_is_committed());
         debug_assert!(self.has_template(id));
         debug!("emit: push_template({:?})", id);
-        self.state.interpreter.push_template(id.into());
+        self.state.interpreter.push_template(id);
     }
 }
