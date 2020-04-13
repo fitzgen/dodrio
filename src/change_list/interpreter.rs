@@ -7,12 +7,39 @@ use web_sys::{window, Document, Event, Node};
 #[derive(Debug)]
 pub struct ChangeListInterpreter {
     container: Element,
-    stack: Vec<Node>,
+    stack: Stack,
     strings: HashMap<u32, String>,
     temporaries: Vec<Node>,
     templates: HashMap<u32, Node>,
     callback: Option<Closure<dyn FnMut(&Event)>>,
     document: Document,
+}
+
+#[derive(Debug, Default)]
+struct Stack {
+    list: Vec<Node>,
+}
+
+impl Stack {
+    pub fn push(&mut self, node: Node) {
+        debug!("stack-push: {:?}", node);
+        self.list.push(node);
+    }
+
+    pub fn pop(&mut self) -> Node {
+        let res = self.list.pop().unwrap();
+        debug!("stack-pop: {:?}", res);
+
+        res
+    }
+
+    pub fn clear(&mut self) {
+        self.list.clear();
+    }
+
+    pub fn top(&self) -> &Node {
+        &self.list[self.list.len() - 1]
+    }
 }
 
 impl ChangeListInterpreter {
@@ -24,7 +51,7 @@ impl ChangeListInterpreter {
 
         Self {
             container,
-            stack: Vec::with_capacity(5),
+            stack: Default::default(),
             strings: Default::default(),
             temporaries: Default::default(),
             templates: Default::default(),
@@ -82,19 +109,14 @@ impl ChangeListInterpreter {
         }) as Box<dyn FnMut(&Event)>));
     }
 
-    /// Get the top value of the stack.
-    fn top(&self) -> &Node {
-        &self.stack[self.stack.len() - 1]
-    }
-
     // 0
     pub fn set_text(&mut self, text: &str) {
-        self.top().set_text_content(Some(text));
+        self.stack.top().set_text_content(Some(text));
     }
 
     // 1
     pub fn remove_self_and_next_siblings(&mut self) {
-        let node = self.stack.pop().unwrap();
+        let node = self.stack.pop();
         let mut sibling = node.next_sibling();
 
         while let Some(inner) = sibling {
@@ -111,8 +133,8 @@ impl ChangeListInterpreter {
 
     // 2
     pub fn replace_with(&mut self) {
-        let new_node = self.stack.pop().unwrap();
-        let old_node = self.stack.pop().unwrap();
+        let new_node = self.stack.pop();
+        let old_node = self.stack.pop();
         old_node
             .dyn_ref::<Element>()
             .expect(&format!("not an element: {:?}", old_node))
@@ -125,7 +147,7 @@ impl ChangeListInterpreter {
     pub fn set_attribute(&mut self, name_id: u32, value_id: u32) {
         let name = self.get_cached_string(name_id).unwrap();
         let value = self.get_cached_string(value_id).unwrap();
-        let node = self.top();
+        let node = self.stack.top();
 
         if let Some(node) = node.dyn_ref::<Element>() {
             node.set_attribute(name, value).unwrap();
@@ -147,7 +169,7 @@ impl ChangeListInterpreter {
     // 4
     pub fn remove_attribute(&mut self, name_id: u32) {
         let name = self.get_cached_string(name_id).unwrap();
-        let node = self.top();
+        let node = self.stack.top();
         if let Some(node) = node.dyn_ref::<Element>() {
             node.remove_attribute(name).unwrap();
 
@@ -167,7 +189,7 @@ impl ChangeListInterpreter {
 
     // 5
     pub fn push_reverse_child(&mut self, n: u32) {
-        let parent = self.top();
+        let parent = self.stack.top();
         let children = parent.child_nodes();
         let child = children.get(children.length() - n - 1).unwrap();
         self.stack.push(child);
@@ -176,7 +198,7 @@ impl ChangeListInterpreter {
     // 6
     pub fn pop_push_child(&mut self, n: u32) {
         self.stack.pop();
-        let parent = self.top();
+        let parent = self.stack.top();
         let children = parent.child_nodes();
         let child = children.get(n).unwrap();
         self.stack.push(child);
@@ -189,8 +211,8 @@ impl ChangeListInterpreter {
 
     // 8
     pub fn append_child(&mut self) {
-        let child = self.stack.pop().unwrap();
-        self.top().append_child(&child).unwrap();
+        let child = self.stack.pop();
+        self.stack.top().append_child(&child).unwrap();
     }
 
     // 9
@@ -218,7 +240,7 @@ impl ChangeListInterpreter {
     // 11
     pub fn new_event_listener(&mut self, event_id: u32, a: u32, b: u32) {
         let event_type = self.get_cached_string(event_id).unwrap();
-        if let Some(el) = self.top().dyn_ref::<Element>() {
+        if let Some(el) = self.stack.top().dyn_ref::<Element>() {
             el.add_event_listener_with_callback(
                 event_type,
                 self.callback.as_ref().unwrap().as_ref().unchecked_ref(),
@@ -234,7 +256,7 @@ impl ChangeListInterpreter {
     // 12
     pub fn update_event_listener(&mut self, event_id: u32, a: u32, b: u32) {
         let event_type = self.get_cached_string(event_id).unwrap();
-        if let Some(el) = self.top().dyn_ref::<Element>() {
+        if let Some(el) = self.stack.top().dyn_ref::<Element>() {
             el.set_attribute(&format!("dodrio-a-{}", event_type), &a.to_string())
                 .unwrap();
             el.set_attribute(&format!("dodrio-b-{}", event_type), &b.to_string())
@@ -245,7 +267,7 @@ impl ChangeListInterpreter {
     // 13
     pub fn remove_event_listener(&mut self, event_id: u32) {
         let event_type = self.get_cached_string(event_id).unwrap();
-        if let Some(el) = self.top().dyn_ref::<Element>() {
+        if let Some(el) = self.stack.top().dyn_ref::<Element>() {
             el.remove_event_listener_with_callback(
                 event_type,
                 self.callback.as_ref().unwrap().as_ref().unchecked_ref(),
@@ -279,7 +301,7 @@ impl ChangeListInterpreter {
 
     // 17
     pub fn save_children_to_temporaries(&mut self, mut temp: u32, start: u32, end: u32) {
-        let parent = self.top();
+        let parent = self.stack.top();
         let children = parent.child_nodes();
         for i in start..end {
             temp += 1;
@@ -289,7 +311,7 @@ impl ChangeListInterpreter {
 
     // 18
     pub fn push_child(&mut self, n: u32) {
-        let parent = self.top();
+        let parent = self.stack.top();
         let child = parent.child_nodes().get(n).unwrap();
         self.stack.push(child);
     }
@@ -301,8 +323,8 @@ impl ChangeListInterpreter {
 
     // 20
     pub fn insert_before(&mut self) {
-        let before = self.stack.pop().unwrap();
-        let after = self.stack.pop().unwrap();
+        let before = self.stack.pop();
+        let after = self.stack.pop();
         after
             .parent_node()
             .unwrap()
@@ -314,7 +336,7 @@ impl ChangeListInterpreter {
     // 21
     pub fn pop_push_reverse_child(&mut self, n: u32) {
         self.stack.pop();
-        let parent = self.top();
+        let parent = self.stack.top();
         let children = parent.child_nodes();
         let child = children.get(children.length() - n - 1).unwrap();
         self.stack.push(child);
@@ -322,7 +344,7 @@ impl ChangeListInterpreter {
 
     // 22
     pub fn remove_child(&mut self, n: u32) {
-        let parent = self.top();
+        let parent = self.stack.top();
         if let Some(child) = parent.child_nodes().get(n).unwrap().dyn_ref::<Element>() {
             child.remove();
         }
@@ -331,14 +353,14 @@ impl ChangeListInterpreter {
     // 23
     pub fn set_class(&mut self, class_id: u32) {
         let class_name = self.get_cached_string(class_id).unwrap();
-        if let Some(el) = self.top().dyn_ref::<Element>() {
+        if let Some(el) = self.stack.top().dyn_ref::<Element>() {
             el.set_class_name(class_name);
         }
     }
 
     // 24
     pub fn save_template(&mut self, id: u32) {
-        let template = self.top();
+        let template = self.stack.top();
         let t = template.clone_node_with_deep(true).unwrap();
         self.templates.insert(id, t);
     }

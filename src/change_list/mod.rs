@@ -56,6 +56,7 @@ impl ChangeListPersistentState {
             next_temporary: 0,
             forcing_new_listeners: false,
         };
+        debug!("emit: start");
         builder.state.interpreter.start();
 
         builder
