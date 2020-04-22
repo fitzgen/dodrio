@@ -64,7 +64,7 @@ features = [
 ]
 
 [dev-dependencies]
-console_log = "0.1.2"
+console_log = "0.2.0"
 dodrio-js-api = { version = "=0.1.0", path = "./crates/js-api" }
 futures = "0.3.4"
 log = "0.4.8"
