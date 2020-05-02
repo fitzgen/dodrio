@@ -104,6 +104,11 @@ pub use self::render::{Render, RootRender};
 pub use self::render_context::RenderContext;
 pub use self::vdom::{Vdom, VdomWeak};
 
+use proc_macro_hack::proc_macro_hack;
+/// The html macro.
+#[proc_macro_hack]
+pub use dodrio_derive::html;
+
 cfg_if::cfg_if! {
     if #[cfg(all(target_arch = "wasm32", not(feature = "xxx-unstable-internal-use-only")))] {
         use wasm_bindgen::__rt::WasmRefCell as RefCell;

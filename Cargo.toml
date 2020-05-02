@@ -51,6 +51,8 @@ longest-increasing-subsequence = "0.1.0"
 serde = { version = "1.0.106", optional = true }
 wasm-bindgen = "0.2.55"
 wasm-bindgen-futures = "0.4.5"
+dodrio-derive = { path = "crates/dodrio-derive" }
+proc-macro-hack = "0.5.15"
 
 [dependencies.web-sys]
 version = "0.3.32"
@@ -94,6 +96,7 @@ opt-level = "s"
 [workspace]
 members = [
   "./crates/js-api",
+  "./crates/dodrio-derive",
   "./examples/counter",
   "./examples/game-of-life",
   "./examples/hello-world",
