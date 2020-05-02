@@ -29,6 +29,7 @@ impl Parse for HtmlRender {
     fn parse(s: ParseStream) -> Result<Self> {
         let ctx: Ident = s.parse()?;
         s.parse::<Token![,]>()?;
+        // if elements are in an array, return a bumpalo::collections::Vec rather than a Node.
         let kind = if s.peek(token::Bracket) {
             let nodes_toks;
             syn::bracketed!(nodes_toks in s);
@@ -215,7 +216,7 @@ struct Attr {
 
 impl Parse for Attr {
     fn parse(s: ParseStream) -> Result<Self> {
-        let mut name: Ident = s.parse()?;
+        let mut name = Ident::parse_any(s)?;
         let name_str = name.to_string();
         s.parse::<Token![=]>()?;
         let ty = if name_str.starts_with("on") {
