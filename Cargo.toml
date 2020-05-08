@@ -8,7 +8,7 @@ license = "MPL-2.0"
 name = "dodrio"
 readme = "./README.md"
 repository = "https://github.com/fitzgen/dodrio"
-version = "0.1.0"
+version = "0.2.0"
 
 [badges]
 travis-ci = { repository = "fitzgen/dodrio" }
@@ -65,7 +65,7 @@ features = [
 
 [dev-dependencies]
 console_log = "0.2.0"
-dodrio-js-api = { version = "=0.1.0", path = "./crates/js-api" }
+dodrio-js-api = { version = "=0.2.0", path = "./crates/js-api" }
 futures = "0.3.4"
 log = "0.4.8"
 wasm-bindgen-test = "0.3.5"

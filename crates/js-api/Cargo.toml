@@ -7,13 +7,13 @@ keywords = ["javascript", "js", "vdom", "virtual-dom"]
 license = "MPL-2.0"
 name = "dodrio-js-api"
 repository = "https://github.com/fitzgen/dodrio"
-version = "0.1.0"
+version = "0.2.0"
 
 [badges]
 travis-ci = { repository = "fitzgen/dodrio" }
 
 [dependencies]
-dodrio = { version = "=0.1.0", path = "../.." }
+dodrio = { version = "=0.2.0", path = "../.." }
 wasm-bindgen = "0.2.55"
 js-sys = "0.3.32"
 wasm-bindgen-futures = "0.4.5"
