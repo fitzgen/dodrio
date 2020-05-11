@@ -42,7 +42,7 @@ xxx-unstable-strace = []
 xxx-unstable-internal-use-only = []
 
 [dependencies]
-bumpalo = "2.6.0"
+bumpalo = "3.2.1"
 cfg-if = "0.1.10"
 fxhash = "0.2.1"
 js-sys = "0.3.32"
