@@ -26,6 +26,7 @@ features = [
   "MouseEvent",
   "Node",
   "Window",
+  "NodeList",
 ]
 
 [dev-dependencies]

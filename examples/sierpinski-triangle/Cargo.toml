@@ -22,6 +22,9 @@ features = [
   "Node",
   "Performance",
   "Window",
+  "Event",
+  "EventTarget",
+  "NodeList",
 ]
 
 [dev-dependencies]

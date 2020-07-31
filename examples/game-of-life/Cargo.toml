@@ -23,6 +23,9 @@ features = [
   "HtmlElement",
   "Node",
   "Window",
+  "Event",
+  "EventTarget",
+  "NodeList",
 ]
 
 [dev-dependencies]

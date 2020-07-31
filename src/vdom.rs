@@ -61,7 +61,6 @@ pub(crate) struct VdomInnerExclusive {
     change_list: ManuallyDrop<ChangeListPersistentState>,
     container: crate::Element,
     events_registry: Option<Rc<RefCell<EventsRegistry>>>,
-    events_trampoline: Option<crate::EventsTrampoline>,
     cached_set: crate::RefCell<CachedSet>,
     templates: FxHashMap<TemplateId, Option<CacheId>>,
 
@@ -96,7 +95,6 @@ impl fmt::Debug for VdomInnerExclusive {
             .field("change_list", &self.change_list)
             .field("container", &self.container)
             .field("events_registry", &self.events_registry)
-            .field("events_trampoline", &"..")
             .field("current_root", &self.current_root)
             .finish()
     }
@@ -190,7 +188,6 @@ impl Vdom {
                 container,
                 current_root,
                 events_registry: None,
-                events_trampoline: None,
                 cached_set: crate::RefCell::new(Default::default()),
                 templates: Default::default(),
             }),
@@ -201,9 +198,7 @@ impl Vdom {
         {
             let mut inner = inner.exclusive.borrow_mut();
             inner.events_registry = Some(events_registry);
-            inner.change_list.init_events_trampoline(&events_trampoline);
-            debug_assert!(inner.events_trampoline.is_none());
-            inner.events_trampoline = Some(events_trampoline);
+            inner.change_list.init_events_trampoline(events_trampoline);
 
             // Diff and apply the `contents` against our dummy `<div/>`.
             inner.render();

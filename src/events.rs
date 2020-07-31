@@ -26,7 +26,6 @@ cfg_if::cfg_if! {
         use fxhash::FxHashMap;
         use std::fmt;
         use std::mem;
-        use wasm_bindgen::closure::Closure;
         use wasm_bindgen::prelude::*;
 
         /// The events registry manages event listeners for a virtual DOM.
@@ -62,7 +61,7 @@ cfg_if::cfg_if! {
                 }));
 
                 let weak_registry = Rc::downgrade(&registry);
-                let closure = Closure::wrap(Box::new(move |event, a, b| {
+                let closure = move |event: web_sys::Event, a: u32, b: u32| {
                     debug_assert!(a != 0);
 
                     // if the VdomInnerExclusive is keeping this closure alive, then the
@@ -86,9 +85,9 @@ cfg_if::cfg_if! {
                             callback(component, vdom_weak, event);
                         }
                     }
-                }) as Box<dyn Fn(web_sys::Event, u32, u32)>);
+                };
 
-                (registry, closure)
+                (registry, Box::new(closure))
             }
 
             pub(crate) fn remove(&mut self, listener: &Listener) {
