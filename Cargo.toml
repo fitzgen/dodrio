@@ -43,7 +43,7 @@ xxx-unstable-internal-use-only = []
 
 [dependencies]
 bumpalo = "2.6.0"
-cfg-if = "0.1.10"
+cfg-if = "1.0.0"
 fxhash = "0.2.1"
 js-sys = "0.3.32"
 log = { version = "0.4.11", optional = true }
