@@ -5,7 +5,7 @@ name = "dodrio-todomvc"
 version = "0.1.0"
 
 [dependencies]
-cfg-if = "0.1.10"
+cfg-if = "1.0.0"
 dodrio = { path = "../..", features = ["serde"] }
 js-sys = "0.3.32"
 serde = { features = ["derive"], version = "1.0.114" }
