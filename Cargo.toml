@@ -48,7 +48,7 @@ fxhash = "0.2.1"
 js-sys = "0.3.32"
 log = { version = "0.4.11", optional = true }
 longest-increasing-subsequence = "0.1.0"
-serde = { version = "1.0.114", optional = true }
+serde = { version = "1.0.118", optional = true }
 wasm-bindgen = "0.2.55"
 wasm-bindgen-futures = "0.4.5"
 
