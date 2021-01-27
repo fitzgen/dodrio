@@ -13,7 +13,7 @@ crate-type = ["cdylib"]
 console_error_panic_hook = "0.1.6"
 console_log = "0.2.0"
 dodrio = { path = "../.." }
-log = "0.4.11"
+log = "0.4.14"
 wasm-bindgen = "0.2.55"
 
 [dependencies.web-sys]
